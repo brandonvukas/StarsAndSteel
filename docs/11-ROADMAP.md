@@ -30,7 +30,7 @@ The user's original ask, executed end to end.
 - ☐ Migration 1: `InitialIdentity`
 - ☐ Migration 2: `InitialGameWorld`
 - ☐ ~~Migration 3: `SeedDefaultMap`~~ — superseded. Provinces have a non-nullable `GameWorldId` FK and are therefore per-world, not global. The `MapSeeder` (in `StarsAndSteel.Data/Seeding/`) is now a runtime helper that reads `shared/map-data.json` and produces row records; `WorldFactory` calls it inside the world-creation transaction so each new `GameWorld` gets its own deterministic copy of the map.
-- ☐ Auth endpoints (`/api/auth/*`) with Identity + JWT
+- ☑ Auth endpoints (`/api/auth/*`) with Identity + JWT (Phase 1D — cookie for SPA, JWT for SignalR, FluentValidation, rate-limited)
 - ☐ World snapshot endpoint with fog-of-war filtering
 - ☐ Order endpoints: move, attack, airstrike, build-unit, build-building — with the cutoff rule (stamps `IssuedAtTick = CurrentTick + 1` under the per-world lock)
 - ☐ World-join flow: assign capital from candidate pool, apply starting resources, place starter units, build starter buildings (see `03-DATABASE-SCHEMA.md` Nation starting state)
