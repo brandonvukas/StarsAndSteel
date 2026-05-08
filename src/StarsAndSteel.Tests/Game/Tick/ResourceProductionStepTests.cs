@@ -1,0 +1,215 @@
+using FluentAssertions;
+using StarsAndSteel.Core.Entities;
+using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Game.Tick;
+using StarsAndSteel.Game.Tick.Events;
+using StarsAndSteel.Game.Tick.Steps;
+
+namespace StarsAndSteel.Tests.Game.Tick;
+
+/// <summary>
+/// Pure-C# tests against POCO graphs. No DbContext, no Testcontainers.
+/// </summary>
+public class ResourceProductionStepTests
+{
+    [Fact]
+    public void Adds_base_output_for_each_owned_province_with_no_buildings()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+
+        AddProvince(world, alice, money: 100, oil: 50, steel: 25, electronics: 10, food: 5, manpower: 2);
+        AddProvince(world, alice, money: 50, oil: 0, steel: 100, electronics: 0, food: 0, manpower: 1);
+
+        var ctx = NewContext(world);
+        new ResourceProductionStep().Execute(ctx);
+
+        alice.Money.Should().Be(150);
+        alice.Oil.Should().Be(50);
+        alice.Steel.Should().Be(125);
+        alice.Electronics.Should().Be(10);
+        alice.Food.Should().Be(5);
+        alice.Manpower.Should().Be(3);
+    }
+
+    [Fact]
+    public void Building_bonus_applies_only_to_matching_resource()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+
+        var province = AddProvince(world, alice, money: 100, oil: 100, steel: 100, electronics: 0, food: 0, manpower: 0);
+        province.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(),
+            ProvinceId = province.Id,
+            Province = province,
+            Type = BuildingType.SteelMill,
+            Level = 2, // 1 + 0.25*2 = 1.5x steel
+            ConstructedAtTick = 0,
+        });
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(100);
+        alice.Oil.Should().Be(100);
+        alice.Steel.Should().Be(150);
+    }
+
+    [Theory]
+    [InlineData(100, 100)] // full
+    [InlineData(30, 100)]  // boundary: still full at 30
+    [InlineData(29, 50)]   // <30 -> 50%
+    [InlineData(10, 50)]   // boundary: still 50% at 10
+    [InlineData(9, 0)]     // <10 -> nothing
+    [InlineData(0, 0)]     // floor
+    public void Morale_modifier_matches_docs_04(int morale, int expectedMoney)
+    {
+        var (world, alice) = WorldWithOnePlayer();
+
+        var province = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        province.MoraleLevel = morale;
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(expectedMoney);
+    }
+
+    [Fact]
+    public void Emits_one_ResourcesProducedEvent_per_player_with_deltas()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var bob = AddPlayer(world, "Bob", money: 0);
+        AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        AddProvince(world, bob, money: 0, oil: 0, steel: 50, electronics: 0, food: 0, manpower: 0);
+
+        var ctx = NewContext(world);
+        new ResourceProductionStep().Execute(ctx);
+
+        ctx.Events.Should().HaveCount(2);
+        ctx.Events.OfType<ResourcesProducedEvent>().Should().Contain(e =>
+            e.PlayerId == alice.Id && e.MoneyDelta == 100 && e.SteelDelta == 0);
+        ctx.Events.OfType<ResourcesProducedEvent>().Should().Contain(e =>
+            e.PlayerId == bob.Id && e.MoneyDelta == 0 && e.SteelDelta == 50);
+    }
+
+    [Fact]
+    public void Neutral_province_produces_nothing()
+    {
+        var world = NewWorld();
+        var p = new Province
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = world.Id,
+            GameWorld = world,
+            Name = "No Man's Land",
+            Type = ProvinceType.Resource,
+            OwnerPlayerId = null, // explicitly neutral
+            MoneyPerTick = 999,
+            MoraleLevel = 100,
+        };
+        world.Provinces.Add(p);
+
+        var ctx = NewContext(world);
+        new ResourceProductionStep().Execute(ctx);
+
+        ctx.Events.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Multiple_buildings_of_same_type_stack_additively()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var province = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+
+        // Two FinancialDistricts at level 1 each: 1 + 0.20 + 0.20 = 1.4x money.
+        province.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = province.Id, Province = province,
+            Type = BuildingType.FinancialDistrict, Level = 1,
+        });
+        province.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = province.Id, Province = province,
+            Type = BuildingType.FinancialDistrict, Level = 1,
+        });
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(140);
+    }
+
+    // ---------- helpers ----------
+
+    private static GameWorld NewWorld() => new()
+    {
+        Id = Guid.NewGuid(),
+        Name = "Test",
+        Status = GameWorldStatus.Active,
+        CurrentTick = 0,
+        TickIntervalSeconds = 60,
+        NextTickDueUtc = DateTime.UtcNow,
+        CreatedAt = DateTime.UtcNow,
+        MapSeed = 1,
+        RngState = 1,
+        RowVersion = new byte[8],
+    };
+
+    private static (GameWorld World, Player Alice) WorldWithOnePlayer()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice", money: 0);
+        return (world, alice);
+    }
+
+    private static Player AddPlayer(GameWorld world, string name, long money)
+    {
+        var player = new Player
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = world.Id,
+            GameWorld = world,
+            IsAi = false,
+            NationName = name,
+            FlagPrimaryHex = "#ffffff",
+            FlagSecondaryHex = "#000000",
+            IsAlive = true,
+            Money = money,
+        };
+        world.Players.Add(player);
+        return player;
+    }
+
+    private static Province AddProvince(
+        GameWorld world,
+        Player owner,
+        int money,
+        int oil,
+        int steel,
+        int electronics,
+        int food,
+        int manpower)
+    {
+        var p = new Province
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = world.Id,
+            GameWorld = world,
+            Name = $"P-{world.Provinces.Count + 1}",
+            Type = ProvinceType.Industrial,
+            OwnerPlayerId = owner.Id,
+            OwnerPlayer = owner,
+            MoraleLevel = 100,
+            MoneyPerTick = money,
+            OilPerTick = oil,
+            SteelPerTick = steel,
+            ElectronicsPerTick = electronics,
+            FoodPerTick = food,
+            ManpowerPerTick = manpower,
+        };
+        world.Provinces.Add(p);
+        owner.OwnedProvinces.Add(p);
+        return p;
+    }
+
+    private static TickContext NewContext(GameWorld world) =>
+        new(world, processingTick: world.CurrentTick + 1, rng: new DeterministicRandom(world.RngState));
+}

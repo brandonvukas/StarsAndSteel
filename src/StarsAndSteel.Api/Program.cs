@@ -8,8 +8,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StarsAndSteel.Api.Auth;
+using StarsAndSteel.Api.BackgroundServices;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Data;
+using StarsAndSteel.Game.Tick;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -175,6 +177,18 @@ builder.Services.AddRateLimiter(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// --- Game tick (docs/07) -------------------------------------------------
+// TickProcessor itself is pure and stateless beyond the steps it composes;
+// register as singleton so we don't pay a constructor every second.
+// TickRunner is scoped because it owns a DbContext per call.
+// WorldLockRegistry is the shared lock map between the tick service and
+// (eventually) order endpoints.
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<TickProcessor>();
+builder.Services.AddSingleton<WorldLockRegistry>();
+builder.Services.AddScoped<TickRunner>();
+builder.Services.AddHostedService<GameTickService>();
 
 var app = builder.Build();
 

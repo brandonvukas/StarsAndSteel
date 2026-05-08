@@ -34,9 +34,9 @@ The user's original ask, executed end to end.
 - ☐ World snapshot endpoint with fog-of-war filtering
 - ☐ Order endpoints: move, attack, airstrike, build-unit, build-building — with the cutoff rule (stamps `IssuedAtTick = CurrentTick + 1` under the per-world lock)
 - ☐ World-join flow: assign capital from candidate pool, apply starting resources, place starter units, build starter buildings (see `03-DATABASE-SCHEMA.md` Nation starting state)
-- ☐ `GameTickService` skeleton with parallel per-world processing + per-world re-entrancy lock
-- ☐ `TickProcessor` with the 14-step pipeline (AI first, deterministic RNG seeded from `world.RngState`, optimistic-concurrency `RowVersion` check)
-- ☐ `ResourceProductionStep`, `MovementStep`, `AirStrikeStep`, `CombatStep`, `ConstructionStep`
+- ☑ `GameTickService` skeleton with parallel per-world processing + per-world re-entrancy lock (Phase 1E)
+- ◐ `TickProcessor` with the 14-step pipeline (AI first, deterministic RNG seeded from `world.RngState`, optimistic-concurrency `RowVersion` check) — orchestrator + DeterministicRandom (LCG, persistable) + ITickStep contract landed in 1E; remaining 13 steps follow.
+- ◐ `ResourceProductionStep`, `MovementStep`, `AirStrikeStep`, `CombatStep`, `ConstructionStep` — `ResourceProductionStep` shipped in 1E (formula matches docs/04 incl. building bonuses + morale).
 - ☐ `CombatResolver` with combined-arms formula in `04-GAME-MECHANICS.md` + unit tests
 - ☐ News templates and step (RNG pulls from per-world state)
 - ☐ `GameHub` with the events listed in `06-BACKEND-API.md`
