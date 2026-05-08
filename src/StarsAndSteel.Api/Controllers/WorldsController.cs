@@ -8,8 +8,10 @@ using StarsAndSteel.Api.BackgroundServices;
 using StarsAndSteel.Api.Worlds.Dtos;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Core.Snapshots;
 using StarsAndSteel.Data;
 using StarsAndSteel.Data.Seeding;
+using StarsAndSteel.Game.Snapshots;
 using StarsAndSteel.Game.Worlds;
 
 namespace StarsAndSteel.Api.Controllers;
@@ -33,6 +35,7 @@ public sealed class WorldsController : ControllerBase
     private readonly UserManager<User> _userManager;
     private readonly WorldFactory _worldFactory;
     private readonly WorldJoinService _joinService;
+    private readonly SnapshotService _snapshotService;
     private readonly WorldLockRegistry _locks;
     private readonly TimeProvider _clock;
     private readonly IValidator<CreateWorldRequest> _createValidator;
@@ -44,6 +47,7 @@ public sealed class WorldsController : ControllerBase
         UserManager<User> userManager,
         WorldFactory worldFactory,
         WorldJoinService joinService,
+        SnapshotService snapshotService,
         WorldLockRegistry locks,
         TimeProvider clock,
         IValidator<CreateWorldRequest> createValidator,
@@ -54,6 +58,7 @@ public sealed class WorldsController : ControllerBase
         _userManager = userManager;
         _worldFactory = worldFactory;
         _joinService = joinService;
+        _snapshotService = snapshotService;
         _locks = locks;
         _clock = clock;
         _createValidator = createValidator;
@@ -260,6 +265,62 @@ public sealed class WorldsController : ControllerBase
         {
             gate.Release();
         }
+    }
+
+    /// <summary>
+    /// Returns the calling user's fog-of-war-filtered view of the world. Used
+    /// by the client to hydrate its local store on page load and on SignalR
+    /// reconnect (see docs/06-BACKEND-API.md §"How the client uses both").
+    /// <para/>
+    /// 404 if the world doesn't exist; 403 if the caller hasn't joined it
+    /// (we don't leak world contents to non-members). Read-only — no lock.
+    /// </summary>
+    [HttpGet("{id:guid}/snapshot")]
+    public async Task<ActionResult<WorldSnapshot>> Snapshot(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var world = await _db.GameWorlds
+            .AsNoTracking()
+            .Include(w => w.Players)
+            .Include(w => w.Provinces)
+                .ThenInclude(p => p.Buildings)
+            .FirstOrDefaultAsync(w => w.Id == id, cancellationToken);
+
+        if (world is null)
+        {
+            return NotFound();
+        }
+
+        // Resolve calling player. We don't leak snapshots of worlds the user
+        // hasn't joined — that's a fog-of-war hole.
+        var me = world.Players.FirstOrDefault(p => p.UserId == user.Id);
+        if (me is null)
+        {
+            return Forbid();
+        }
+
+        // Adjacencies aren't a navigation collection on GameWorld, so query them
+        // through the Provinces FK. Province IDs are unique to this world (the
+        // WorldFactory re-stamps them on creation), so this is tight.
+        var provinceIds = world.Provinces.Select(p => p.Id).ToHashSet();
+        var adjacencies = await _db.ProvinceAdjacencies
+            .AsNoTracking()
+            .Where(a => provinceIds.Contains(a.ProvinceAId) || provinceIds.Contains(a.ProvinceBId))
+            .ToListAsync(cancellationToken);
+
+        // Units aren't on GameWorld either (NoAction cascade — see UnitConfiguration).
+        var units = await _db.Units
+            .AsNoTracking()
+            .Where(u => u.GameWorldId == id)
+            .ToListAsync(cancellationToken);
+
+        var snapshot = _snapshotService.Build(world, adjacencies, units, callingPlayerId: me.Id);
+        return Ok(snapshot);
     }
 
     private static ModelStateDictionary BuildModelState(IEnumerable<FluentValidation.Results.ValidationFailure> failures)

@@ -11,6 +11,7 @@ using StarsAndSteel.Api.Auth;
 using StarsAndSteel.Api.BackgroundServices;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Data;
+using StarsAndSteel.Game.Snapshots;
 using StarsAndSteel.Game.Tick;
 using StarsAndSteel.Game.Worlds;
 
@@ -195,6 +196,10 @@ builder.Services.AddHostedService<GameTickService>();
 // singleton is fine. Controllers resolve them per request.
 builder.Services.AddSingleton<WorldFactory>();
 builder.Services.AddSingleton<WorldJoinService>();
+
+// Fog-of-war world snapshot projection (docs/06 §"DTOs (shape sketch)" and
+// docs/10 §"Authentication"). Stateless — singleton.
+builder.Services.AddSingleton<SnapshotService>();
 
 var app = builder.Build();
 
