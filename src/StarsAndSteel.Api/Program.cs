@@ -201,6 +201,10 @@ builder.Services.AddSingleton<WorldJoinService>();
 // docs/10 §"Authentication"). Stateless — singleton.
 builder.Services.AddSingleton<SnapshotService>();
 
+// Order submission service (docs/06 §"Order submission semantics"). Pure validator
+// + entity constructor; the controller does the loading + persistence.
+builder.Services.AddSingleton<StarsAndSteel.Game.Orders.OrderService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

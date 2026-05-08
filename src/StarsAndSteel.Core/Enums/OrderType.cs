@@ -7,5 +7,7 @@ public enum OrderType
     Hold = 2,
     Patrol = 3,
     AirStrike = 4,
-    ReconSweep = 5
+    ReconSweep = 5,
+    BuildUnit = 6,
+    BuildBuilding = 7
 }

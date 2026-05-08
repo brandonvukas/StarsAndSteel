@@ -32,6 +32,7 @@ public class StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>
     public DbSet<ProvinceAdjacency> ProvinceAdjacencies => Set<ProvinceAdjacency>();
     public DbSet<Unit> Units => Set<Unit>();
     public DbSet<UnitOrder> UnitOrders => Set<UnitOrder>();
+    public DbSet<ConstructionOrder> ConstructionOrders => Set<ConstructionOrder>();
     public DbSet<Building> Buildings => Set<Building>();
     public DbSet<DiplomaticRelation> DiplomaticRelations => Set<DiplomaticRelation>();
     public DbSet<ResearchProgress> ResearchProgress => Set<ResearchProgress>();
