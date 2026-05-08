@@ -1,5 +1,6 @@
 using FluentAssertions;
 using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Core.Seeding;
 using StarsAndSteel.Data.Seeding;
 
 namespace StarsAndSteel.Tests.Seeding;

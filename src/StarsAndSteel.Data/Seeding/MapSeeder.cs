@@ -1,19 +1,22 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Core.Seeding;
 
 namespace StarsAndSteel.Data.Seeding;
 
 /// <summary>
-/// Loads <c>shared/map-data.json</c> — the single source of truth for the world map — and exposes
-/// it as flat row records ready for <c>migrationBuilder.InsertData</c>.
+/// Loads <c>shared/map-data.json</c> — the single source of truth for the world map — and
+/// returns it as a <see cref="MapSeedData"/> graph of pure records (defined in
+/// <c>StarsAndSteel.Core.Seeding</c>). The <c>WorldFactory</c> in <c>StarsAndSteel.Game</c>
+/// then turns that data into a <c>GameWorld</c> entity graph at world-creation time.
 /// <para/>
 /// The same JSON file is consumed by the client at build time (via the Vite <c>@shared</c> alias)
 /// and copied to the server's bin directory by <c>StarsAndSteel.Data.csproj</c>. See
 /// <c>docs/02-PROJECT-STRUCTURE.md</c>.
 /// <para/>
 /// Stable string IDs from the JSON (e.g. <c>"test-usa"</c>) are deterministically hashed to Guids
-/// so re-running migrations on a fresh DB produces identical PKs. This matters for any test that
+/// so re-running the seeder on a fresh DB produces identical PKs. This matters for any test that
 /// hard-codes a province ID and for manually inspecting the data in SSMS.
 /// </summary>
 public static class MapSeeder
@@ -135,28 +138,4 @@ public static class MapSeeder
     }
 }
 
-/// <summary>Aggregate result returned by <see cref="MapSeeder.Load"/>.</summary>
-public sealed record MapSeedData(IReadOnlyList<ProvinceRow> Provinces, IReadOnlyList<AdjacencyRow> Adjacencies);
 
-/// <summary>Flat province row ready for InsertData. Mirrors the Provinces table columns minus FKs.</summary>
-public sealed record ProvinceRow(
-    Guid Id,
-    string Name,
-    ProvinceType Type,
-    bool IsCoastal,
-    float CenterX,
-    float CenterY,
-    int BasePopulation,
-    int MoneyPerTick,
-    int OilPerTick,
-    int SteelPerTick,
-    int ElectronicsPerTick,
-    int FoodPerTick,
-    int ManpowerPerTick);
-
-/// <summary>Flat adjacency row ready for InsertData. Caller guarantees ProvinceAId &lt; ProvinceBId.</summary>
-public sealed record AdjacencyRow(
-    Guid ProvinceAId,
-    Guid ProvinceBId,
-    float TerrainCost,
-    bool IsSeaCrossing);

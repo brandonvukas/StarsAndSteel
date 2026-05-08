@@ -27,13 +27,13 @@ The user's original ask, executed end to end.
 
 - ☐ EF Core entities: `User : IdentityUser<Guid>`, `GameWorld` (with `RngState` + `RowVersion`), `Player`, `Province`, `ProvinceAdjacency` (composite PK + ordered-pair invariant), `Unit`, `UnitOrder`, `Building`, `NewsItem`, `AiMemory`
 - ☐ `StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>`, configurations
-- ☐ Migration 1: `InitialIdentity`
-- ☐ Migration 2: `InitialGameWorld`
-- ☐ ~~Migration 3: `SeedDefaultMap`~~ — superseded. Provinces have a non-nullable `GameWorldId` FK and are therefore per-world, not global. The `MapSeeder` (in `StarsAndSteel.Data/Seeding/`) is now a runtime helper that reads `shared/map-data.json` and produces row records; `WorldFactory` calls it inside the world-creation transaction so each new `GameWorld` gets its own deterministic copy of the map.
+- ☑ Migration 1: `InitialIdentity`
+- ☑ Migration 2: `InitialGameWorld`
+- ☐ ~~Migration 3: `SeedDefaultMap`~~ — superseded. Provinces have a non-nullable `GameWorldId` FK and are therefore per-world, not global. The `MapSeeder` (in `StarsAndSteel.Data/Seeding/`) is now a runtime helper that reads `shared/map-data.json` and produces row records; `WorldFactory` (Phase 1F) calls it inside the world-creation transaction so each new `GameWorld` gets its own copy of the map.
 - ☑ Auth endpoints (`/api/auth/*`) with Identity + JWT (Phase 1D — cookie for SPA, JWT for SignalR, FluentValidation, rate-limited)
 - ☐ World snapshot endpoint with fog-of-war filtering
 - ☐ Order endpoints: move, attack, airstrike, build-unit, build-building — with the cutoff rule (stamps `IssuedAtTick = CurrentTick + 1` under the per-world lock)
-- ☐ World-join flow: assign capital from candidate pool, apply starting resources, place starter units, build starter buildings (see `03-DATABASE-SCHEMA.md` Nation starting state)
+- ☑ World-join flow (Phase 1F): `WorldFactory` builds province graphs from `MapSeeder.Load()` inside a transaction; `WorldJoinService` assigns a candidate-capital, applies starter package (5000/1000/1000/500/1000/2000 resources, RC+MB+AB+FD lvl 1, 2× MechInf 1000 + 1× AA 500), and flips Lobby → Active on first join. `WorldsController`: `GET /api/worlds`, `POST /api/worlds`, `GET /api/worlds/{id}`, `POST /api/worlds/{id}/join` — join is held under the per-world `WorldLockRegistry` semaphore so it cannot race a tick.
 - ☑ `GameTickService` skeleton with parallel per-world processing + per-world re-entrancy lock (Phase 1E)
 - ◐ `TickProcessor` with the 14-step pipeline (AI first, deterministic RNG seeded from `world.RngState`, optimistic-concurrency `RowVersion` check) — orchestrator + DeterministicRandom (LCG, persistable) + ITickStep contract landed in 1E; remaining 13 steps follow.
 - ◐ `ResourceProductionStep`, `MovementStep`, `AirStrikeStep`, `CombatStep`, `ConstructionStep` — `ResourceProductionStep` shipped in 1E (formula matches docs/04 incl. building bonuses + morale).

@@ -12,6 +12,7 @@ using StarsAndSteel.Api.BackgroundServices;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Data;
 using StarsAndSteel.Game.Tick;
+using StarsAndSteel.Game.Worlds;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -189,6 +190,11 @@ builder.Services.AddSingleton<TickProcessor>();
 builder.Services.AddSingleton<WorldLockRegistry>();
 builder.Services.AddScoped<TickRunner>();
 builder.Services.AddHostedService<GameTickService>();
+
+// World creation + join (docs/03 §"Nation starting state"). Both are stateless;
+// singleton is fine. Controllers resolve them per request.
+builder.Services.AddSingleton<WorldFactory>();
+builder.Services.AddSingleton<WorldJoinService>();
 
 var app = builder.Build();
 
