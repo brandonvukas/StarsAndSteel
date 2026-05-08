@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="StarsAndSteel.Api/StarsAndSteel.Api.csproj" />
+  <Project Path="StarsAndSteel.Core/StarsAndSteel.Core.csproj" />
+  <Project Path="StarsAndSteel.Data/StarsAndSteel.Data.csproj" />
+  <Project Path="StarsAndSteel.Game/StarsAndSteel.Game.csproj" />
+  <Project Path="StarsAndSteel.Tests/StarsAndSteel.Tests.csproj" />
+</Solution>

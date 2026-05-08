@@ -1,0 +1,60 @@
+{
+  "$schema": "./map-data.schema.json",
+  "version": 1,
+  "provinces": [
+    {
+      "id": "test-usa",
+      "name": "United States",
+      "type": "Capital",
+      "isCoastal": true,
+      "centerX": 250.0,
+      "centerY": 300.0,
+      "basePopulation": 330000000,
+      "baseResourceOutput": {
+        "moneyPerTick": 100,
+        "oilPerTick": 20,
+        "steelPerTick": 30,
+        "electronicsPerTick": 25,
+        "foodPerTick": 40,
+        "manpowerPerTick": 50
+      },
+      "polygon": [
+        [200.0, 250.0],
+        [300.0, 250.0],
+        [300.0, 350.0],
+        [200.0, 350.0]
+      ]
+    },
+    {
+      "id": "test-canada",
+      "name": "Canada",
+      "type": "Resource",
+      "isCoastal": true,
+      "centerX": 250.0,
+      "centerY": 150.0,
+      "basePopulation": 39000000,
+      "baseResourceOutput": {
+        "moneyPerTick": 40,
+        "oilPerTick": 50,
+        "steelPerTick": 25,
+        "electronicsPerTick": 10,
+        "foodPerTick": 20,
+        "manpowerPerTick": 15
+      },
+      "polygon": [
+        [200.0, 100.0],
+        [300.0, 100.0],
+        [300.0, 200.0],
+        [200.0, 200.0]
+      ]
+    }
+  ],
+  "adjacencies": [
+    {
+      "provinceAId": "test-canada",
+      "provinceBId": "test-usa",
+      "terrainCost": 1.0,
+      "isSeaCrossing": false
+    }
+  ]
+}

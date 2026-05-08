@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stars & Steel — Game Concept Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800;900&family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&family=Special+Elite&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1428;
+    --bg-2:#0f1d35;
+    --bg-3:#162242;
+    --bg-4:#1f2c4f;
+    --red:#c1272d;
+    --red-bright:#e63946;
+    --red-dim:#7a1b1f;
+    --blue:#1a4f8b;
+    --blue-bright:#2e6cb0;
+    --blue-dim:#0e2c52;
+    --silver:#c0c8d4;
+    --silver-bright:#dde2eb;
+    --white:#f5f7fa;
+    --text:#e8ebf2;
+    --text-muted:#8b94a8;
+    --text-dim:#5b6275;
+    --border:#2a3a55;
+    --border-bright:#3d4f6e;
+    --paper:#f5f3ee;
+    --paper-text:#15171c;
+    --green:#4caf50;
+    --orange:#ff9800;
+  }
+
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:80px}
+  body{
+    font-family:'Inter',sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.6;
+    overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ===== Top nav ===== */
+  .nav{
+    position:fixed;top:0;left:0;right:0;
+    z-index:100;
+    background:rgba(10,20,40,0.88);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--border);
+    padding:0.9rem 2rem;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  .nav-brand{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;
+    font-size:1.05rem;
+    letter-spacing:0.25em;
+    color:var(--white);
+    display:flex;align-items:center;gap:0.65rem;
+  }
+  .nav-brand-mark{
+    width:8px;height:18px;background:var(--red);
+    box-shadow:10px 0 0 var(--white),20px 0 0 var(--blue);
+    margin-right:24px;
+  }
+  .nav-links{display:flex;gap:2rem;font-size:0.85rem;font-weight:500;letter-spacing:0.05em}
+  .nav-links a{color:var(--text-muted);text-decoration:none;transition:color .2s;text-transform:uppercase}
+  .nav-links a:hover{color:var(--white)}
+  @media(max-width:680px){.nav-links{display:none}}
+
+  /* ===== Hero ===== */
+  .hero{
+    min-height:100vh;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    align-items:center;
+    text-align:center;
+    padding:6rem 2rem 4rem;
+    background:
+      radial-gradient(ellipse 1200px 600px at 50% 20%, rgba(46,108,176,0.18), transparent 60%),
+      radial-gradient(ellipse 800px 500px at 50% 80%, rgba(193,39,45,0.12), transparent 60%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .hero::after{
+    /* horizon line */
+    content:'';
+    position:absolute;
+    bottom:25%;left:0;right:0;
+    height:1px;
+    background:linear-gradient(90deg,transparent 0%,rgba(192,200,212,0.25) 50%,transparent 100%);
+    pointer-events:none;
+  }
+  .stars{
+    position:absolute;inset:0;pointer-events:none;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 18%, rgba(192,200,212,0.7), transparent 40%),
+      radial-gradient(1px 1px at 84% 22%, rgba(245,247,250,0.55), transparent 40%),
+      radial-gradient(1.2px 1.2px at 28% 76%, rgba(192,200,212,0.5), transparent 40%),
+      radial-gradient(1px 1px at 65% 88%, rgba(245,247,250,0.5), transparent 40%),
+      radial-gradient(1.3px 1.3px at 92% 62%, rgba(192,200,212,0.55), transparent 40%),
+      radial-gradient(1px 1px at 38% 32%, rgba(245,247,250,0.45), transparent 40%),
+      radial-gradient(1.4px 1.4px at 52% 56%, rgba(192,200,212,0.5), transparent 40%),
+      radial-gradient(1px 1px at 8% 90%, rgba(245,247,250,0.55), transparent 40%);
+    animation:twinkle 8s ease-in-out infinite alternate;
+  }
+  @keyframes twinkle{from{opacity:0.4}to{opacity:1}}
+
+  .working-title{
+    font-family:'Inter',sans-serif;
+    font-size:0.7rem;
+    letter-spacing:0.45em;
+    color:var(--text-dim);
+    text-transform:uppercase;
+    margin-bottom:0.75rem;
+    position:relative;
+  }
+
+  .hero-bars{
+    display:flex;justify-content:center;align-items:flex-end;gap:6px;margin-bottom:1.5rem;
+    position:relative;
+  }
+  .hero-bars span{display:block;width:14px;height:28px;background:var(--red)}
+  .hero-bars span:nth-child(2){background:var(--white);height:36px}
+  .hero-bars span:nth-child(3){background:var(--blue);height:28px}
+
+  .hero-title{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:900;
+    font-size:clamp(3.4rem, 13vw, 9rem);
+    letter-spacing:0.06em;
+    line-height:0.95;
+    color:var(--white);
+    margin-bottom:0;
+    text-transform:uppercase;
+    text-shadow:0 0 80px rgba(46,108,176,0.25);
+    position:relative;
+  }
+  .hero-title-bar{
+    width:120px;height:4px;
+    background:linear-gradient(90deg,var(--red) 0%,var(--red) 33%,var(--white) 33%,var(--white) 66%,var(--blue) 66%,var(--blue) 100%);
+    margin:1.25rem auto 1.5rem;
+  }
+
+  .hero-tagline{
+    font-family:'Inter',sans-serif;
+    font-weight:400;
+    font-size:clamp(1rem,2.4vw,1.4rem);
+    color:var(--text);
+    max-width:740px;
+    margin:0 auto 2.5rem;
+    line-height:1.6;
+    position:relative;
+  }
+  .hero-tagline strong{color:var(--white);font-weight:600}
+  .hero-meta{
+    display:flex;gap:2rem;justify-content:center;flex-wrap:wrap;
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:600;
+    font-size:0.78rem;
+    letter-spacing:0.18em;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    margin-bottom:2.5rem;
+    position:relative;
+  }
+  .hero-meta span{display:flex;align-items:center;gap:0.5rem}
+  .hero-meta span::before{content:'';display:block;width:6px;height:6px;background:var(--red);border-radius:50%}
+
+  .hero-cta{
+    display:inline-flex;gap:0.75rem;align-items:center;
+    background:var(--red);
+    color:var(--white);
+    font-family:'Saira Condensed',sans-serif;font-weight:700;font-size:0.95rem;letter-spacing:0.2em;
+    padding:1.05rem 2.5rem;border:none;border-radius:2px;
+    cursor:pointer;text-decoration:none;
+    transition:all .25s ease;
+    box-shadow:0 8px 32px rgba(193,39,45,0.35);
+    position:relative;text-transform:uppercase;
+    border-left:3px solid var(--white);
+  }
+  .hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(193,39,45,0.45);background:var(--red-bright)}
+  .hero-scroll{
+    position:absolute;bottom:1.75rem;left:50%;transform:translateX(-50%);
+    color:var(--text-dim);font-size:0.7rem;letter-spacing:0.25em;
+    animation:float 2s ease-in-out infinite;
+    font-family:'Saira Condensed',sans-serif;
+  }
+  @keyframes float{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(8px)}}
+
+  /* ===== Sections ===== */
+  section{padding:6rem 2rem;position:relative}
+  .container{max-width:1100px;margin:0 auto}
+  .section-eyebrow{
+    font-family:'Saira Condensed',sans-serif;
+    font-size:0.78rem;letter-spacing:0.4em;
+    color:var(--red-bright);text-transform:uppercase;
+    margin-bottom:0.85rem;text-align:center;
+    font-weight:700;
+  }
+  .section-title{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;
+    font-size:clamp(1.9rem,4.5vw,3.1rem);
+    text-align:center;
+    margin-bottom:1rem;
+    letter-spacing:0.04em;
+    color:var(--white);
+    text-transform:uppercase;
+    line-height:1.1;
+  }
+  .section-sub{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:1.05rem;
+    max-width:680px;
+    margin:0 auto 4rem;
+    line-height:1.7;
+  }
+
+  /* ===== Pitch ===== */
+  .pitch{background:var(--bg-2)}
+  .pitch-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;
+  }
+  .pitch-block{
+    background:linear-gradient(180deg,var(--bg-3) 0%,var(--bg-2) 100%);
+    border:1px solid var(--border);
+    border-radius:2px;
+    padding:1.75rem;
+    transition:transform .3s ease,border-color .3s ease;
+    position:relative;
+  }
+  .pitch-block::before{
+    content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:var(--blue);
+  }
+  .pitch-block:nth-child(2)::before{background:var(--red)}
+  .pitch-block:nth-child(3)::before{background:var(--silver)}
+  .pitch-block:nth-child(4)::before{background:var(--blue)}
+  .pitch-block:nth-child(5)::before{background:var(--red)}
+  .pitch-block:nth-child(6)::before{background:var(--silver)}
+  .pitch-block:hover{transform:translateY(-4px);border-color:var(--border-bright)}
+  .pitch-block-icon{
+    width:44px;height:44px;
+    display:flex;align-items:center;justify-content:center;
+    background:rgba(46,108,176,0.1);
+    border:1px solid var(--blue);
+    border-radius:2px;
+    color:var(--silver-bright);
+    margin-bottom:1.1rem;
+  }
+  .pitch-block h3{
+    font-family:'Saira Condensed',sans-serif;
+    font-size:1.15rem;
+    margin-bottom:0.6rem;
+    letter-spacing:0.07em;
+    color:var(--white);
+    text-transform:uppercase;
+    font-weight:700;
+  }
+  .pitch-block p{color:var(--text-muted);font-size:0.94rem;line-height:1.65}
+
+  /* ===== Day in the life ===== */
+  .day-in-life{background:var(--bg)}
+  .day-narrative{
+    max-width:780px;margin:0 auto;
+    background:linear-gradient(135deg,var(--bg-3) 0%,var(--bg-2) 100%);
+    border:1px solid var(--border);
+    border-left:4px solid var(--red);
+    padding:2.5rem 2.5rem 2.5rem 2.5rem;
+    border-radius:2px;
+    position:relative;
+  }
+  .day-narrative::before{
+    content:'07:42 EST';
+    position:absolute;
+    top:-12px;left:24px;
+    background:var(--bg);padding:2px 12px;
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.72rem;color:var(--red-bright);
+    letter-spacing:0.15em;
+    border:1px solid var(--border);
+  }
+  .day-narrative p{
+    font-family:'Inter',serif;
+    font-size:1.05rem;
+    line-height:1.85;
+    color:var(--text);
+    margin-bottom:1rem;
+  }
+  .day-narrative p:last-child{margin-bottom:0}
+  .day-narrative strong{color:var(--white);font-weight:600}
+  .day-narrative em{color:var(--red-bright);font-style:italic}
+  .day-narrative .alert{
+    display:inline-block;
+    background:var(--red);color:var(--white);
+    font-family:'Saira Condensed',sans-serif;font-weight:700;
+    font-size:0.7rem;letter-spacing:0.2em;
+    padding:2px 8px;margin-right:6px;
+    text-transform:uppercase;
+  }
+
+  /* ===== Features ===== */
+  .features{background:var(--bg-2)}
+  .feature-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:1.25rem;
+  }
+  .feature{
+    background:var(--bg-3);
+    border:1px solid var(--border);
+    border-radius:2px;
+    padding:1.6rem;
+    transition:all .3s ease;
+    position:relative;
+    overflow:hidden;
+  }
+  .feature::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,var(--red),var(--white),var(--blue));
+    transform:scaleX(0);transform-origin:left;
+    transition:transform .3s ease;
+  }
+  .feature:hover{transform:translateY(-3px);border-color:var(--border-bright);background:var(--bg-4)}
+  .feature:hover::before{transform:scaleX(1)}
+  .feature-emoji{font-size:1.85rem;margin-bottom:0.65rem;display:block;filter:saturate(0.9)}
+  .feature h4{
+    font-family:'Saira Condensed',sans-serif;
+    font-size:1.05rem;letter-spacing:0.06em;
+    margin-bottom:0.45rem;
+    color:var(--white);
+    text-transform:uppercase;
+    font-weight:700;
+  }
+  .feature p{color:var(--text-muted);font-size:0.88rem;line-height:1.6}
+  .feature-tag{
+    display:inline-block;
+    margin-top:0.9rem;
+    font-size:0.65rem;letter-spacing:0.18em;text-transform:uppercase;
+    padding:3px 9px;border-radius:1px;
+    font-weight:700;
+    font-family:'Saira Condensed',sans-serif;
+  }
+  .tag-mvp{background:rgba(76,175,80,0.15);color:#7fc983;border:1px solid #4a8e4d}
+  .tag-soon{background:rgba(46,108,176,0.18);color:#7faed3;border:1px solid #3d6a91}
+  .tag-later{background:rgba(192,200,212,0.12);color:#a8b4c4;border:1px solid #555f72}
+
+  /* ===== AI personalities ===== */
+  .ai{background:var(--bg)}
+  .ai-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:1.25rem;
+  }
+  .ai-card{
+    background:var(--bg-2);
+    border:1px solid var(--border);
+    border-radius:2px;
+    padding:1.75rem 1.5rem;
+    text-align:center;
+    transition:all .3s ease;
+    position:relative;
+  }
+  .ai-card::after{
+    content:'';position:absolute;inset:0;border-radius:2px;
+    box-shadow:inset 0 0 60px rgba(0,0,0,0.3);
+    pointer-events:none;
+  }
+  .ai-card:hover{transform:translateY(-4px);border-color:var(--border-bright)}
+  .ai-icon{
+    font-size:2.6rem;margin-bottom:0.75rem;
+    display:block;
+  }
+  .ai-name{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;
+    font-size:1.35rem;letter-spacing:0.1em;
+    color:var(--white);
+    margin-bottom:0.15rem;
+    text-transform:uppercase;
+  }
+  .ai-arch{
+    font-family:'Saira Condensed',sans-serif;
+    font-size:0.7rem;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--text-dim);margin-bottom:0.85rem;
+    font-weight:600;
+  }
+  .ai-quote{
+    font-family:'Inter',sans-serif;
+    font-style:italic;
+    color:var(--silver-bright);
+    font-size:0.92rem;
+    margin-bottom:0.85rem;
+    line-height:1.45;
+  }
+  .ai-desc{font-size:0.83rem;color:var(--text-muted);line-height:1.55}
+  .ai-hawk{border-top:3px solid var(--red)}
+  .ai-industrialist{border-top:3px solid #a78a3e}
+  .ai-isolationist{border-top:3px solid var(--blue)}
+  .ai-schemer{border-top:3px solid #7d4fa6}
+  .ai-insurgent{border-top:3px solid var(--orange)}
+
+  /* ===== Cable News ===== */
+  .news-section{
+    background:var(--bg-2);
+    padding:6rem 2rem;
+  }
+  .cablenews{
+    max-width:920px;margin:0 auto;
+    background:var(--paper);
+    color:var(--paper-text);
+    border-radius:2px;
+    box-shadow:0 30px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(0,0,0,0.3);
+    overflow:hidden;
+    transform:perspective(2000px) rotateX(0.5deg);
+    transition:transform .4s ease;
+  }
+  .cablenews:hover{transform:perspective(2000px) rotateX(0deg)}
+  .cn-bar-top{
+    background:#0a1428;color:var(--white);
+    padding:0.55rem 1.25rem;
+    font-family:'Saira Condensed',sans-serif;
+    font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;
+    display:flex;justify-content:space-between;align-items:center;
+    font-weight:600;
+  }
+  .cn-bar-top .live{
+    display:inline-flex;align-items:center;gap:0.5rem;color:var(--red-bright);font-weight:700;
+  }
+  .cn-bar-top .live::before{
+    content:'';width:8px;height:8px;background:var(--red-bright);border-radius:50%;
+    animation:pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+  .cn-masthead{
+    padding:1.25rem 1.5rem 1rem;
+    background:linear-gradient(180deg,#fff 0%,#f5f3ee 100%);
+    border-bottom:2px solid #e0dcd3;
+    display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;
+  }
+  .cn-logo{
+    display:flex;align-items:center;gap:0.6rem;
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:900;
+    font-size:1.4rem;
+    color:#0a1428;
+    letter-spacing:0.04em;
+  }
+  .cn-logo-mark{
+    display:flex;
+  }
+  .cn-logo-mark span{display:block;width:6px;height:24px}
+  .cn-logo-mark span:nth-child(1){background:var(--red)}
+  .cn-logo-mark span:nth-child(2){background:#fff;border:1px solid #ccc}
+  .cn-logo-mark span:nth-child(3){background:var(--blue)}
+  .cn-time{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.78rem;color:#555;letter-spacing:0.05em;
+  }
+  .cn-breaking{
+    background:var(--red);color:#fff;
+    padding:0.5rem 1.5rem;
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;font-size:0.95rem;letter-spacing:0.18em;
+    text-transform:uppercase;
+    display:flex;align-items:center;gap:0.75rem;
+  }
+  .cn-breaking::before{
+    content:'';display:block;width:0;height:0;
+    border-left:14px solid #fff;
+    border-top:8px solid transparent;
+    border-bottom:8px solid transparent;
+  }
+  .cn-body{
+    padding:1.5rem 1.75rem 1.25rem;
+    background:var(--paper);
+  }
+  .cn-headline{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;
+    font-size:clamp(1.5rem,3.4vw,2.2rem);
+    line-height:1.15;
+    margin-bottom:0.65rem;
+    text-transform:uppercase;
+    color:#0a1428;
+  }
+  .cn-subhead{
+    font-family:'Inter',sans-serif;
+    font-style:italic;
+    font-size:1.02rem;
+    color:#3a3833;
+    margin-bottom:1.25rem;
+    border-bottom:1px solid #d4cfc1;
+    padding-bottom:0.85rem;
+    line-height:1.5;
+  }
+  .cn-body-cols{
+    display:grid;grid-template-columns:2fr 1fr;gap:1.5rem;
+    font-family:'Inter',sans-serif;
+    font-size:0.92rem;line-height:1.6;
+  }
+  .cn-body-main p{margin-bottom:0.85rem;color:#1a1c20}
+  .cn-body-main p:first-child::first-letter{
+    font-weight:900;font-size:3rem;line-height:0.85;
+    float:left;padding:0.1rem 0.5rem 0 0;
+    color:var(--red);font-family:'Saira Condensed',sans-serif;
+  }
+  .cn-rail{
+    border-left:3px solid var(--red);
+    padding-left:1rem;
+    background:rgba(0,0,0,0.02);
+    padding:0.85rem 1rem;
+  }
+  .cn-rail h5{
+    font-family:'Saira Condensed',sans-serif;
+    font-weight:800;font-size:0.78rem;letter-spacing:0.18em;text-transform:uppercase;
+    color:var(--red);
+    margin-bottom:0.65rem;
+  }
+  .cn-rail-item{
+    padding:0.55rem 0;border-bottom:1px solid #d8d3c5;
+    font-size:0.85rem;line-height:1.45;color:#2a2c30;
+  }
+  .cn-rail-item:last-child{border-bottom:none}
+  .cn-rail-time{
+    font-family:'JetBrains Mono',monospace;font-size:0.7rem;
+    color:var(--red);font-weight:700;display:block;margin-bottom:0.15rem;letter-spacing:0.05em;
+  }
+  .cn-ticker{
+    background:#0a1428;color:#fff;
+    padding:0.55rem 1.25rem;
+    font-family:'Saira Condensed',sans-serif;
+    font-size:0.85rem;letter-spacing:0.06em;
+    overflow:hidden;white-space:nowrap;
+    border-top:2px solid var(--red);
+    position:relative;
+  }
+  .cn-ticker-inner{
+    display:inline-block;
+    animation:scroll 35s linear infinite;
+  }
+  .cn-ticker-inner span{margin-right:3rem}
+  .cn-ticker-inner span::before{content:'•';color:var(--red);margin-right:0.85rem}
+  @keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media(max-width:680px){.cn-body-cols{grid-template-columns:1fr}}
+
+  /* ===== Map preview ===== */
+  .map-section{background:var(--bg)}
+  .map-stage{
+    max-width:920px;margin:0 auto;
+    background:radial-gradient(ellipse at center,#0d2a4d 0%,#06182f 100%);
+    border:1px solid var(--border);
+    border-radius:2px;
+    padding:1.5rem;
+    aspect-ratio:16/9;
+    position:relative;
+    overflow:hidden;
+  }
+  .map-svg{width:100%;height:100%;display:block}
+  .map-caption{
+    text-align:center;color:var(--text-muted);
+    font-size:0.85rem;font-style:italic;
+    margin-top:1.5rem;
+  }
+  .map-corners::before,.map-corners::after,.map-corners > span::before,.map-corners > span::after{
+    content:'';position:absolute;width:18px;height:18px;border:2px solid var(--silver);opacity:0.4;
+  }
+  .map-corners::before{top:8px;left:8px;border-right:none;border-bottom:none}
+  .map-corners::after{top:8px;right:8px;border-left:none;border-bottom:none}
+  .map-corners > span::before{bottom:8px;left:8px;border-right:none;border-top:none}
+  .map-corners > span::after{bottom:8px;right:8px;border-left:none;border-top:none}
+
+  /* ===== Roadmap ===== */
+  .roadmap{background:var(--bg-2)}
+  .timeline{
+    position:relative;
+    max-width:780px;margin:0 auto;
+    padding-left:2rem;
+  }
+  .timeline::before{
+    content:'';position:absolute;left:0.5rem;top:0;bottom:0;width:2px;
+    background:linear-gradient(180deg,var(--red) 0%,var(--white) 33%,var(--blue) 66%,var(--border) 100%);
+  }
+  .phase{
+    position:relative;
+    padding:0 0 2.5rem 2rem;
+  }
+  .phase::before{
+    content:'';position:absolute;left:-1.6rem;top:0.4rem;
+    width:1.2rem;height:1.2rem;
+    border-radius:50%;
+    background:var(--bg-2);
+    border:3px solid var(--red);
+    box-shadow:0 0 0 4px var(--bg-2),0 0 20px rgba(193,39,45,0.4);
+  }
+  .phase:nth-child(2)::before{border-color:var(--white);box-shadow:0 0 0 4px var(--bg-2),0 0 20px rgba(245,247,250,0.4)}
+  .phase:nth-child(3)::before{border-color:var(--blue);box-shadow:0 0 0 4px var(--bg-2),0 0 20px rgba(46,108,176,0.4)}
+  .phase.locked::before{
+    border-color:var(--border-bright);background:var(--bg-2);
+    box-shadow:0 0 0 4px var(--bg-2);
+  }
+  .phase-header{
+    display:flex;align-items:baseline;gap:0.75rem;flex-wrap:wrap;
+    margin-bottom:0.5rem;
+  }
+  .phase-num{
+    font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:0.85rem;
+    color:var(--red-bright);letter-spacing:0.18em;text-transform:uppercase;
+  }
+  .phase-name{
+    font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:1.4rem;
+    color:var(--white);letter-spacing:0.04em;text-transform:uppercase;
+  }
+  .phase-time{
+    font-family:'JetBrains Mono',monospace;
+    font-size:0.7rem;color:var(--text-dim);
+    background:var(--bg-3);padding:3px 10px;border-radius:1px;
+    border:1px solid var(--border);
+  }
+  .phase p{color:var(--text-muted);font-size:0.95rem;line-height:1.7}
+
+  /* ===== Free callout ===== */
+  .free-callout{
+    background:linear-gradient(135deg,var(--bg) 0%,var(--bg-3) 100%);
+    text-align:center;padding:5rem 2rem;
+    position:relative;overflow:hidden;
+    border-top:1px solid var(--border);
+    border-bottom:1px solid var(--border);
+  }
+  .free-callout::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(circle at center,rgba(46,108,176,0.1),transparent 60%);
+  }
+  .free-icon{
+    font-family:'Saira Condensed',sans-serif;
+    font-size:3.4rem;font-weight:900;
+    color:var(--white);margin-bottom:0.5rem;display:block;
+    letter-spacing:0.05em;
+    position:relative;
+  }
+  .free-callout h2{
+    font-family:'Saira Condensed',sans-serif;font-weight:800;font-size:2.1rem;
+    color:var(--white);margin-bottom:1rem;letter-spacing:0.06em;text-transform:uppercase;
+    position:relative;
+  }
+  .free-callout p{
+    color:var(--text-muted);max-width:580px;margin:0 auto;
+    font-size:1.05rem;position:relative;
+  }
+  .free-callout p strong{color:var(--white)}
+
+  /* ===== Questions ===== */
+  .questions{background:var(--bg)}
+  .questions-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.25rem;
+  }
+  .q{
+    background:linear-gradient(180deg,var(--bg-3) 0%,var(--bg-2) 100%);
+    border:1px solid var(--border);
+    padding:1.5rem;border-radius:2px;
+    border-left:3px solid var(--blue);
+    transition:all .3s ease;
+  }
+  .q:hover{border-left-color:var(--red);transform:translateX(4px)}
+  .q-num{
+    font-family:'JetBrains Mono',monospace;font-weight:700;
+    color:var(--red-bright);font-size:0.78rem;letter-spacing:0.1em;
+    margin-bottom:0.5rem;
+  }
+  .q-text{font-size:1rem;color:var(--white);line-height:1.45;margin-bottom:0.75rem;font-weight:500}
+  .q-hint{font-size:0.85rem;color:var(--text-muted);font-style:italic;line-height:1.55}
+
+  /* ===== Footer / final ===== */
+  .final{
+    background:var(--bg-2);
+    text-align:center;
+    padding:6rem 2rem 4rem;
+    border-top:1px solid var(--border);
+  }
+  .final-mark{
+    display:flex;justify-content:center;align-items:center;gap:0.5rem;margin-bottom:1.5rem;
+  }
+  .final-mark span{display:block;width:30px;height:6px;background:var(--red)}
+  .final-mark span:nth-child(2){background:var(--white);width:60px}
+  .final-mark span:nth-child(3){background:var(--blue)}
+  .final h2{
+    font-family:'Saira Condensed',sans-serif;font-weight:800;
+    font-size:2.2rem;letter-spacing:0.08em;
+    margin-bottom:1rem;text-transform:uppercase;
+    color:var(--white);
+  }
+  .final p{
+    color:var(--text-muted);max-width:580px;margin:0 auto 2rem;
+    line-height:1.7;
+  }
+  .footer-note{
+    color:var(--text-dim);font-size:0.75rem;
+    margin-top:3rem;letter-spacing:0.18em;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .reveal{opacity:0;transform:translateY(20px);transition:opacity .8s ease,transform .8s ease}
+  .reveal.in{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-brand"><span class="nav-brand-mark"></span>PAX AMERICANA</div>
+  <div class="nav-links">
+    <a href="#pitch">The Game</a>
+    <a href="#features">Features</a>
+    <a href="#ai">AI Rivals</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#questions">Your Take</a>
+  </div>
+</nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="stars"></div>
+  <div class="working-title">Working Title · Concept Preview</div>
+  <div class="hero-bars"><span></span><span></span><span></span></div>
+  <h1 class="hero-title">Stars & Steel</h1>
+  <div class="hero-title-bar"></div>
+  <p class="hero-tagline">A persistent modern-warfare grand strategy game. <strong>Drones, fighter jets, strategic bombers, tanks, cyber warfare.</strong> A living world map shared with your friends — and the AI rivals filling the empty thrones.</p>
+  <div class="hero-meta">
+    <span>Persistent World</span>
+    <span>Modern Theater</span>
+    <span>Real-Time Tick</span>
+  </div>
+  <a href="#pitch" class="hero-cta">Read the Briefing &nbsp;→</a>
+  <div class="hero-scroll">▼ SCROLL ▼</div>
+</section>
+
+<!-- ===== PITCH ===== -->
+<section class="pitch" id="pitch">
+  <div class="container">
+    <div class="section-eyebrow">The Concept</div>
+    <h2 class="section-title">A World That Keeps Spinning</h2>
+    <p class="section-sub">
+      Imagine a grand strategy game where the world doesn't pause when you log off. Your economy produces, your air wings patrol, and your rivals scheme — all in real time. You drop in for ten minutes before lunch, give some orders, and check back after dinner to see how it played out.
+    </p>
+
+    <div class="pitch-grid">
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <h3>One Living World Map</h3>
+        <p>Every player shares the same Earth, the same economy, the same clock. A nation rises in Europe while another falls in the Pacific — and you're all watching the same news feed about it.</p>
+      </div>
+
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <h3>Friends + AI Rivals</h3>
+        <p>Bring four or five friends. The remaining great powers are filled by AI rivals — each with a personality, grudges, and habits. Some will trade with you. Some absolutely will not.</p>
+      </div>
+
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="7.5 4.21 12 6.81 16.5 4.21"/><polyline points="7.5 19.79 7.5 14.6 3 12"/><polyline points="21 12 16.5 14.6 16.5 19.79"/></svg>
+        </div>
+        <h3>Combined Arms Strategy</h3>
+        <p>Tanks die to attack helos. Helos die to AA. AA dies to bombers. Bombers die to fighters. You are constantly playing rock-paper-scissors at theater scale.</p>
+      </div>
+
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Ten-Minute Sessions</h3>
+        <p>Designed to fit around real life. Check in, give orders, log off. The game doesn't demand your evening — it rewards your attention when you have it to give.</p>
+      </div>
+
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
+        </div>
+        <h3>Cable News Feed</h3>
+        <p>Wake up, open the in-game news app, see what the world did while you slept. Drone strikes in the Aegean. Bread protests in Detroit. Your alliance maybe still intact.</p>
+      </div>
+
+      <div class="pitch-block">
+        <div class="pitch-block-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </div>
+        <h3>Diplomacy Has Teeth</h3>
+        <p>Combat is the visible layer. The real game is whether the player on your border believes your treaty. Treachery has consequences. Nuclear deterrence shapes every conversation.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== A DAY IN THE LIFE ===== -->
+<section class="day-in-life">
+  <div class="container">
+    <div class="section-eyebrow">A Day In The Life</div>
+    <h2 class="section-title">Tuesday, 7:42 AM</h2>
+    <p class="section-sub">What it actually feels like to play this game during a normal week.</p>
+
+    <div class="day-narrative">
+      <p>You're brushing your teeth and your phone buzzes.</p>
+      <p><span class="alert">Breaking</span> The notification reads: <strong>"DRONE SWARM STRIKES YOUR EASTERN AIRBASE — HEAVY CASUALTIES."</strong> Brandon's air wing hit you while you were asleep. You open the app. Your fighter squadron at Raleigh is wiped. He's still got Combat Drones in the air.</p>
+      <p>Two orders. Scramble your reserve fighters from Atlanta to intercept his next wave. Queue an AA Battery at the airbase to plug the hole. Twelve ticks until it builds. That's twelve real hours.</p>
+      <p>In the alliance chat, Mike asks if anyone's seen Sarah today. <em>The Industrialist AI to your south just proposed a non-aggression pact</em> — probably because she sees you're bleeding. Tempting. Risky. You sign it anyway.</p>
+      <p>You log off. You go to work.</p>
+      <p>At lunch you check back. Your interceptors splashed his second wave. The news ticker reads: <strong>"PROTESTS IN BRANDON'S CAPITAL — MORALE COLLAPSING AFTER FAILED RAID."</strong> You smile. You eat your sandwich.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FEATURES ===== -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-eyebrow">What's In The Game</div>
+    <h2 class="section-title">The Feature Buffet</h2>
+    <p class="section-sub">
+      Tagged by when each feature lands. The MVP launches with the green ones — that's a real, playable game on its own. Everything else gets layered in over the following months.
+    </p>
+
+    <div class="feature-grid">
+
+      <div class="feature">
+        <span class="feature-emoji">🗺️</span>
+        <h4>Real-World Map</h4>
+        <p>Roughly 80 country/region provinces on the actual world map. Click any to inspect, attack, or build.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🌫️</span>
+        <h4>Fog of War</h4>
+        <p>You see your land + your scouts' line of sight. Recon drones lift the fog over a target.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">⚔️</span>
+        <h4>Combined-Arms Combat</h4>
+        <p>Three layers: air phase, ground phase, strategic phase. Brings real combined-arms doctrine to the table.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🛢️</span>
+        <h4>Modern Economy</h4>
+        <p>Money, oil, steel, electronics, food, manpower. Build refineries, tech parks, financial districts.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🪖</span>
+        <h4>Mech Infantry & Tanks</h4>
+        <p>Cheap mech infantry to hold ground. Main Battle Tanks to break it. The bedrock of every army.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🛩️</span>
+        <h4>Combat Drones</h4>
+        <p>Cheap, fast, deadly. Strike hard if AA isn't watching. Vulnerable to fighters. Game-changer.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">✈️</span>
+        <h4>Multirole Fighters</h4>
+        <p>Air supremacy + ground strike. Escort your bombers. Hunt their drones. The most flexible unit in the game.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🎯</span>
+        <h4>AA Batteries</h4>
+        <p>Your only answer to enemy air. Place them at airbases, capitals, key chokepoints — or watch your sky burn.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">📺</span>
+        <h4>Cable News Feed</h4>
+        <p>Templated breaking-news headlines summarize what happened while you were away. Reads like CNN.</p>
+        <span class="feature-tag tag-mvp">In MVP</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🚁</span>
+        <h4>Attack Helicopters</h4>
+        <p>Apache-style close air support. Tank killers. Fragile to AA. High micro reward.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">💣</span>
+        <h4>Strategic Bombers</h4>
+        <p>Massive payload, long range, fragile without escort. Send a B-2 deep into hostile airspace and pray.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🤝</span>
+        <h4>Diplomacy & Treaties</h4>
+        <p>Alliances, NAPs, trade deals. Break a treaty, lose trust everywhere. Coalitions can crumble.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">💬</span>
+        <h4>Secure Comms</h4>
+        <p>DM your friends, run alliance channels. AI rivals quietly read along and react.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🔬</span>
+        <h4>Research Tree</h4>
+        <p>Unlock stealth aircraft, missile defense, cyber doctrine, propaganda. ~25 techs across six branches.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">⚓</span>
+        <h4>Naval & Carriers</h4>
+        <p>Frigates, destroyers, submarines, aircraft carriers. Project air power into theaters far from home.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">📊</span>
+        <h4>Stats & Graphs</h4>
+        <p>Resource history, military strength curves, territory share. See your nation's story.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🛌</span>
+        <h4>Quiet Hours</h4>
+        <p>Optional setting: world tick pauses 11pm–7am so nobody loses a war asleep.</p>
+        <span class="feature-tag tag-soon">Phase 2</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🥷</span>
+        <h4>Stealth Bombers</h4>
+        <p>B-2 style. Roll 60% to bypass AA. Brutal when they get through. Tech can boost to 80%.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🚀</span>
+        <h4>Strategic Missiles</h4>
+        <p>Cruise missiles, ballistic missiles, ICBMs. Long range, single shot. Missile defense for partial coverage.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">💻</span>
+        <h4>Cyber Warfare</h4>
+        <p>Shut down enemy production. Disable an AA battery seconds before your air strike. A whole shadow war.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🕵️</span>
+        <h4>Special Forces & Intel</h4>
+        <p>Insert covert teams. Steal tech, plant intel, sabotage factories. Deniable until they fail.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">🛰️</span>
+        <h4>Recon Satellites & Wonders</h4>
+        <p>GPS Constellation reveals all units. Cyber Command HQ makes you immune. Megaprojects with real teeth.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">☢️</span>
+        <h4>Nuclear Deterrence</h4>
+        <p>Optional. Once a nation has nukes, others negotiate differently. They don't have to be used to matter.</p>
+        <span class="feature-tag tag-later">Phase 3</span>
+      </div>
+
+      <div class="feature">
+        <span class="feature-emoji">📺</span>
+        <h4>Replay Viewer</h4>
+        <p>Watch the rise and fall of every nation from the finished game, sped up 100x.</p>
+        <span class="feature-tag tag-later">Phase 4</span>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== AI PERSONALITIES ===== -->
+<section class="ai" id="ai">
+  <div class="container">
+    <div class="section-eyebrow">The Other Players</div>
+    <h2 class="section-title">Five AI Rivals</h2>
+    <p class="section-sub">
+      The empty seats fill with AI players, each with a personality you'll learn to read. After a few games you'll catch yourself saying "classic Schemer" when one launches a cyber attack two ticks before their air raid.
+    </p>
+
+    <div class="ai-grid">
+      <div class="ai-card ai-hawk">
+        <span class="ai-icon">🦅</span>
+        <div class="ai-name">Hawk</div>
+        <div class="ai-arch">The Conqueror</div>
+        <div class="ai-quote">"Peace through superior firepower."</div>
+        <div class="ai-desc">Picks fights. Builds air wings. Marches first, talks never. Watch your borders.</div>
+      </div>
+
+      <div class="ai-card ai-industrialist">
+        <span class="ai-icon">🏢</span>
+        <div class="ai-name">Industrialist</div>
+        <div class="ai-arch">The Producer</div>
+        <div class="ai-quote">"Why bomb them when you can sell them oil?"</div>
+        <div class="ai-desc">Builds refineries and tech parks. Honors deals. Will quietly outscore everyone.</div>
+      </div>
+
+      <div class="ai-card ai-isolationist">
+        <span class="ai-icon">🛡️</span>
+        <div class="ai-name">Isolationist</div>
+        <div class="ai-arch">The Fortress</div>
+        <div class="ai-quote">"America First. The world is a distraction."</div>
+        <div class="ai-desc">Bunkers and AA everywhere. Won't attack first. Will outlast the rest of you.</div>
+      </div>
+
+      <div class="ai-card ai-schemer">
+        <span class="ai-icon">🕵️</span>
+        <div class="ai-name">Schemer</div>
+        <div class="ai-arch">The Operator</div>
+        <div class="ai-quote">"The war is won before the first shot."</div>
+        <div class="ai-desc">Cyber, intel, special ops. Pretends friendliness. Backstabs at the perfect moment.</div>
+      </div>
+
+      <div class="ai-card ai-insurgent">
+        <span class="ai-icon">💥</span>
+        <div class="ai-name">Insurgent</div>
+        <div class="ai-arch">The Wildcard</div>
+        <div class="ai-quote">"Watch this."</div>
+        <div class="ai-desc">Different every game. Don't predict. Don't trust. Don't relax.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== CABLE NEWS ===== -->
+<section class="news-section">
+  <div class="container">
+    <div class="section-eyebrow">A Sample Of The In-Game News</div>
+    <h2 class="section-title">Stars & Steel News Network</h2>
+    <p class="section-sub">
+      Every "morning" the game generates a news brief based on what happened the previous in-game day. It's how you keep up with the world. Here's what one might look like.
+    </p>
+
+    <div class="cablenews">
+      <div class="cn-bar-top">
+        <span class="live">● LIVE</span>
+        <span>PAX AMERICANA NEWS NETWORK</span>
+        <span>WORLD DESK · 0742 EST</span>
+      </div>
+      <div class="cn-masthead">
+        <div class="cn-logo">
+          <div class="cn-logo-mark"><span></span><span></span><span></span></div>
+          PAX NEWS
+        </div>
+        <div class="cn-time">DAY 142 · 07:42:18 EST</div>
+      </div>
+      <div class="cn-breaking">BREAKING NEWS · DEVELOPING SITUATION</div>
+      <div class="cn-body">
+        <h3 class="cn-headline">Drone Swarm Strikes Eastern Airbase — Multiple Squadrons Lost</h3>
+        <p class="cn-subhead">Pentagon source confirms heavy casualties. President's office calls emergency National Security Council meeting at first light.</p>
+
+        <div class="cn-body-cols">
+          <div class="cn-body-main">
+            <p>Reports from the eastern theater confirm what intelligence analysts have been whispering for a week: the air force of Brandon's Republic, having achieved limited air supremacy over the disputed border zone, launched a coordinated swarm strike against the Raleigh airbase complex overnight. Survivors of the defending fighter squadron were not available for comment. Theater Commander Dubois' office has neither confirmed nor denied his current location.</p>
+
+            <p>Meanwhile in the Pacific, the Industrialist Republic of Sarah quietly proposed non-aggression pacts to three separate neighbors — accepted by all three within the hour. Analysts describe the move as either a diplomatic masterstroke or a sign she expects to be next. Crude oil up four percent.</p>
+
+            <p>In Detroit, a third night of bread shortages culminated in scenes the wire services would prefer not to describe in detail. The Mayor's office insists the situation is under control. The Mayor's office has insisted the situation is under control for fourteen days running.</p>
+
+            <p>Coalition leaders to convene at first light. Subscribers will receive the alert as it breaks.</p>
+          </div>
+          <div class="cn-rail">
+            <h5>On The Wire</h5>
+            <div class="cn-rail-item">
+              <span class="cn-rail-time">0731 EST</span>
+              Mike's logistics network linked Vienna to Frankfurt — allied movement bonus active.
+            </div>
+            <div class="cn-rail-item">
+              <span class="cn-rail-time">0658 EST</span>
+              Markets: oil +4%, steel +14%, electronics +8%. Wartime spike continues.
+            </div>
+            <div class="cn-rail-item">
+              <span class="cn-rail-time">0612 EST</span>
+              President Bvukas categorically denies allegations involving a Strasbourg bakery.
+            </div>
+            <div class="cn-rail-item">
+              <span class="cn-rail-time">0547 EST</span>
+              Stealth bombers reported crossing into hostile airspace. No comment from the Pentagon.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cn-ticker">
+        <div class="cn-ticker-inner">
+          <span>OIL +4.2%</span><span>STEEL +14.1%</span><span>ELECTRONICS +8.3%</span><span>FOOD -6.0%</span><span>NATO COALITION HOLDS EMERGENCY SESSION</span><span>BRANDON REPUBLIC DECLINES TO COMMENT</span><span>UN GENERAL ASSEMBLY MEETS THURSDAY</span><span>OIL +4.2%</span><span>STEEL +14.1%</span><span>ELECTRONICS +8.3%</span><span>FOOD -6.0%</span><span>NATO COALITION HOLDS EMERGENCY SESSION</span><span>BRANDON REPUBLIC DECLINES TO COMMENT</span><span>UN GENERAL ASSEMBLY MEETS THURSDAY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== MAP PREVIEW ===== -->
+<section class="map-section">
+  <div class="container">
+    <div class="section-eyebrow">The Look</div>
+    <h2 class="section-title">A Modern World Map</h2>
+    <p class="section-sub">
+      Roughly eighty country / region provinces drawn over the real world. Each tile is yours, an ally's, an enemy's, or a wild frontier waiting to be claimed. (Final art will be much prettier — this is a sketch.)
+    </p>
+
+    <div class="map-stage">
+      <div class="map-corners"><span></span></div>
+      <svg class="map-svg" viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="oceanGrad" cx="50%" cy="50%" r="70%">
+            <stop offset="0%" stop-color="#0d2a4d"/>
+            <stop offset="100%" stop-color="#06182f"/>
+          </radialGradient>
+          <pattern id="gridPattern" patternUnits="userSpaceOnUse" width="40" height="40">
+            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#1a3a5e" stroke-width="0.4" opacity="0.4"/>
+          </pattern>
+        </defs>
+
+        <rect width="800" height="450" fill="url(#oceanGrad)"/>
+        <rect width="800" height="450" fill="url(#gridPattern)"/>
+
+        <!-- Latitude/longitude lines -->
+        <g stroke="#2a4866" stroke-width="0.4" opacity="0.5" fill="none">
+          <line x1="0" y1="225" x2="800" y2="225"/>
+          <line x1="400" y1="0" x2="400" y2="450"/>
+        </g>
+
+        <!-- North America (USA highlighted in patriotic colors) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <!-- Canada (allied green tint) -->
+          <path d="M 60 60 L 280 50 L 290 130 L 250 145 L 200 140 L 160 150 L 100 145 L 70 120 Z" fill="#3d6a91" opacity="0.85"/>
+          <!-- USA (you - red/blue patriotic) -->
+          <path d="M 70 145 L 100 145 L 160 150 L 200 140 L 250 145 L 260 200 L 230 230 L 180 240 L 130 235 L 90 215 Z" fill="#c1272d" opacity="0.9"/>
+          <!-- Mexico (neutral) -->
+          <path d="M 130 235 L 180 240 L 200 280 L 175 315 L 145 305 L 125 270 Z" fill="#3d4763" opacity="0.85"/>
+          <!-- South America (Industrialist AI - amber) -->
+          <path d="M 175 315 L 220 320 L 250 380 L 230 425 L 195 430 L 175 400 L 165 350 Z" fill="#a78a3e" opacity="0.85"/>
+        </g>
+
+        <!-- Europe (Brandon enemy - bright red) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 380 100 L 460 95 L 480 130 L 470 165 L 440 175 L 400 170 L 380 145 Z" fill="#e63946" opacity="0.9"/>
+          <!-- UK -->
+          <path d="M 360 110 L 380 100 L 380 145 L 360 145 Z" fill="#e63946" opacity="0.85"/>
+        </g>
+
+        <!-- Africa (neutral / wilderness) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 400 195 L 470 190 L 490 240 L 480 290 L 450 320 L 410 310 L 395 270 Z" fill="#2f3852" opacity="0.85"/>
+        </g>
+
+        <!-- Russia / Eurasia (Isolationist AI - blue) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 480 60 L 720 55 L 740 110 L 700 140 L 620 145 L 540 140 L 490 125 Z" fill="#1a4f8b" opacity="0.9"/>
+        </g>
+
+        <!-- China (Mike ally - green) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 600 150 L 690 145 L 710 195 L 680 220 L 630 215 L 605 185 Z" fill="#4caf50" opacity="0.9"/>
+        </g>
+
+        <!-- India (neutral) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 555 200 L 605 195 L 610 250 L 580 270 L 555 245 Z" fill="#3d4763" opacity="0.85"/>
+        </g>
+
+        <!-- Australia (Schemer AI - purple) -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 660 320 L 740 315 L 750 360 L 705 380 L 665 365 Z" fill="#7d4fa6" opacity="0.85"/>
+        </g>
+
+        <!-- Japan -->
+        <g stroke="#06182f" stroke-width="1.2">
+          <path d="M 730 165 L 750 165 L 745 200 L 730 195 Z" fill="#4caf50" opacity="0.9"/>
+        </g>
+
+        <!-- Capital markers -->
+        <g font-family="Saira Condensed" font-size="9" font-weight="700" letter-spacing="0.5">
+          <!-- USA -->
+          <circle cx="180" cy="195" r="5" fill="#f5f7fa" stroke="#06182f" stroke-width="1"/>
+          <text x="195" y="198" fill="#f5f7fa">USA · YOU</text>
+          <!-- UK / Mike -->
+          <circle cx="370" cy="125" r="4" fill="#7fc983" stroke="#06182f" stroke-width="0.8"/>
+          <text x="320" y="106" fill="#7fc983">MIKE</text>
+          <!-- Brandon -->
+          <circle cx="430" cy="135" r="4" fill="#ff8a8a" stroke="#06182f" stroke-width="0.8"/>
+          <text x="445" y="138" fill="#ff8a8a">BRANDON</text>
+          <!-- China / ally -->
+          <circle cx="650" cy="180" r="4" fill="#7fc983" stroke="#06182f" stroke-width="0.8"/>
+          <text x="660" y="173" fill="#7fc983">ALLY</text>
+          <!-- Russia AI -->
+          <circle cx="600" cy="100" r="4" fill="#7faed3" stroke="#06182f" stroke-width="0.8"/>
+          <text x="610" y="92" fill="#7faed3">ISOLATIONIST AI</text>
+          <!-- Brazil AI -->
+          <circle cx="210" cy="370" r="4" fill="#d4b680" stroke="#06182f" stroke-width="0.8"/>
+          <text x="222" y="373" fill="#d4b680">INDUSTRIALIST AI</text>
+          <!-- Australia AI -->
+          <circle cx="700" cy="345" r="4" fill="#b594d0" stroke="#06182f" stroke-width="0.8"/>
+          <text x="630" y="395" fill="#b594d0">SCHEMER AI</text>
+        </g>
+
+        <!-- Air wing markers -->
+        <g>
+          <!-- Your fighter wing scrambling -->
+          <g transform="translate(220 175)">
+            <circle r="9" fill="#06182f" stroke="#f5f7fa" stroke-width="1.5"/>
+            <text y="3" font-family="Inter" font-size="9" font-weight="700" text-anchor="middle" fill="#f5f7fa">F</text>
+          </g>
+          <!-- Enemy drone swarm -->
+          <g transform="translate(390 155)">
+            <circle r="9" fill="#06182f" stroke="#e63946" stroke-width="1.5"/>
+            <text y="3" font-family="Inter" font-size="9" font-weight="700" text-anchor="middle" fill="#e63946">D</text>
+          </g>
+          <!-- Strike arrow (drone strike inbound) -->
+          <path d="M 380 160 Q 320 175 240 185" stroke="#e63946" stroke-width="2" stroke-dasharray="6 3" fill="none" opacity="0.7"/>
+          <polygon points="240,185 248,180 248,192" fill="#e63946" opacity="0.8"/>
+        </g>
+
+        <!-- Compass / HUD frame -->
+        <g transform="translate(745 60)" fill="#c0c8d4">
+          <circle r="22" fill="none" stroke="#c0c8d4" stroke-width="0.6" opacity="0.5"/>
+          <text y="-12" font-family="Saira Condensed" font-size="9" text-anchor="middle">N</text>
+          <text y="20" font-family="Saira Condensed" font-size="9" text-anchor="middle">S</text>
+          <text x="-15" y="3" font-family="Saira Condensed" font-size="9" text-anchor="middle">W</text>
+          <text x="15" y="3" font-family="Saira Condensed" font-size="9" text-anchor="middle">E</text>
+          <line x1="0" y1="-8" x2="0" y2="8" stroke="#c0c8d4" stroke-width="0.5"/>
+          <line x1="-8" y1="0" x2="8" y2="0" stroke="#c0c8d4" stroke-width="0.5"/>
+        </g>
+
+        <!-- Bottom HUD bar -->
+        <g transform="translate(60 410)">
+          <rect width="280" height="22" fill="#06182f" stroke="#c0c8d4" stroke-width="0.8" opacity="0.9"/>
+          <text x="140" y="15" font-family="Saira Condensed" font-size="11" text-anchor="middle" fill="#c0c8d4" letter-spacing="2">THEATER MAP · DAY 142 · TICK 8542</text>
+        </g>
+        <g transform="translate(450 410)">
+          <rect width="290" height="22" fill="#06182f" stroke="#c1272d" stroke-width="0.8" opacity="0.9"/>
+          <text x="145" y="15" font-family="Saira Condensed" font-size="11" text-anchor="middle" fill="#e63946" letter-spacing="2">⚠ INCOMING AIR THREAT — RALEIGH SECTOR</text>
+        </g>
+      </svg>
+    </div>
+    <p class="map-caption">Mock-up of mid-game state — your USA in red, Brandon's hostile drone swarm crossing the Atlantic, Mike's ally in the UK, AI rivals scattered across the globe. Final art will be a proper hand-drawn military map.</p>
+  </div>
+</section>
+
+<!-- ===== ROADMAP ===== -->
+<section class="roadmap" id="roadmap">
+  <div class="container">
+    <div class="section-eyebrow">When We'll Build It</div>
+    <h2 class="section-title">The Roadmap</h2>
+    <p class="section-sub">
+      Built in phases so you can play it as soon as the core works, then watch it get better. Each phase ends with a real, demoable build you can put in front of the friend group.
+    </p>
+
+    <div class="timeline">
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num">PHASE 1</span>
+          <span class="phase-name">The Core Game</span>
+          <span class="phase-time">~4 weekends</span>
+        </div>
+        <p>Everything you need to actually play. World map, modern economy, five units (Mech Infantry, MBT, AA, Combat Drone, Multirole Fighter), real-time tick, combined-arms combat, the cable news feed, one AI rival (the Hawk). End of this phase: you and your friends can play a complete game.</p>
+      </div>
+
+      <div class="phase">
+        <div class="phase-header">
+          <span class="phase-num">PHASE 2</span>
+          <span class="phase-name">Diplomacy & Air Power</span>
+          <span class="phase-time">~4 weekends</span>
+        </div>
+        <p>Treaties, alliances, chat channels, research tree. Add Attack Helicopters, Strategic Bombers, Recon Drones, Special Forces. Naval comes online (frigates, destroyers, carriers). More AI personalities. Real strategic depth.</p>
+      </div>
+
+      <div class="phase locked">
+        <div class="phase-header">
+          <span class="phase-num">PHASE 3</span>
+          <span class="phase-name">Strategic Warfare</span>
+          <span class="phase-time">~4 weekends</span>
+        </div>
+        <p>Stealth bombers, cruise & ballistic missiles, cyber warfare cells, special ops, doctrines, wonders, theater commanders, random world events. Optional nukes. Late-game tension feels distinct from early game.</p>
+      </div>
+
+      <div class="phase locked">
+        <div class="phase-header">
+          <span class="phase-num">PHASE 4</span>
+          <span class="phase-name">Polish & Sweetener</span>
+          <span class="phase-time">open-ended</span>
+        </div>
+        <p>Global commodities market, replay viewer, custom flags, weather, achievements, AI intelligence advisor. The fun-stretch list — none required, all great.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FREE ===== -->
+<section class="free-callout">
+  <span class="free-icon">$0</span>
+  <h2>Free To Play. Always.</h2>
+  <p>Built entirely on free, open-source tools. <strong>No subscriptions. No ads. No premium currency.</strong> Just the friend group, the AI rivals, and a world to fight over. Hosted privately for under $5 a month if you want it on the cloud — or zero if we run it on a PC at home.</p>
+</section>
+
+<!-- ===== QUESTIONS ===== -->
+<section class="questions" id="questions">
+  <div class="container">
+    <div class="section-eyebrow">What We Need From You</div>
+    <h2 class="section-title">Tell Us What You Think</h2>
+    <p class="section-sub">
+      The plan is on paper but nothing's been built yet. Your opinions now save us weeks later. Reply in the group chat, write back to Brandon, scribble on a napkin — just react.
+    </p>
+
+    <div class="questions-grid">
+      <div class="q">
+        <div class="q-num">QUESTION 01</div>
+        <div class="q-text">Does the name "Stars & Steel" land for you?</div>
+        <div class="q-hint">Or do you prefer "Hegemony," "Stars & Steel," "Cold Front," "Theater Command," or something else? Speak now.</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 02</div>
+        <div class="q-text">Real countries on the world map — too edgy?</div>
+        <div class="q-hint">Playing as USA, China, Russia, etc. is more immersive but cuts close to real headlines. Vote: real countries, fictional analogues, or "USA vs Generic Red Power"?</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 03</div>
+        <div class="q-text">Nukes — in or out?</div>
+        <div class="q-hint">They make late-game diplomacy electric, but balance is tricky and the optics get heavy. Toggle per game, always on, or always off?</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 04</div>
+        <div class="q-text">Which feature got you most excited?</div>
+        <div class="q-hint">Drones? Cyber? Stealth bombers? Nukes? The cable-news feed? If we cut anything, this stays. Tell us what to protect.</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 05</div>
+        <div class="q-text">Anything that sounds boring or pointless?</div>
+        <div class="q-hint">Be honest. If you'd never use the global commodities market or the replay viewer, that's fewer things to build.</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 06</div>
+        <div class="q-text">How long would you actually play?</div>
+        <div class="q-hint">A weekend tournament? A 4-week campaign? Just one game to see if we like it? Drives how we balance.</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 07</div>
+        <div class="q-text">Quiet hours overnight, on or off?</div>
+        <div class="q-hint">Friend-group default leans on (no losing wars while asleep). But some of us want the chaos. Vote.</div>
+      </div>
+      <div class="q">
+        <div class="q-num">QUESTION 08</div>
+        <div class="q-text">Are you in?</div>
+        <div class="q-hint">If we ship Phase 1 in a couple of months, will you actually play with us? Yes / no / maybe / "depends on if Brandon's the Schemer."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FINAL ===== -->
+<section class="final">
+  <div class="final-mark"><span></span><span></span><span></span></div>
+  <h2>The Theater Awaits</h2>
+  <p>If even half the friend group says "yes, I'd play this," we start building. The first commit is the database. The first playable build follows the weekend after. Let's see if we can make something we'll still be playing six months from now.</p>
+  <div class="footer-note">PAX AMERICANA · CONCEPT PREVIEW · MAY 2026</div>
+</section>
+
+<script>
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  },{threshold:0.1});
+  document.querySelectorAll('.pitch-block,.feature,.ai-card,.phase,.q').forEach(el=>{
+    el.classList.add('reveal'); io.observe(el);
+  });
+</script>
+
+</body>
+</html>
