@@ -233,13 +233,29 @@ The map seeder marks ~12 provinces as candidate capitals (geographically spread,
 
 ## Connection string
 
-`appsettings.Development.json`:
-```json
-{
-  "ConnectionStrings": {
-    "StarsAndSteelDb": "Server=(localdb)\\MSSQLLocalDB;Database=StarsAndSteel;Trusted_Connection=True;TrustServerCertificate=True;"
-  }
-}
+The connection string is **not** committed to the repo. It lives in .NET user-secrets so each developer can target their own SQL instance (LocalDB, named instance, container, etc.) without touching tracked files.
+
+First-time setup on a fresh clone:
+
+```pwsh
+# from repo root; the Api project already has a UserSecretsId so init is idempotent
+dotnet user-secrets set "ConnectionStrings:StarsAndSteelDb" `
+  "Server=YOUR_INSTANCE;Database=StarsAndSteel;Trusted_Connection=True;TrustServerCertificate=True;MultipleActiveResultSets=True" `
+  --project src/StarsAndSteel.Api/StarsAndSteel.Api.csproj
+```
+
+Replace `YOUR_INSTANCE` with one of:
+- `(localdb)\MSSQLLocalDB` — built-in lightweight engine
+- `localhost\SQLEXPRESS` — SQL Server Express default instance name
+- `MACHINE\NAMEDINSTANCE` — full SQL Server with a named instance (e.g. `BVUKAS5080\MSSQL2025`)
+- `localhost,1433` — Dockerized SQL Server with SQL auth (then add `User Id=sa;Password=...;` instead of `Trusted_Connection=True`)
+
+Once set, EF Core tooling picks it up automatically because `Api` is the startup project and user-secrets are wired into `WebApplication.CreateBuilder` in Development by default.
+
+Verify with:
+```pwsh
+dotnet user-secrets list --project src/StarsAndSteel.Api/StarsAndSteel.Api.csproj
+dotnet ef migrations list -p src/StarsAndSteel.Data -s src/StarsAndSteel.Api
 ```
 
 ## Sample C# entity (for flavor, not final)
