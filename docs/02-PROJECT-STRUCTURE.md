@@ -106,7 +106,7 @@ C:\source\Personal\WorldWar\
 
 `shared/map-data.json` is the single source of truth for the world map. It lives at the repo root — *not* under `src/` (server) or `client/` — because both consume it:
 
-- **Server:** `MapSeeder` in `StarsAndSteel.Data` reads it at migration time to insert `Province` and `ProvinceAdjacency` rows. The `.csproj` adds it as `<Content Include="..\..\shared\map-data.json" CopyToOutputDirectory="PreserveNewest" />`.
+- **Server:** `MapSeeder` in `StarsAndSteel.Data/Seeding/` reads it at world-creation time and produces flat row records (`ProvinceRow`, `AdjacencyRow`) that `WorldFactory` inserts inside the world-creation transaction. The `.csproj` adds the file as `<Content Include="..\..\shared\map-data.json" CopyToOutputDirectory="PreserveNewest" />` so it's available next to the assembly at runtime.
 - **Client:** Vite is configured (in `vite.config.ts`) with a resolve alias `@shared` → `../shared`, so `import mapData from '@shared/map-data.json'` works in TypeScript with full type inference (a `map-data.d.ts` next to the JSON declares the shape).
 
 This way the two never drift. If you edit the map, both sides recompile against the same data.

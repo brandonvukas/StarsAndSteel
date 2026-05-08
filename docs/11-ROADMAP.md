@@ -29,7 +29,7 @@ The user's original ask, executed end to end.
 - ☐ `StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>`, configurations
 - ☐ Migration 1: `InitialIdentity`
 - ☐ Migration 2: `InitialGameWorld`
-- ☐ Migration 3: `SeedDefaultMap` (real-world map with ~80 country/region provinces; reads `shared/map-data.json`)
+- ☐ ~~Migration 3: `SeedDefaultMap`~~ — superseded. Provinces have a non-nullable `GameWorldId` FK and are therefore per-world, not global. The `MapSeeder` (in `StarsAndSteel.Data/Seeding/`) is now a runtime helper that reads `shared/map-data.json` and produces row records; `WorldFactory` calls it inside the world-creation transaction so each new `GameWorld` gets its own deterministic copy of the map.
 - ☐ Auth endpoints (`/api/auth/*`) with Identity + JWT
 - ☐ World snapshot endpoint with fog-of-war filtering
 - ☐ Order endpoints: move, attack, airstrike, build-unit, build-building — with the cutoff rule (stamps `IssuedAtTick = CurrentTick + 1` under the per-world lock)

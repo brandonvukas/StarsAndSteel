@@ -27,4 +27,12 @@
     <ProjectReference Include="..\StarsAndSteel.Api\StarsAndSteel.Api.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Tests run from their own bin/ directory, so the shared map data has to be copied here
+         too (the Data project's <Content Include> only populates Data's bin). -->
+    <Content Include="..\..\shared\map-data.json" Link="shared\map-data.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>

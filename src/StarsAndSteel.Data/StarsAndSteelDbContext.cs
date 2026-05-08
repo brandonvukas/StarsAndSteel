@@ -13,10 +13,10 @@ namespace StarsAndSteel.Data;
 /// <c>Program.cs</c> must use <c>AddIdentity&lt;User, IdentityRole&lt;Guid&gt;&gt;()</c> for these
 /// type parameters to flow through correctly. See <c>docs/03-DATABASE-SCHEMA.md</c>.
 /// <para/>
-/// Phase 1B intentionally exposes only the Identity tables. Game-domain <c>DbSet&lt;T&gt;</c>s and
-/// their <see cref="IEntityTypeConfiguration{TEntity}"/> mappings land in Phase 1C alongside
-/// Migration 2 (<c>InitialGameWorld</c>) so that Migration 1 (<c>InitialIdentity</c>) generates a
-/// clean Identity-only diff.
+/// Per-entity mapping (keys, indexes, FKs, string lengths, enum-as-string conversions) lives in
+/// <c>StarsAndSteel.Data/Configurations/</c> as <see cref="IEntityTypeConfiguration{TEntity}"/>
+/// classes. <see cref="OnModelCreating"/> applies them en masse so adding a new entity is a
+/// single-file change, not a context edit.
 /// </summary>
 public class StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 {
@@ -25,30 +25,26 @@ public class StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>
     {
     }
 
+    // Game-domain DbSets. The Identity DbSets (Users, Roles, etc.) come from the base class.
+    public DbSet<GameWorld> GameWorlds => Set<GameWorld>();
+    public DbSet<Player> Players => Set<Player>();
+    public DbSet<Province> Provinces => Set<Province>();
+    public DbSet<ProvinceAdjacency> ProvinceAdjacencies => Set<ProvinceAdjacency>();
+    public DbSet<Unit> Units => Set<Unit>();
+    public DbSet<UnitOrder> UnitOrders => Set<UnitOrder>();
+    public DbSet<Building> Buildings => Set<Building>();
+    public DbSet<DiplomaticRelation> DiplomaticRelations => Set<DiplomaticRelation>();
+    public DbSet<ResearchProgress> ResearchProgress => Set<ResearchProgress>();
+    public DbSet<NewsItem> NewsItems => Set<NewsItem>();
+    public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+    public DbSet<AiMemory> AiMemories => Set<AiMemory>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        // Required by IdentityDbContext to register the Identity tables.
+        // Identity tables first.
         base.OnModelCreating(builder);
 
-        // Migration 1 (InitialIdentity) intentionally produces only the AspNet* tables.
-        // The User entity has a Players navigation that pulls the entire game-domain
-        // entity graph into the model. We mask that here so EF builds a clean Identity-
-        // only model. Phase 1C will remove these ignores and add real configurations
-        // alongside Migration 2 (InitialGameWorld).
-        builder.Ignore<Player>();
-        builder.Ignore<GameWorld>();
-        builder.Ignore<Province>();
-        builder.Ignore<ProvinceAdjacency>();
-        builder.Ignore<Unit>();
-        builder.Ignore<UnitOrder>();
-        builder.Ignore<Building>();
-        builder.Ignore<DiplomaticRelation>();
-        builder.Ignore<ResearchProgress>();
-        builder.Ignore<NewsItem>();
-        builder.Ignore<ChatMessage>();
-        builder.Ignore<AiMemory>();
-
-        // Phase 1C will add: builder.ApplyConfigurationsFromAssembly(typeof(StarsAndSteelDbContext).Assembly);
-        // once we have IEntityTypeConfiguration<T> classes in the Configurations folder.
+        // Then everything in StarsAndSteel.Data/Configurations/ via reflection.
+        builder.ApplyConfigurationsFromAssembly(typeof(StarsAndSteelDbContext).Assembly);
     }
 }

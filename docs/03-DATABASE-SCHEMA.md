@@ -188,10 +188,16 @@ Adds: `GameWorlds`, `Players`, `Provinces`, `ProvinceAdjacencies`, `Units`, `Uni
 dotnet ef migrations add InitialGameWorld -p src/StarsAndSteel.Data -s src/StarsAndSteel.Api
 ```
 
-### Migration 3 — `SeedDefaultMap`
-A migration that calls a `MapSeeder` to insert the ~80 starter provinces (real-world countries / regions) and adjacency edges. Done as a migration so we can reset & rebuild deterministically with `dotnet ef database update`.
+### ~~Migration 3 — `SeedDefaultMap`~~ (superseded; see below)
+Originally planned as a data-only migration that called a `MapSeeder` to insert the ~80 starter provinces.
 
-The seeder reads from the canonical `shared/map-data.json` (see `02-PROJECT-STRUCTURE.md`) so the server's province list and the client's polygon list cannot drift.
+**Replaced by:** runtime seeding via `WorldFactory`. Provinces have a non-nullable `GameWorldId`, which makes them per-world rather than global. Putting the map into a migration would either (a) require seeding a placeholder world, or (b) leave provinces orphaned. Neither is clean.
+
+The new design:
+- `MapSeeder` (`StarsAndSteel.Data/Seeding/MapSeeder.cs`) reads `shared/map-data.json` and exposes the parsed map as flat row records (`ProvinceRow`, `AdjacencyRow`). Stable string IDs in the JSON (e.g. `"test-usa"`) hash deterministically to Guids so re-running on a fresh DB produces identical PKs.
+- `WorldFactory` (Phase 1F+) calls `MapSeeder.Load()` inside the world-creation transaction. Each new `GameWorld` gets its own deterministic copy of the province graph.
+
+The seeder still reads from the canonical `shared/map-data.json` (see `02-PROJECT-STRUCTURE.md`) so the server's province list and the client's polygon list cannot drift.
 
 ## Nation starting state
 
