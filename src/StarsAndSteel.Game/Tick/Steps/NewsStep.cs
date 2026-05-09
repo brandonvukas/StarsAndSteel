@@ -56,6 +56,12 @@ public sealed class NewsStep : ITickStep
                 case BuildingCompletedEvent e:
                     EmitBuildingCompleted(context, e, playerById, provinceById);
                     break;
+                case VictoryAchievedEvent e:
+                    EmitVictoryAchieved(context, e);
+                    break;
+                case PlayerEliminatedEvent e:
+                    EmitPlayerEliminated(context, e);
+                    break;
                 // Other event types are not headline-worthy in MVP.
             }
         }
@@ -153,6 +159,24 @@ public sealed class NewsStep : ITickStep
             ["buildingType"] = e.Type.ToString(),
             ["province"] = province.Name,
         }, relatedPlayerId: e.OwnerPlayerId);
+    }
+
+    private static void EmitVictoryAchieved(TickContext ctx, VictoryAchievedEvent e)
+    {
+        Emit(ctx, NewsTemplates.VictoryAchieved, new Dictionary<string, string>
+        {
+            ["winner"] = e.WinnerNationName,
+            ["owned"] = e.OwnedProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["total"] = e.TotalProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        }, relatedPlayerId: e.WinnerPlayerId);
+    }
+
+    private static void EmitPlayerEliminated(TickContext ctx, PlayerEliminatedEvent e)
+    {
+        Emit(ctx, NewsTemplates.PlayerEliminated, new Dictionary<string, string>
+        {
+            ["nation"] = e.NationName,
+        }, relatedPlayerId: e.PlayerId);
     }
 
     private static void Emit(

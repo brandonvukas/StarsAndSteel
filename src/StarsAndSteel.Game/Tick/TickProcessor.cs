@@ -29,19 +29,25 @@ public sealed class TickProcessor
     }
 
     /// <summary>
-    /// Default constructor — registers the canonical Phase 1M step list in docs/07 order:
-    /// AiTurn → Production → Movement → AirStrike → Combat → Construction → News.
-    /// Attrition / Cyber / Event / Victory steps land in later phases. News must run last
-    /// among the gameplay steps so it can headline outcomes the others emitted.
+    /// Default constructor — registers the canonical Phase 1O step list in docs/07 order:
+    /// AiTurn → ResourceProduction → LogisticsUpkeep → Attrition → Movement → AirStrike →
+    /// Combat → Construction → MoraleRecovery → VictoryCheck → News.
+    /// LogisticsUpkeep follows ResourceProduction so freshly-produced income pays this tick's bills.
+    /// VictoryCheck runs immediately before News so the victory headline emits the same tick.
+    /// Cyber / random-event steps land in later phases.
     /// </summary>
     public TickProcessor() : this(new ITickStep[]
     {
         new AiTurnStep(),
         new ResourceProductionStep(),
+        new LogisticsUpkeepStep(),
+        new AttritionStep(),
         new MovementStep(),
         new AirStrikeStep(),
         new CombatStep(),
         new ConstructionStep(),
+        new MoraleRecoveryStep(),
+        new VictoryCheckStep(),
         new NewsStep(),
     })
     {

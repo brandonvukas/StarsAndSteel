@@ -101,6 +101,34 @@ public static class NewsTemplates
             "Local officials hail the project as a boost to regional output.",
         });
 
+    public static readonly NewsTemplate VictoryAchieved = new(
+        Severity: NewsSeverity.Breaking,
+        Category: NewsCategory.Politics,
+        HeadlineVariants: new[]
+        {
+            "VICTORY DECLARED: {winner} achieves total domination ({owned}/{total} provinces)",
+            "WAR'S END: {winner} stands alone — {owned} of {total} provinces under their flag",
+            "BREAKING: {winner} secures {owned}/{total} provinces, war effectively over",
+        },
+        BodyVariants: new[]
+        {
+            "Capitals worldwide acknowledge {winner} as the dominant power on the map.",
+            "Analysts call the {winner} campaign a textbook total-domination victory.",
+        });
+
+    public static readonly NewsTemplate PlayerEliminated = new(
+        Severity: NewsSeverity.Notable,
+        Category: NewsCategory.Politics,
+        HeadlineVariants: new[]
+        {
+            "{nation} ELIMINATED — last province falls",
+            "End of the line for {nation}: government in exile after final defeat",
+        },
+        BodyVariants: new[]
+        {
+            "Diplomats say {nation}'s remaining forces have laid down arms.",
+        });
+
     /// <summary>
     /// Pick a variant deterministically from <paramref name="variants"/> via the per-world RNG.
     /// Empty list returns empty string so the caller never crashes on a misconfigured template.

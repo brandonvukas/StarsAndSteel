@@ -92,6 +92,78 @@ public class NewsStepTests
     }
 
     [Fact]
+    public void Resource_and_movement_events_are_not_headline_worthy()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "USA");
+        var p1 = AddProvince(world, alice, "Texas");
+        var p2 = AddProvince(world, alice, "Oklahoma");
+        var unit = AddUnit(world, alice, p1, UnitType.MechInfantry, 100);
+        var ctx = Context(world);
+        ctx.Events.Add(new ResourcesProducedEvent(
+            Tick: ctx.ProcessingTick,
+            PlayerId: alice.Id,
+            MoneyDelta: 100, OilDelta: 0, SteelDelta: 0,
+            ElectronicsDelta: 0, FoodDelta: 0, ManpowerDelta: 0));
+        ctx.Events.Add(new UnitMovedEvent(
+            Tick: ctx.ProcessingTick,
+            UnitId: unit.Id,
+            OwnerPlayerId: alice.Id,
+            FromProvinceId: p1.Id,
+            ToProvinceId: p2.Id));
+
+        new NewsStep().Execute(ctx);
+
+        ctx.NewsItemsToInsert.Should().BeEmpty();
+        ctx.Events.OfType<NewsPublishedEvent>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Victory_achieved_emits_breaking_politics_headline_with_winner_and_counts()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "USA");
+        var ctx = Context(world);
+        ctx.Events.Add(new VictoryAchievedEvent(
+            Tick: ctx.ProcessingTick,
+            WinnerPlayerId: alice.Id,
+            WinnerNationName: "USA",
+            OwnedProvinceCount: 47,
+            TotalProvinceCount: 58));
+
+        new NewsStep().Execute(ctx);
+
+        var item = ctx.NewsItemsToInsert.Should().ContainSingle().Subject;
+        item.Severity.Should().Be(NewsSeverity.Breaking);
+        item.Category.Should().Be(NewsCategory.Politics);
+        item.RelatedPlayerId.Should().Be(alice.Id);
+        item.Headline.Should().Contain("USA");
+        item.Headline.Should().Contain("47");
+        item.Headline.Should().Contain("58");
+        item.Headline.Should().NotContain("{");
+    }
+
+    [Fact]
+    public void Player_eliminated_emits_notable_politics_headline()
+    {
+        var world = NewWorld();
+        var bob = AddPlayer(world, "Canada");
+        var ctx = Context(world);
+        ctx.Events.Add(new PlayerEliminatedEvent(
+            Tick: ctx.ProcessingTick,
+            PlayerId: bob.Id,
+            NationName: "Canada"));
+
+        new NewsStep().Execute(ctx);
+
+        var item = ctx.NewsItemsToInsert.Should().ContainSingle().Subject;
+        item.Severity.Should().Be(NewsSeverity.Notable);
+        item.Category.Should().Be(NewsCategory.Politics);
+        item.RelatedPlayerId.Should().Be(bob.Id);
+        item.Headline.Should().Contain("Canada");
+    }
+
+    [Fact]
     public void Inconclusive_combat_emits_notable_headline()
     {
         var world = NewWorld();
@@ -113,7 +185,6 @@ public class NewsStepTests
         var item = ctx.NewsItemsToInsert.Should().ContainSingle().Subject;
         item.Severity.Should().Be(NewsSeverity.Notable);
         item.Category.Should().Be(NewsCategory.Combat);
-        // Winner null → falls back to attacker for color-coding.
         item.RelatedPlayerId.Should().Be(alice.Id);
     }
 
@@ -194,8 +265,6 @@ public class NewsStepTests
     [Fact]
     public void NewsPublishedEvent_in_context_does_not_recursively_news_itself()
     {
-        // The step snapshots Events before iterating; otherwise it would loop forever
-        // emitting NewsPublishedEvents about NewsPublishedEvents. Guard the contract.
         var world = NewWorld();
         var alice = AddPlayer(world, "USA");
         var prov = AddProvince(world, alice, "Texas");
@@ -210,32 +279,5 @@ public class NewsStepTests
 
         ctx.NewsItemsToInsert.Should().HaveCount(1);
         ctx.Events.OfType<NewsPublishedEvent>().Should().HaveCount(1);
-    }
-
-    [Fact]
-    public void Resource_and_movement_events_are_not_headline_worthy()
-    {
-        var world = NewWorld();
-        var alice = AddPlayer(world, "USA");
-        var p1 = AddProvince(world, alice, "Texas");
-        var p2 = AddProvince(world, alice, "Oklahoma");
-        var unit = AddUnit(world, alice, p1, UnitType.MechInfantry, 100);
-        var ctx = Context(world);
-        ctx.Events.Add(new ResourcesProducedEvent(
-            Tick: ctx.ProcessingTick,
-            PlayerId: alice.Id,
-            MoneyDelta: 100, OilDelta: 0, SteelDelta: 0,
-            ElectronicsDelta: 0, FoodDelta: 0, ManpowerDelta: 0));
-        ctx.Events.Add(new UnitMovedEvent(
-            Tick: ctx.ProcessingTick,
-            UnitId: unit.Id,
-            OwnerPlayerId: alice.Id,
-            FromProvinceId: p1.Id,
-            ToProvinceId: p2.Id));
-
-        new NewsStep().Execute(ctx);
-
-        ctx.NewsItemsToInsert.Should().BeEmpty();
-        ctx.Events.OfType<NewsPublishedEvent>().Should().BeEmpty();
     }
 }
