@@ -1,64 +1,38 @@
-import './style.css'
-import typescriptLogo from './assets/typescript.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import { setupCounter } from './counter.ts'
-// Phase 0 smoke test: prove the @shared alias resolves and types flow through.
-// Will be moved into MapScene once Phase 4 starts.
-import mapData from '@shared/map-data.json'
-console.log(`[stars-and-steel] loaded ${mapData.provinces.length} stub provinces from shared map-data.json`)
+// App entry: routes between login → lobby → game based on auth/world state.
+//
+// We keep the routing trivial (no history API, no router lib) for Phase 1K.
+// As the app grows we can move to a hash-based router or wouter/etc.
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-<section id="center">
-  <div class="hero">
-    <img src="${heroImg}" class="base" width="170" height="179">
-    <img src="${typescriptLogo}" class="framework" alt="TypeScript logo"/>
-    <img src="${viteLogo}" class="vite" alt="Vite logo" />
-  </div>
-  <div>
-    <h1>Get started</h1>
-    <p>Edit <code>src/main.ts</code> and save to test <code>HMR</code></p>
-  </div>
-  <button id="counter" type="button" class="counter"></button>
-</section>
+import './app.css';
+import { $auth } from './store/store';
+import { mountLoginScreen } from './ui/loginScreen';
+import { mountLobbyScreen } from './ui/lobbyScreen';
+import { mountGameScreen } from './ui/gameScreen';
 
-<div class="ticks"></div>
+const app = document.getElementById('app')!;
 
-<section id="next-steps">
-  <div id="docs">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#documentation-icon"></use></svg>
-    <h2>Documentation</h2>
-    <p>Your questions, answered</p>
-    <ul>
-      <li>
-        <a href="https://vite.dev/" target="_blank">
-          <img class="logo" src="${viteLogo}" alt="" />
-          Explore Vite
-        </a>
-      </li>
-      <li>
-        <a href="https://www.typescriptlang.org" target="_blank">
-          <img class="button-icon" src="${typescriptLogo}" alt="">
-          Learn more
-        </a>
-      </li>
-    </ul>
-  </div>
-  <div id="social">
-    <svg class="icon" role="presentation" aria-hidden="true"><use href="/icons.svg#social-icon"></use></svg>
-    <h2>Connect with us</h2>
-    <p>Join the Vite community</p>
-    <ul>
-      <li><a href="https://github.com/vitejs/vite" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#github-icon"></use></svg>GitHub</a></li>
-      <li><a href="https://chat.vite.dev/" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#discord-icon"></use></svg>Discord</a></li>
-      <li><a href="https://x.com/vite_js" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#x-icon"></use></svg>X.com</a></li>
-      <li><a href="https://bsky.app/profile/vite.dev" target="_blank"><svg class="button-icon" role="presentation" aria-hidden="true"><use href="/icons.svg#bluesky-icon"></use></svg>Bluesky</a></li>
-    </ul>
-  </div>
-</section>
+function showLogin() {
+  mountLoginScreen(app, () => showLobby());
+}
 
-<div class="ticks"></div>
-<section id="spacer"></section>
-`
+function showLobby() {
+  mountLobbyScreen(app, worldId => showGame(worldId));
+}
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+function showGame(worldId: string) {
+  mountGameScreen(app, worldId).catch(err => {
+    app.innerHTML = `
+      <div class="error-screen">
+        <h2>Failed to start game</h2>
+        <pre>${String(err)}</pre>
+        <button id="back">Back to lobby</button>
+      </div>`;
+    app.querySelector('#back')!.addEventListener('click', showLobby);
+  });
+}
+
+if ($auth.get()) {
+  showLobby();
+} else {
+  showLogin();
+}

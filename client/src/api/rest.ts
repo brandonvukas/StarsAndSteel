@@ -1,0 +1,78 @@
+// Thin wrappers around fetch() for the REST API surface. Cookie auth is
+// automatic in the browser (the server sets the auth cookie on /login) so we
+// don't have to attach anything except for routes that explicitly require JSON.
+
+import type {
+  AuthResponse, WorldSummary, WorldSnapshot,
+  MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
+} from '../types/api';
+
+class HttpError extends Error {
+  readonly status: number;
+  readonly body: unknown;
+  constructor(status: number, body: unknown) {
+    super(`HTTP ${status}`);
+    this.status = status;
+    this.body = body;
+  }
+}
+
+async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const init: RequestInit = {
+    method,
+    credentials: 'include', // include the auth cookie set by /login
+  };
+  if (body !== undefined) {
+    init.headers = { 'Content-Type': 'application/json' };
+    init.body = JSON.stringify(body);
+  }
+
+  const res = await fetch(path, init);
+  // 204 / empty bodies tolerated.
+  let parsed: unknown = null;
+  const text = await res.text();
+  if (text.length > 0) {
+    try { parsed = JSON.parse(text); } catch { parsed = text; }
+  }
+  if (!res.ok) throw new HttpError(res.status, parsed);
+  return parsed as T;
+}
+
+// ---- Auth ----------------------------------------------------------------
+export const register = (email: string, displayName: string, password: string) =>
+  call<void>('POST', '/api/auth/register', { email, displayName, password });
+
+export const login = (email: string, password: string) =>
+  call<AuthResponse>('POST', '/api/auth/login', { email, password });
+
+export const logout = () =>
+  call<void>('POST', '/api/auth/logout');
+
+// ---- Worlds --------------------------------------------------------------
+export const listWorlds = () =>
+  call<WorldSummary[]>('GET', '/api/worlds');
+
+export const createWorld = (name: string, mapSeed = 42) =>
+  call<WorldSummary>('POST', '/api/worlds', { name, mapSeed });
+
+export const joinWorld = (worldId: string, nationName: string,
+                          flagPrimaryHex: string, flagSecondaryHex: string) =>
+  call<void>('POST', `/api/worlds/${worldId}/join`,
+    { nationName, flagPrimaryHex, flagSecondaryHex });
+
+export const getSnapshot = (worldId: string) =>
+  call<WorldSnapshot>('GET', `/api/worlds/${worldId}/snapshot`);
+
+// ---- Orders --------------------------------------------------------------
+export const orderMove = (worldId: string, req: MoveOrderRequest) =>
+  call<{ orderId: string }>('POST', `/api/worlds/${worldId}/orders/move`, req);
+
+export const orderBuildBuilding = (worldId: string, req: BuildBuildingRequest) =>
+  call<{ orderId: string; ticksRemaining: number }>(
+    'POST', `/api/worlds/${worldId}/orders/build-building`, req);
+
+export const orderBuildUnit = (worldId: string, req: BuildUnitRequest) =>
+  call<{ orderId: string; ticksRemaining: number }>(
+    'POST', `/api/worlds/${worldId}/orders/build-unit`, req);
+
+export { HttpError };
