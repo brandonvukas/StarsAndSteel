@@ -67,11 +67,18 @@ public sealed class SnapshotEndpointTests : IClassFixture<MsSqlContainerFixture>
         capital.Buildings.Should().HaveCount(4, "RC + MB + AB + FD per docs/03");
         capital.GarrisonStrength.Should().Be(2_500, "2x MechInf 1000 + 1x AA 500 = 2500");
 
-        // Adjacent neutral province (Canada) is visible because it's adjacent to the
-        // capital (United States) per shared/map-data.json.
-        var adjacent = snap.Provinces.Single(p => p.Id != capital.Id);
-        adjacent.Visible.Should().BeTrue("the stub map has a USA↔Canada edge");
-        adjacent.OwnerPlayerId.Should().BeNull("Canada is neutral until claimed");
+        // Every province adjacent to the capital is visible (fog-of-war rule:
+        // own + adjacent). The starting province on the real-world map has at
+        // least one neighbour (graph is fully connected and capital-typed
+        // provinces are land-locked or coastal — never isolated).
+        capital.AdjacentProvinceIds.Should().NotBeEmpty(
+            "every starting province on the real-world map has at least one neighbour");
+        foreach (var adjId in capital.AdjacentProvinceIds)
+        {
+            var adj = snap.Provinces.Single(p => p.Id == adjId);
+            adj.Visible.Should().BeTrue("provinces adjacent to the player's capital are visible");
+            adj.OwnerPlayerId.Should().BeNull("only the spawning player has claimed land in this single-join world");
+        }
 
         // My units full detail: 3 stacks total.
         snap.MyUnits.Should().HaveCount(3);

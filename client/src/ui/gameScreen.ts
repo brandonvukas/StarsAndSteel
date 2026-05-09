@@ -38,13 +38,21 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     // News history is best-effort; failure here mustn't block the screen.
   }
 
-  // 2. Boot Phaser into the dedicated host.
+  // 2. Boot Phaser into the dedicated host. Canvas is sized to match the
+  //    map-data viewport (1600x1000 from scripts/build-map.mjs). Phaser scales
+  //    the canvas to fit the parent via Scale.FIT so the full map is visible
+  //    no matter the window size; the internal coordinate system stays
+  //    constant which keeps polygon hit-tests aligned with the data.
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'phaser-host',
-    width: 800,
-    height: 600,
+    width: 1600,
+    height: 1000,
     backgroundColor: '#0a0a14',
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
     scene: [BootScene, MapScene],
   });
 

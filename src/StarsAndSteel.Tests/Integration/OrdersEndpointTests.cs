@@ -13,9 +13,12 @@ namespace StarsAndSteel.Tests.Integration;
 /// End-to-end order endpoint tests. Hits the real Api against Testcontainers SQL.
 /// Skipped when Docker isn't available.
 /// <para/>
-/// The stub map (<c>shared/map-data.json</c>) has only 1 candidate-capital province
-/// (United States) with neighbour Canada (Resource type, neutral). That's enough
-/// for move/build tests; combat-vs-other-player needs a richer map and is deferred.
+/// Operates against the real-world map (50 US states + 5 Canada blocs + 3 Mexico
+/// blocs, every province ProvinceType.Capital). The starting province is picked
+/// non-deterministically per world (PlayerSpawner orders by per-world Guid), so
+/// these tests resolve the player's province from the snapshot rather than
+/// hard-coding a name. The same applies to "an adjacent province" — discovered
+/// by walking the snapshot's adjacency list.
 /// </summary>
 [Collection(IntegrationCollection.Name)]
 public sealed class OrdersEndpointTests : IClassFixture<MsSqlContainerFixture>
@@ -33,7 +36,11 @@ public sealed class OrdersEndpointTests : IClassFixture<MsSqlContainerFixture>
         var (client, summary, snap) = await CreateAndJoinAsync();
 
         var capital = snap.Provinces.Single(p => p.OwnerPlayerId == snap.Me.PlayerId);
-        var adjacent = snap.Provinces.Single(p => p.Id != capital.Id);
+        // Pick a real neighbour from the snapshot adjacency list (the map has
+        // 138 land edges, so any chosen capital has at least one neighbour
+        // unless it's truly isolated, which the connectivity check rules out).
+        var adjacentId = capital.AdjacentProvinceIds.First();
+        var adjacent = snap.Provinces.Single(p => p.Id == adjacentId);
         var unit = snap.MyUnits.First();
 
         var response = await client.PostAsJsonAsync(
@@ -54,11 +61,16 @@ public sealed class OrdersEndpointTests : IClassFixture<MsSqlContainerFixture>
     {
         var (client, summary, snap) = await CreateAndJoinAsync();
         var capital = snap.Provinces.Single(p => p.OwnerPlayerId == snap.Me.PlayerId);
+        var adjacentSet = new HashSet<Guid>(capital.AdjacentProvinceIds) { capital.Id };
+        // Find any province that is NOT adjacent to the capital. With ~58
+        // provinces and capitals having only a handful of neighbours, this is
+        // always available.
+        var nonAdjacent = snap.Provinces.First(p => !adjacentSet.Contains(p.Id));
         var unit = snap.MyUnits.First();
 
         var response = await client.PostAsJsonAsync(
             $"/api/worlds/{summary.Id}/orders/move",
-            new MoveOrderRequest(unit.Id, capital.Id));
+            new MoveOrderRequest(unit.Id, nonAdjacent.Id));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -70,8 +82,10 @@ public sealed class OrdersEndpointTests : IClassFixture<MsSqlContainerFixture>
         var aliceUnit = aliceSnap.MyUnits.First();
         var aliceCapital = aliceSnap.Provinces.Single(p => p.OwnerPlayerId == aliceSnap.Me.PlayerId);
 
-        // Bob registers + logs in but won't be in this world (only 1 capital available).
-        // Bob can't join, but he can attempt to issue orders — should get 403 (not in world).
+        // Bob registers + logs in but deliberately does NOT join this world.
+        // Issuing orders against Alice's unit must return 403 (not in world).
+        // Note: with the real-world map there are plenty of free capitals, so
+        // Bob *could* join — we just don't, to test the "outsider" path.
         var unique = Guid.NewGuid().ToString("N")[..8];
         var bobClient = _factory.CreateClient(new() { HandleCookies = true });
         var pwd = "Sup3rSafe!Pa55";

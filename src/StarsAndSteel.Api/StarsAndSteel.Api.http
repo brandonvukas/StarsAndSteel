@@ -84,9 +84,10 @@ GET {{host}}/api/worlds/{{worldId}}
 
 ### ----------------------------------------------------------------
 ### 7. Join the world.
-### Assigns you the United States capital + starter package
-### (5000 money / 1000 oil / 1000 steel / 500 electronics / 1000 food / 2000 manpower)
-### plus 4 buildings (RC, MB, AB, FD) and 3 unit stacks (2x MechInf 1000 + 1x AA 500).
+### Assigns you a starting capital (one of 58 provinces, picked by the spawner)
+### plus the starter package (5000 money / 1000 oil / 1000 steel / 500 electronics
+### / 1000 food / 2000 manpower), 4 buildings (RC, MB, AB, FD) and 3 unit stacks
+### (2x MechInf 1000 + 1x AA 500).
 ### ----------------------------------------------------------------
 
 POST {{host}}/api/worlds/{{worldId}}/join
@@ -109,7 +110,7 @@ GET {{host}}/api/worlds/{{worldId}}/snapshot
 ### ----------------------------------------------------------------
 ### >>> Paste IDs from the snapshot above into the variables below <<<
 ### capitalProvinceId = the province where ownerPlayerId == me.playerId
-### adjacentProvinceId = the OTHER province in the response (Canada)
+### adjacentProvinceId = any id from that province's adjacentProvinceIds array
 ### unitId = any of the 3 myUnits[].id values
 ### ----------------------------------------------------------------
 

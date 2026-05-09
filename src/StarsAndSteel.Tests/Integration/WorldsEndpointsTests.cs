@@ -59,7 +59,7 @@ public sealed class WorldsEndpointsTests : IClassFixture<MsSqlContainerFixture>
         summary!.Status.Should().Be(GameWorldStatus.Lobby.ToString());
         summary.MapSeed.Should().Be(12345);
         summary.PlayerCount.Should().Be(0);
-        summary.ProvinceCount.Should().Be(2, "the stub map ships with 2 provinces");
+        summary.ProvinceCount.Should().Be(58, "the real-world map ships with 50 US states + 5 Canada blocs + 3 Mexico blocs");
 
         // 3. Join — flips world to Active and grants the starter package.
         var joinResponse = await client.PostAsJsonAsync(
@@ -70,7 +70,11 @@ public sealed class WorldsEndpointsTests : IClassFixture<MsSqlContainerFixture>
         var joinResult = await joinResponse.Content.ReadFromJsonAsync<JoinWorldResponse>();
         joinResult.Should().NotBeNull();
         joinResult!.Money.Should().Be(5_000);
-        joinResult.CapitalProvinceName.Should().Be("United States");
+        // The starting province is picked non-deterministically (per-world Guid order)
+        // from the 58 capital-typed provinces, so we can't assert a specific name —
+        // only that one was assigned and is on the real-world map.
+        joinResult.CapitalProvinceName.Should().NotBeNullOrEmpty(
+            "PlayerSpawner must assign a starting province from the seeded map");
 
         // 4. Force the world to be due RIGHT NOW so the background poller picks
         // it up on its next 1-second iteration. We bypass the API for this —
@@ -115,10 +119,11 @@ public sealed class WorldsEndpointsTests : IClassFixture<MsSqlContainerFixture>
         }
 
         observedTick.Should().NotBeNull("the tick service must have advanced the world within 8 seconds");
-        // United States base money/tick = 100; FinancialDistrict L1 = +20%.
-        // Expect 5000 starter + at least one tick of 120 = 5120.
-        observedMoney.Should().BeGreaterThanOrEqualTo(5_000 + 120,
-            "after ≥1 tick the player should have at least one production cycle of money");
+        // Lowest base money/tick across the 58 provinces is the 'agricultural'
+        // profile = 50/tick. FinancialDistrict L1 adds +20% → 60 minimum.
+        // Starter pool is 5000, so after at least one tick the floor is 5060.
+        observedMoney.Should().BeGreaterThanOrEqualTo(5_000 + 60,
+            "after ≥1 tick the player should have received at least one production cycle of money");
     }
 
     [DockerFact]
