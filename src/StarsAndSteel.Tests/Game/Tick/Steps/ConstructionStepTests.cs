@@ -1,0 +1,98 @@
+using FluentAssertions;
+using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Game.Tick.Events;
+using StarsAndSteel.Game.Tick.Steps;
+using static StarsAndSteel.Tests.Game.Tick.Steps.TickTestGraph;
+
+namespace StarsAndSteel.Tests.Game.Tick.Steps;
+
+public class ConstructionStepTests
+{
+    [Fact]
+    public void Decrements_ticks_remaining_each_run_and_marks_in_progress()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var capital = AddProvince(world, alice, "Cap");
+        AddBuilding(capital, BuildingType.RecruitmentCenter);
+        var order = BuildUnitOrder(world, alice, capital, UnitType.MechInfantry, qty: 1000, ticksRemaining: 3);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.TicksRemaining.Should().Be(2);
+        order.Status.Should().Be(OrderStatus.InProgress);
+        ctx.UnitsToInsert.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Completes_unit_build_when_ticks_hit_zero()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var capital = AddProvince(world, alice, "Cap");
+        AddBuilding(capital, BuildingType.RecruitmentCenter);
+        var order = BuildUnitOrder(world, alice, capital, UnitType.MechInfantry, qty: 2000, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Complete);
+        ctx.UnitsToInsert.Should().ContainSingle()
+            .Which.Should().Match<Core.Entities.Unit>(u =>
+                u.Type == UnitType.MechInfantry &&
+                u.Strength == 2000 &&
+                u.LocationProvinceId == capital.Id &&
+                u.OwnerPlayerId == alice.Id);
+        ctx.Events.OfType<UnitBuiltEvent>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Completes_building_and_attaches_to_province()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var capital = AddProvince(world, alice, "Cap");
+        var order = BuildBuildingOrder(world, alice, capital, BuildingType.SteelMill, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Complete);
+        ctx.BuildingsToInsert.Should().ContainSingle();
+        capital.Buildings.Should().Contain(b => b.Type == BuildingType.SteelMill);
+        ctx.Events.OfType<BuildingCompletedEvent>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Cancels_order_if_province_changed_owners()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var bob = AddPlayer(world, "Bob");
+        var capital = AddProvince(world, bob, "Cap"); // Bob owns it now
+        var order = BuildBuildingOrder(world, alice, capital, BuildingType.SteelMill, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Cancelled);
+        ctx.BuildingsToInsert.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Air_unit_build_sets_home_base_to_construction_province()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var capital = AddProvince(world, alice, "Cap");
+        AddBuilding(capital, BuildingType.AirBase);
+        var order = BuildUnitOrder(world, alice, capital, UnitType.CombatDrone, qty: 500, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        ctx.UnitsToInsert.Should().ContainSingle()
+            .Which.HomeBaseProvinceId.Should().Be(capital.Id);
+    }
+}

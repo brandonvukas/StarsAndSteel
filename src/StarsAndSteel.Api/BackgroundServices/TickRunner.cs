@@ -31,15 +31,15 @@ public sealed class TickRunner
     }
 
     /// <summary>
-    /// Loads the world (with players, provinces, and buildings eager-loaded),
-    /// runs the tick pipeline against the in-memory graph, and saves all
-    /// mutations atomically. Returns the events emitted by the steps; the
-    /// caller is responsible for broadcasting them. <c>null</c> means the
-    /// world wasn't due / was missing / lost an optimistic-concurrency race.
+    /// Loads the world (with players, provinces, buildings, units, pending orders, and
+    /// adjacencies eager-loaded), runs the tick pipeline against the in-memory graph,
+    /// and saves all mutations atomically. Returns the events emitted by the steps; the
+    /// caller is responsible for broadcasting them. <c>null</c> means the world wasn't
+    /// due / was missing / lost an optimistic-concurrency race.
     /// </summary>
     public async Task<TickResult?> RunAsync(Guid worldId, CancellationToken cancellationToken)
     {
-        // Eager-load the entire graph the steps mutate. One query, no N+1.
+        // Eager-load the entire graph the steps mutate. One query each, no N+1.
         var world = await _db.GameWorlds
             .Include(w => w.Players)
             .Include(w => w.Provinces)
@@ -67,16 +67,67 @@ public sealed class TickRunner
             return null;
         }
 
+        // Phase 1I: load tick-step inputs that aren't reachable via GameWorld navs.
+        var processingTick = world.CurrentTick + 1;
+
+        var units = await _db.Units
+            .Where(u => u.GameWorldId == worldId)
+            .ToListAsync(cancellationToken);
+
+        var pendingUnitOrders = await _db.UnitOrders
+            .Where(o => o.Unit.GameWorldId == worldId
+                && o.IssuedAtTick <= processingTick
+                && o.Status == OrderStatus.Pending)
+            .ToListAsync(cancellationToken);
+
+        var pendingConstructionOrders = await _db.ConstructionOrders
+            .Where(o => o.GameWorldId == worldId
+                && o.IssuedAtTick <= processingTick
+                && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.InProgress))
+            .ToListAsync(cancellationToken);
+
+        // Adjacency edges scoped to this world's provinces. We pull every adjacency
+        // touching any province in this world; the world's province set is the join key.
+        var provinceIds = world.Provinces.Select(p => p.Id).ToHashSet();
+        var adjacencies = await _db.ProvinceAdjacencies
+            .Where(a => provinceIds.Contains(a.ProvinceAId) || provinceIds.Contains(a.ProvinceBId))
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
-            result = _processor.ProcessOneTick(world, now);
+            result = _processor.ProcessOneTick(world, now,
+                units: units,
+                pendingUnitOrders: pendingUnitOrders,
+                pendingConstructionOrders: pendingConstructionOrders,
+                adjacencies: adjacencies);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "TickProcessor threw for world {WorldId} at tick {Tick}",
                 worldId, world.CurrentTick + 1);
             return null;
+        }
+
+        // Apply structural changes the processor queued. Mutations to existing rows
+        // (resources, unit Strength, order Status, building lists) are already tracked
+        // by EF because the loaded entities are tracked.
+        if (result.UnitsToInsert is { Count: > 0 } toInsert)
+            _db.Units.AddRange(toInsert);
+
+        if (result.BuildingsToInsert is { Count: > 0 } bToInsert)
+            _db.Buildings.AddRange(bToInsert);
+
+        if (result.UnitsToDelete is { Count: > 0 } toDelete)
+        {
+            // Cascade clean-up: any pending UnitOrders for these units must go too,
+            // otherwise the FK to a removed Unit row will trip on save.
+            var deadIds = toDelete.Select(u => u.Id).ToHashSet();
+            var orphanedOrders = await _db.UnitOrders
+                .Where(o => deadIds.Contains(o.UnitId))
+                .ToListAsync(cancellationToken);
+            if (orphanedOrders.Count > 0) _db.UnitOrders.RemoveRange(orphanedOrders);
+            _db.Units.RemoveRange(toDelete);
         }
 
         try

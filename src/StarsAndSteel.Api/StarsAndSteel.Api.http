@@ -1,6 +1,198 @@
-@StarsAndSteel.Api_HostAddress = http://localhost:5005
+### Stars & Steel — full end-to-end walkthrough.
+### Click "Send Request" above each call, top to bottom.
+### VS chains cookies automatically across calls in the same .http file.
 
-GET {{StarsAndSteel.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+@host = https://localhost:7265
+@email = you@test.com
+@password = Sup3rSafe!Pa55
+@displayName = You
 
-###
+### ----------------------------------------------------------------
+### 0. Health check — should return the OpenAPI JSON.
+### ----------------------------------------------------------------
+
+GET {{host}}/openapi/v1.json
+
+### ----------------------------------------------------------------
+### 1. Register a user.
+### Returns 201 Created on success, 409 Conflict if the email is taken.
+### Re-running is fine — just expect a 409 the second time.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "displayName": "{{displayName}}",
+  "password": "{{password}}"
+}
+
+### ----------------------------------------------------------------
+### 2. Log in. Sets the auth cookie that all subsequent calls inherit.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### ----------------------------------------------------------------
+### 3. Confirm we're logged in.
+### ----------------------------------------------------------------
+
+GET {{host}}/api/auth/me
+
+### ----------------------------------------------------------------
+### 4. List existing worlds (will be empty on first run).
+### ----------------------------------------------------------------
+
+GET {{host}}/api/worlds
+
+### ----------------------------------------------------------------
+### 5. Create a world. Note the {{$guid}} variable for a unique name.
+### Copy the "id" from the response into the @worldId variable below.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds
+Content-Type: application/json
+
+{
+  "name": "Test World {{$randomInt 1000 9999}}",
+  "mapSeed": 42
+}
+
+### ----------------------------------------------------------------
+### >>> Paste the world id from the response above into @worldId <<<
+### Then keep clicking Send Request on each call below.
+### ----------------------------------------------------------------
+
+@worldId = PASTE-THE-GUID-HERE
+
+### ----------------------------------------------------------------
+### 6. Get the world summary.
+### ----------------------------------------------------------------
+
+GET {{host}}/api/worlds/{{worldId}}
+
+### ----------------------------------------------------------------
+### 7. Join the world.
+### Assigns you the United States capital + starter package
+### (5000 money / 1000 oil / 1000 steel / 500 electronics / 1000 food / 2000 manpower)
+### plus 4 buildings (RC, MB, AB, FD) and 3 unit stacks (2x MechInf 1000 + 1x AA 500).
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/join
+Content-Type: application/json
+
+{
+  "nationName": "Testland",
+  "flagPrimaryHex": "#ff0000",
+  "flagSecondaryHex": "#ffffff"
+}
+
+### ----------------------------------------------------------------
+### 8. Get your fog-of-war snapshot.
+### Note the province IDs and unit IDs in the response — you'll need them.
+### Run this AGAIN any time after a tick to see resources grow.
+### ----------------------------------------------------------------
+
+GET {{host}}/api/worlds/{{worldId}}/snapshot
+
+### ----------------------------------------------------------------
+### >>> Paste IDs from the snapshot above into the variables below <<<
+### capitalProvinceId = the province where ownerPlayerId == me.playerId
+### adjacentProvinceId = the OTHER province in the response (Canada)
+### unitId = any of the 3 myUnits[].id values
+### ----------------------------------------------------------------
+
+@capitalProvinceId = PASTE-CAPITAL-PROVINCE-ID
+@adjacentProvinceId = PASTE-ADJACENT-PROVINCE-ID
+@unitId = PASTE-UNIT-ID
+
+### ----------------------------------------------------------------
+### 9. Order: move a ground unit into the adjacent province.
+### Should return 200 with IssuedAtTick = currentTick + 1.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/orders/move
+Content-Type: application/json
+
+{
+  "unitId": "{{unitId}}",
+  "targetProvinceId": "{{adjacentProvinceId}}"
+}
+
+### ----------------------------------------------------------------
+### 10. Order: build a Steel Mill at the capital.
+### Costs 1500 money + 100 steel + 50 manpower; takes 12 ticks.
+### Snapshot afterward to see resources debited.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/orders/build-building
+Content-Type: application/json
+
+{
+  "provinceId": "{{capitalProvinceId}}",
+  "buildingType": "SteelMill"
+}
+
+### ----------------------------------------------------------------
+### 11. Order: build 1000 Mech Infantry at the capital.
+### Costs 200 money + 100 steel + 100 manpower; takes 5 ticks.
+### Requires a Recruitment Center (which the capital starts with).
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/orders/build-unit
+Content-Type: application/json
+
+{
+  "provinceId": "{{capitalProvinceId}}",
+  "unitType": "MechInfantry",
+  "quantity": 1000
+}
+
+### ----------------------------------------------------------------
+### 12. Order: build a Stealth Bomber — should FAIL with 409 Conflict
+### because starter electronics (500) is below the cost (1200).
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/orders/build-unit
+Content-Type: application/json
+
+{
+  "provinceId": "{{capitalProvinceId}}",
+  "unitType": "StealthBomber",
+  "quantity": 1000
+}
+
+### ----------------------------------------------------------------
+### 13. Order: move to a non-adjacent province (the capital itself)
+### — should FAIL with 400 Bad Request.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/worlds/{{worldId}}/orders/move
+Content-Type: application/json
+
+{
+  "unitId": "{{unitId}}",
+  "targetProvinceId": "{{capitalProvinceId}}"
+}
+
+### ----------------------------------------------------------------
+### 14. Snapshot again — confirm:
+###   - me.resources.money has dropped (build orders charged you)
+###   - me.resources.money is also growing tick-over-tick from production
+###     (capital MoneyPerTick is non-zero in the stub map)
+### ----------------------------------------------------------------
+
+GET {{host}}/api/worlds/{{worldId}}/snapshot
+
+### ----------------------------------------------------------------
+### 15. Log out.
+### ----------------------------------------------------------------
+
+POST {{host}}/api/auth/logout

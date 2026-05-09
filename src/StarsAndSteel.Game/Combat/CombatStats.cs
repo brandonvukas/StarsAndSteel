@@ -1,0 +1,143 @@
+using StarsAndSteel.Core.Enums;
+
+namespace StarsAndSteel.Game.Combat;
+
+/// <summary>
+/// Per-unit-type combat parameters and the damage-tier interaction matrix from
+/// <c>docs/04-GAME-MECHANICS.md</c> §"Combat (combined arms)".
+/// <para/>
+/// Damage tiers (★ → ★★★) map to flat damage fractions of attacker effective
+/// strength applied to the target stack's Strength. The numbers below are the
+/// MVP balance pass; rebalance after playtests.
+/// <list type="bullet">
+///   <item>★ (low)        → 0.05 fraction</item>
+///   <item>★★ (medium)    → 0.10 fraction</item>
+///   <item>★★★ (devastating) → 0.20 fraction</item>
+///   <item>— (cannot engage) → 0</item>
+/// </list>
+/// <para/>
+/// Per-type "strength" is a multiplier on stack Strength when computing effective
+/// strength: a 1000-strong tank stack hits like a 1500 mech-infantry stack because
+/// MBT.UnitTypeStrength = 1.5. These numbers are deliberately compressed so the
+/// matrix dominates outcomes.
+/// </summary>
+public static class CombatStats
+{
+    /// <summary>Damage fraction applied when this attacker engages this target.</summary>
+    public static double DamageFraction(UnitType attacker, UnitType target) =>
+        Matrix.TryGetValue((attacker, target), out var t) ? TierToFraction(t) : 0.0;
+
+    private static double TierToFraction(int tier) => tier switch
+    {
+        1 => 0.05,
+        2 => 0.10,
+        3 => 0.20,
+        _ => 0.0,
+    };
+
+    /// <summary>
+    /// Per-type effective-strength multiplier (docs/04 formula term <c>unitTypeStrength</c>).
+    /// </summary>
+    public static double UnitTypeStrength(UnitType type) => type switch
+    {
+        UnitType.MechInfantry      => 1.0,
+        UnitType.NationalGuard     => 0.7,
+        UnitType.SpecialForces     => 1.4,
+        UnitType.MainBattleTank    => 1.5,
+        UnitType.MobileArtillery   => 1.3,
+        UnitType.AABattery         => 0.6, // weak in ground combat; matrix shows it can't engage ground
+        UnitType.ReconDrone        => 0.2,
+        UnitType.CombatDrone       => 1.0,
+        UnitType.AttackHelicopter  => 1.4,
+        UnitType.MultiroleFighter  => 1.6,
+        UnitType.StrategicBomber   => 1.8,
+        UnitType.StealthBomber     => 2.2,
+        _ => 1.0,
+    };
+
+    /// <summary>
+    /// docs/04 matrix as (attacker, target) → tier (1=★, 2=★★, 3=★★★). Missing entry = "—" = 0 dmg.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<(UnitType Attacker, UnitType Target), int> Matrix = Build();
+
+    private static IReadOnlyDictionary<(UnitType, UnitType), int> Build()
+    {
+        var m = new Dictionary<(UnitType, UnitType), int>();
+
+        // The matrix in docs/04 is keyed off the five MVP units (MechInf, MBT, Art, AA, Drone,
+        // Fighter, Helo, Bomber). NationalGuard and SpecialForces aren't tabled there because
+        // they're Phase 2; for Phase 1I we treat them as MechInf-class targets and attackers,
+        // which keeps the catalogue exhaustive and avoids "0 damage to NG stack" surprises.
+        var infantryClass = new[] { UnitType.MechInfantry, UnitType.NationalGuard, UnitType.SpecialForces };
+        var bomberClass = new[] { UnitType.StrategicBomber, UnitType.StealthBomber };
+
+        // Helper: add (a, t) → tier for every a in attackers and every t in targets.
+        void Add(IEnumerable<UnitType> attackers, IEnumerable<UnitType> targets, int tier)
+        {
+            foreach (var a in attackers)
+                foreach (var t in targets)
+                    m[(a, t)] = tier;
+        }
+
+        // MechInf-class →
+        Add(infantryClass, infantryClass,             2);
+        Add(infantryClass, new[] { UnitType.MainBattleTank }, 1);
+        Add(infantryClass, new[] { UnitType.MobileArtillery }, 1);
+        Add(infantryClass, new[] { UnitType.AABattery },     2);
+        // MBT →
+        Add(new[] { UnitType.MainBattleTank }, infantryClass,                3);
+        Add(new[] { UnitType.MainBattleTank }, new[] { UnitType.MainBattleTank },   3);
+        Add(new[] { UnitType.MainBattleTank }, new[] { UnitType.MobileArtillery },  2);
+        Add(new[] { UnitType.MainBattleTank }, new[] { UnitType.AABattery },        2);
+        // Artillery →
+        Add(new[] { UnitType.MobileArtillery }, infantryClass,                3);
+        Add(new[] { UnitType.MobileArtillery }, new[] { UnitType.MainBattleTank },   2);
+        Add(new[] { UnitType.MobileArtillery }, new[] { UnitType.MobileArtillery },  1);
+        Add(new[] { UnitType.MobileArtillery }, new[] { UnitType.AABattery },        3);
+        // AA → (only air targets)
+        Add(new[] { UnitType.AABattery }, new[] { UnitType.ReconDrone },       3);
+        Add(new[] { UnitType.AABattery }, new[] { UnitType.CombatDrone },      3);
+        Add(new[] { UnitType.AABattery }, new[] { UnitType.AttackHelicopter }, 3);
+        Add(new[] { UnitType.AABattery }, new[] { UnitType.MultiroleFighter }, 2);
+        Add(new[] { UnitType.AABattery }, bomberClass,                          3);
+        // CombatDrone →  (matrix row "Drone")
+        Add(new[] { UnitType.CombatDrone }, infantryClass,                2);
+        Add(new[] { UnitType.CombatDrone }, new[] { UnitType.MainBattleTank },   2);
+        Add(new[] { UnitType.CombatDrone }, new[] { UnitType.MobileArtillery },  3);
+        Add(new[] { UnitType.CombatDrone }, new[] { UnitType.AABattery },        1);
+        // Fighter → (only air targets)
+        Add(new[] { UnitType.MultiroleFighter }, new[] { UnitType.ReconDrone },       3);
+        Add(new[] { UnitType.MultiroleFighter }, new[] { UnitType.CombatDrone },      3);
+        Add(new[] { UnitType.MultiroleFighter }, new[] { UnitType.AttackHelicopter }, 3);
+        Add(new[] { UnitType.MultiroleFighter }, new[] { UnitType.MultiroleFighter }, 3);
+        Add(new[] { UnitType.MultiroleFighter }, bomberClass,                          3);
+        // Helo →
+        Add(new[] { UnitType.AttackHelicopter }, infantryClass,                3);
+        Add(new[] { UnitType.AttackHelicopter }, new[] { UnitType.MainBattleTank },   3);
+        Add(new[] { UnitType.AttackHelicopter }, new[] { UnitType.MobileArtillery },  2);
+        Add(new[] { UnitType.AttackHelicopter }, new[] { UnitType.AABattery },        1);
+        // Bomber →
+        Add(bomberClass, infantryClass,                3);
+        Add(bomberClass, new[] { UnitType.MainBattleTank },   3);
+        Add(bomberClass, new[] { UnitType.MobileArtillery },  3);
+        Add(bomberClass, new[] { UnitType.AABattery },        2);
+
+        return m;
+    }
+
+    /// <summary>True if this unit type is part of the "anti-air screen" for the combined-arms bonus.</summary>
+    public static bool IsAntiAir(UnitType t) => t == UnitType.AABattery;
+
+    /// <summary>True if this unit type counts as ground for combined-arms bonus.</summary>
+    public static bool IsGround(UnitType t) =>
+        t is UnitType.MechInfantry or UnitType.NationalGuard or UnitType.SpecialForces
+          or UnitType.MainBattleTank or UnitType.MobileArtillery;
+
+    /// <summary>True if this unit type counts as air for combined-arms bonus.</summary>
+    public static bool IsAir(UnitType t) =>
+        t is UnitType.ReconDrone or UnitType.CombatDrone or UnitType.AttackHelicopter
+          or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber;
+
+    /// <summary>Stealth-bomber bypass-AA roll target (60% bypass). Phase 1: no research bonus.</summary>
+    public const double StealthBypassChance = 0.60;
+}
