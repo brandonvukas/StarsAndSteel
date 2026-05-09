@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using StarsAndSteel.Api.Auth;
 using StarsAndSteel.Api.BackgroundServices;
+using StarsAndSteel.Api.Hubs;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Data;
 using StarsAndSteel.Game.Snapshots;
@@ -180,6 +181,14 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+// SignalR (docs/06 §"GameHub"). Built-in to ASP.NET Core; no extra package.
+// JSON serializer settings match the controllers' default (System.Text.Json,
+// camelCase, enum-as-string handled per-DTO via record properties typed as
+// enums — System.Text.Json serializes them as numbers, but the wire DTOs in
+// Hubs/Dtos use enum types deliberately so SignalR's MessagePack option is
+// available later without a DTO rewrite).
+builder.Services.AddSignalR();
+
 // --- Game tick (docs/07) -------------------------------------------------
 // TickProcessor itself is pure and stateless beyond the steps it composes;
 // register as singleton so we don't pay a constructor every second.
@@ -205,6 +214,10 @@ builder.Services.AddSingleton<SnapshotService>();
 // + entity constructor; the controller does the loading + persistence.
 builder.Services.AddSingleton<StarsAndSteel.Game.Orders.OrderService>();
 
+// SignalR broadcast wrapper. Singleton because IHubContext<T> is itself a
+// singleton — the wrapper holds no per-request state.
+builder.Services.AddSingleton<TickBroadcaster>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -220,6 +233,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<GameHub>(GameHub.Path);
 
 app.Run();
 

@@ -192,7 +192,30 @@ Content-Type: application/json
 GET {{host}}/api/worlds/{{worldId}}/snapshot
 
 ### ----------------------------------------------------------------
-### 15. Log out.
+### 15. SignalR hub: live tick events.
+### Not invokable from a .http file (it's a WebSocket / long-poll
+### protocol), but here's what a client does:
+###
+###   const conn = new HubConnectionBuilder()
+###     .withUrl("/hubs/game", {
+###       accessTokenFactory: () => loginResponse.accessToken
+###     })
+###     .build();
+###   conn.on("UnitMoved",         e => store.applyUnitMoved(e));
+###   conn.on("CombatResolved",    e => store.applyCombat(e));
+###   conn.on("BuildingCompleted", e => store.applyBuilt(e));
+###   conn.on("TickAdvanced",      e => store.commit(e.tick));   // barrier
+###   await conn.start();
+###   await conn.invoke("JoinWorld", worldId);
+###
+### Auth: pass the JWT from /api/auth/login as access_token query
+### param. JoinWorld throws if you are not a Player in the world.
+### See StarsAndSteel.Api/Hubs/Dtos/TickEventDtos.cs for all events
+### and their payloads.
+### ----------------------------------------------------------------
+
+### ----------------------------------------------------------------
+### 16. Log out.
 ### ----------------------------------------------------------------
 
 POST {{host}}/api/auth/logout

@@ -12,8 +12,8 @@ namespace StarsAndSteel.Api.BackgroundServices;
 /// somehow takes longer than the interval, the next iteration sees the world
 /// as "due" again but skips it because the previous one still holds the lock.
 ///
-/// SignalR broadcast is deliberately deferred to a future commit (Phase 1F+).
-/// For now we just log the result so you can watch ticks in the API console.
+/// SignalR broadcast is handled inside <see cref="TickRunner"/> after the DB
+/// save commits, so this service only schedules and logs.
 /// </summary>
 public sealed class GameTickService : BackgroundService
 {
@@ -148,7 +148,7 @@ public sealed class GameTickService : BackgroundService
                     result.Tick, worldId, sw.ElapsedMilliseconds, result.Events.Count);
             }
 
-            // TODO Phase 1F+: broadcast result.Events via the GameHub.
+            // Broadcast happens inside TickRunner.RunAsync after the DB save commits.
         }
         catch (Exception ex)
         {

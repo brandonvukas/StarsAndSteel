@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using StarsAndSteel.Api.Hubs;
 using StarsAndSteel.Core.Enums;
 using StarsAndSteel.Data;
 using StarsAndSteel.Game.Tick;
@@ -15,17 +16,20 @@ public sealed class TickRunner
 {
     private readonly StarsAndSteelDbContext _db;
     private readonly TickProcessor _processor;
+    private readonly TickBroadcaster _broadcaster;
     private readonly TimeProvider _clock;
     private readonly ILogger<TickRunner> _logger;
 
     public TickRunner(
         StarsAndSteelDbContext db,
         TickProcessor processor,
+        TickBroadcaster broadcaster,
         TimeProvider clock,
         ILogger<TickRunner> logger)
     {
         _db = db;
         _processor = processor;
+        _broadcaster = broadcaster;
         _clock = clock;
         _logger = logger;
     }
@@ -144,6 +148,11 @@ public sealed class TickRunner
                 result.Tick, worldId);
             return null;
         }
+
+        // Broadcast AFTER save commits — clients must never observe a state
+        // the database doesn't also hold. Failures inside the broadcaster are
+        // swallowed there per-event, so a flaky subscriber can't undo a tick.
+        await _broadcaster.BroadcastAsync(worldId, result, cancellationToken);
 
         return result;
     }
