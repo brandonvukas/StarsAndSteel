@@ -3,9 +3,11 @@ namespace StarsAndSteel.Api.Worlds.Dtos;
 /// <summary>
 /// Request body for <c>POST /api/worlds</c>. <see cref="MapSeed"/> is optional;
 /// when null the server picks a random seed and returns it on the response so
-/// the client can reproduce the world if desired.
+/// the client can reproduce the world if desired. <see cref="AiOpponentCount"/>
+/// is optional (default 0); MVP supports 0 or 1, where 1 seats a Hawk AI per
+/// <c>docs/09-AI-OPPONENTS.md</c>.
 /// </summary>
-public sealed record CreateWorldRequest(string Name, int? MapSeed);
+public sealed record CreateWorldRequest(string Name, int? MapSeed, int? AiOpponentCount = null);
 
 /// <summary>
 /// Request body for <c>POST /api/worlds/{id}/join</c>. The flag colors are

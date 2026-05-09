@@ -55,6 +55,9 @@ GET {{host}}/api/worlds
 ### ----------------------------------------------------------------
 ### 5. Create a world. Note the {{$guid}} variable for a unique name.
 ### Copy the "id" from the response into the @worldId variable below.
+### `aiOpponentCount` is optional (default 0); set to 1 to seat a Hawk
+### AI at world creation. The world stays in Lobby until you join below
+### so the AI never ticks alone.
 ### ----------------------------------------------------------------
 
 POST {{host}}/api/worlds
@@ -62,7 +65,8 @@ Content-Type: application/json
 
 {
   "name": "Test World {{$randomInt 1000 9999}}",
-  "mapSeed": 42
+  "mapSeed": 42,
+  "aiOpponentCount": 1
 }
 
 ### ----------------------------------------------------------------

@@ -113,9 +113,10 @@ public sealed class WorldsController : ControllerBase
         // to be cryptographic, and the per-world LCG is what actually drives the
         // game RNG (seeded from this value below).
         var seed = request.MapSeed ?? Random.Shared.Next();
+        var aiOpponentCount = request.AiOpponentCount ?? 0;
 
         var map = MapSeeder.Load();
-        var built = _worldFactory.Build(request.Name, seed, map);
+        var built = _worldFactory.Build(request.Name, seed, map, aiOpponentCount);
 
         await using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
 
@@ -126,9 +127,9 @@ public sealed class WorldsController : ControllerBase
         await tx.CommitAsync(cancellationToken);
 
         _logger.LogInformation(
-            "World created: {WorldId} '{Name}' seed={Seed} provinces={ProvinceCount} adjacencies={AdjacencyCount}",
+            "World created: {WorldId} '{Name}' seed={Seed} provinces={ProvinceCount} adjacencies={AdjacencyCount} ai={AiOpponentCount}",
             built.World.Id, built.World.Name, seed,
-            built.World.Provinces.Count, built.Adjacencies.Count);
+            built.World.Provinces.Count, built.Adjacencies.Count, aiOpponentCount);
 
         var summary = new WorldSummary(
             built.World.Id,
@@ -137,7 +138,7 @@ public sealed class WorldsController : ControllerBase
             built.World.CurrentTick,
             built.World.TickIntervalSeconds,
             built.World.MapSeed,
-            PlayerCount: 0,
+            PlayerCount: built.World.Players.Count,
             ProvinceCount: built.World.Provinces.Count,
             built.World.CreatedAt,
             built.World.StartedAt);

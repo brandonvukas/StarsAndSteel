@@ -14,6 +14,11 @@ public sealed class CreateWorldRequestValidator : AbstractValidator<CreateWorldR
             .MaximumLength(100)
             .Matches(@"^[\w\s\-\.\']+$")
                 .WithMessage("Name may only contain letters, digits, spaces, hyphens, periods, and apostrophes.");
+
+        RuleFor(x => x.AiOpponentCount)
+            .InclusiveBetween(0, 1)
+                .WithMessage("AiOpponentCount must be 0 or 1 in MVP.")
+            .When(x => x.AiOpponentCount.HasValue);
     }
 }
 

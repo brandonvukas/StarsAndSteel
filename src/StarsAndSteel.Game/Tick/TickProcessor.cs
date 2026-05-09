@@ -29,12 +29,13 @@ public sealed class TickProcessor
     }
 
     /// <summary>
-    /// Default constructor — registers the canonical Phase 1I step list in docs/07 order:
-    /// Production → Movement → AirStrike → Combat → Construction. AI / Attrition /
-    /// Cyber / Event / News steps land in later phases.
+    /// Default constructor — registers the canonical Phase 1L step list in docs/07 order:
+    /// AiTurn → Production → Movement → AirStrike → Combat → Construction. Attrition / Cyber /
+    /// Event / News steps land in later phases.
     /// </summary>
     public TickProcessor() : this(new ITickStep[]
     {
+        new AiTurnStep(),
         new ResourceProductionStep(),
         new MovementStep(),
         new AirStrikeStep(),

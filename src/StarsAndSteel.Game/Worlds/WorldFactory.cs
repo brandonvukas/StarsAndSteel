@@ -40,10 +40,21 @@ public sealed class WorldFactory
     /// first tick's RNG is deterministic from this single value.
     /// </param>
     /// <param name="map">Pure data loaded from <c>shared/map-data.json</c>.</param>
-    public WorldBuildResult Build(string name, int seed, MapSeedData map)
+    /// <param name="aiOpponentCount">
+    /// Number of AI opponents to auto-seat at world creation. MVP supports 0 or 1; the
+    /// single AI is a Hawk per <c>docs/09-AI-OPPONENTS.md</c>. The world stays in Lobby
+    /// (the tick service does not process it) until a human joins via
+    /// <see cref="WorldJoinService"/>; this prevents AI-only worlds from ticking forever.
+    /// </param>
+    public WorldBuildResult Build(string name, int seed, MapSeedData map, int aiOpponentCount = 0)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentNullException.ThrowIfNull(map);
+        if (aiOpponentCount < 0 || aiOpponentCount > 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(aiOpponentCount),
+                aiOpponentCount, "MVP supports 0 or 1 AI opponents per world.");
+        }
 
         var nowUtc = _clock.GetUtcNow().UtcDateTime;
 
@@ -122,7 +133,48 @@ public sealed class WorldFactory
             });
         }
 
-        return new WorldBuildResult(world, adjacencies);
+        var result = new WorldBuildResult(world, adjacencies);
+        if (aiOpponentCount > 0)
+        {
+            SeatHawkAi(world);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Seat a single Hawk AI opponent. Pure mutation on the in-memory graph; uses
+    /// <see cref="PlayerSpawner"/> so it gets the same starter package + buildings + units
+    /// as a human. Does not flip world status: the tick loop will not pick this world up
+    /// until a human joins. See <c>docs/09-AI-OPPONENTS.md</c> §"Hawk".
+    /// </summary>
+    internal static void SeatHawkAi(GameWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+
+        var ai = new Player
+        {
+            Id = Guid.NewGuid(),
+            UserId = null,
+            GameWorldId = world.Id,
+            GameWorld = world,
+            IsAi = true,
+            AiPersonality = AiPersonality.Hawk,
+            // Canned identity for MVP. A future personality factory can vary these.
+            NationName = "Iron Coalition",
+            FlagPrimaryHex = "#7a0c0c",
+            FlagSecondaryHex = "#1c1c1c",
+        };
+        ai.AiMemory = new AiMemory
+        {
+            PlayerId = ai.Id,
+            Player = ai,
+            MemoryJson = "{}",
+        };
+
+        // Spawn returns null only if no provinces are free; on an empty fresh world this
+        // can't happen, but we still tolerate it (no-op) rather than throw — caller can
+        // observe by checking world.Players for an AI seat.
+        _ = PlayerSpawner.Spawn(world, ai);
     }
 }
 
