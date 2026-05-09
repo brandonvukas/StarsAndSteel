@@ -7,7 +7,7 @@ import { HubEvents } from '../types/api';
 import type {
   TickAdvanced, ResourcesUpdated, UnitMoved, UnitDestroyed,
   ProvinceCaptured, BuildingCompleted, UnitBuilt,
-  CombatResolved, AirStrikeResolved,
+  CombatResolved, AirStrikeResolved, NewsPublished,
 } from '../types/api';
 
 export interface HubHandlers {
@@ -20,6 +20,7 @@ export interface HubHandlers {
   onUnitBuilt?: (e: UnitBuilt) => void;
   onCombatResolved?: (e: CombatResolved) => void;
   onAirStrikeResolved?: (e: AirStrikeResolved) => void;
+  onNewsPublished?: (e: NewsPublished) => void;
   /** Fired after the connection drops and the server snapshot may be stale. */
   onReconnected?: () => void;
 }
@@ -81,6 +82,7 @@ export class GameHubClient {
     if (h.onUnitBuilt)          c.on(HubEvents.UnitBuilt, h.onUnitBuilt);
     if (h.onCombatResolved)     c.on(HubEvents.CombatResolved, h.onCombatResolved);
     if (h.onAirStrikeResolved)  c.on(HubEvents.AirStrikeResolved, h.onAirStrikeResolved);
+    if (h.onNewsPublished)      c.on(HubEvents.NewsPublished, h.onNewsPublished);
 
     if (h.onReconnected) c.onreconnected(h.onReconnected);
   }

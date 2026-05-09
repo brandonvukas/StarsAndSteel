@@ -209,6 +209,30 @@ export interface AirStrikeResolved {
   defenderStrengthLoss: number;
 }
 
+// ---- News (mirrors NewsItemDto + NewsPublished hub event) ---------------
+// Severity/Category are serialized as their server-side string names because
+// the API uses the string-enum JSON converter (per docs/02). Kept open as
+// `string` so adding a new value server-side doesn't break the client build.
+export interface NewsItem {
+  id: string;
+  tick: number;
+  headline: string;
+  body: string;
+  severity: string; // 'Info' | 'Notable' | 'Breaking'
+  category: string; // 'Combat' | 'Politics' | 'Economy' | ...
+  relatedPlayerId: string | null;
+}
+
+export interface NewsPublished {
+  tick: number;
+  newsItemId: string;
+  headline: string;
+  body: string;
+  severity: string;
+  category: string;
+  relatedPlayerId: string | null;
+}
+
 // ---- Server-to-client method names (must match TickEventNames.cs) -------
 export const HubEvents = {
   TickAdvanced: 'TickAdvanced',
@@ -220,4 +244,5 @@ export const HubEvents = {
   ProvinceCaptured: 'ProvinceCaptured',
   UnitBuilt: 'UnitBuilt',
   BuildingCompleted: 'BuildingCompleted',
+  NewsPublished: 'NewsPublished',
 } as const;

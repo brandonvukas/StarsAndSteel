@@ -134,6 +134,9 @@ public sealed class TickRunner
             _db.Units.RemoveRange(toDelete);
         }
 
+        if (result.NewsItemsToInsert is { Count: > 0 } newsToInsert)
+            _db.NewsItems.AddRange(newsToInsert);
+
         try
         {
             await _db.SaveChangesAsync(cancellationToken);

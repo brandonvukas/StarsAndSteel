@@ -108,6 +108,12 @@ public sealed class TickBroadcaster
                 e.Tick, e.BuildingId, e.OwnerPlayerId, e.ProvinceId, e.Type, e.Level),
             ct),
 
+        NewsPublishedEvent e => group.SendAsync(
+            TickEventNames.NewsPublished,
+            new TickEventDtos.NewsPublished(
+                e.Tick, e.NewsItemId, e.Headline, e.Body, e.Severity, e.Category, e.RelatedPlayerId),
+            ct),
+
         // Unknown event types are logged at the call site after this returns.
         _ => Task.CompletedTask,
     };

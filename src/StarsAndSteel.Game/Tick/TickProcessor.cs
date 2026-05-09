@@ -29,9 +29,10 @@ public sealed class TickProcessor
     }
 
     /// <summary>
-    /// Default constructor — registers the canonical Phase 1L step list in docs/07 order:
-    /// AiTurn → Production → Movement → AirStrike → Combat → Construction. Attrition / Cyber /
-    /// Event / News steps land in later phases.
+    /// Default constructor — registers the canonical Phase 1M step list in docs/07 order:
+    /// AiTurn → Production → Movement → AirStrike → Combat → Construction → News.
+    /// Attrition / Cyber / Event / Victory steps land in later phases. News must run last
+    /// among the gameplay steps so it can headline outcomes the others emitted.
     /// </summary>
     public TickProcessor() : this(new ITickStep[]
     {
@@ -41,6 +42,7 @@ public sealed class TickProcessor
         new AirStrikeStep(),
         new CombatStep(),
         new ConstructionStep(),
+        new NewsStep(),
     })
     {
     }
@@ -113,6 +115,7 @@ public sealed class TickProcessor
             context.Events.ToArray(),
             UnitsToInsert: context.UnitsToInsert.ToArray(),
             BuildingsToInsert: context.BuildingsToInsert.ToArray(),
-            UnitsToDelete: context.UnitsToDelete.ToArray());
+            UnitsToDelete: context.UnitsToDelete.ToArray(),
+            NewsItemsToInsert: context.NewsItemsToInsert.ToArray());
     }
 }

@@ -5,9 +5,9 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MapScene } from '../scenes/MapScene';
 import { GameHubClient } from '../api/hub';
-import { getSnapshot } from '../api/rest';
+import { getSnapshot, getNews } from '../api/rest';
 import {
-  $auth, setWorld, patchWorld, bumpTick,
+  $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
 } from '../store/store';
 import {
   applyResourcesUpdated, applyUnitMoved, applyUnitDestroyed,
@@ -15,6 +15,7 @@ import {
 } from '../diff/applyDiffs';
 import { mountResourceBar } from './resourceBar';
 import { mountProvincePanel } from './provincePanel';
+import { mountNewsTicker } from './newsTicker';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -22,11 +23,20 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     <div id="game-body">
       <div id="phaser-host"></div>
       <aside id="side-panel"></aside>
-    </div>`;
+    </div>
+    <div id="news-ticker"></div>`;
 
   // 1. Hydrate from REST snapshot first so the map has data to paint.
   const snapshot = await getSnapshot(worldId);
   setWorld(snapshot);
+
+  // 1b. Backfill any prior headlines so the ticker isn't empty on join.
+  try {
+    const news = await getNews(worldId, 0);
+    setNews(news);
+  } catch {
+    // News history is best-effort; failure here mustn't block the screen.
+  }
 
   // 2. Boot Phaser into the dedicated host.
   new Phaser.Game({
@@ -38,9 +48,10 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     scene: [BootScene, MapScene],
   });
 
-  // 3. Mount HUD overlays. Both subscribe to the store and update on diffs.
+  // 3. Mount HUD overlays. All three subscribe to the store and update on diffs.
   mountResourceBar(host.querySelector('#resource-bar')!);
   mountProvincePanel(host.querySelector('#side-panel')!);
+  mountNewsTicker(host.querySelector('#news-ticker')!);
 
   // 4. Connect SignalR. Diff handlers patch the store; on reconnect we
   //    re-snapshot per docs/06 because we may have missed events.
@@ -53,6 +64,15 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
       onProvinceCaptured:  e => patchWorld(w => applyProvinceCaptured(w, e)),
       onBuildingCompleted: e => patchWorld(w => applyBuildingCompleted(w, e)),
       onUnitBuilt:         e => patchWorld(w => applyUnitBuilt(w, e)),
+      onNewsPublished:     e => pushNews({
+        id: e.newsItemId,
+        tick: e.tick,
+        headline: e.headline,
+        body: e.body,
+        severity: e.severity,
+        category: e.category,
+        relatedPlayerId: e.relatedPlayerId,
+      }),
       onTickAdvanced:      e => {
         bumpTick(e.tick);
         // Reflect tick into world snapshot for the resource bar's "tick N" cell.
@@ -61,6 +81,13 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
       onReconnected: async () => {
         const fresh = await getSnapshot(worldId);
         setWorld(fresh);
+        // Backfill news we missed during the disconnect.
+        try {
+          const news = await getNews(worldId, 0);
+          setNews(news);
+        } catch {
+          // Best-effort.
+        }
       },
     },
   );

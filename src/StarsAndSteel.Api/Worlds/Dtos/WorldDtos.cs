@@ -1,3 +1,5 @@
+using StarsAndSteel.Core.Enums;
+
 namespace StarsAndSteel.Api.Worlds.Dtos;
 
 /// <summary>
@@ -52,3 +54,18 @@ public sealed record JoinWorldResponse(
     long Electronics,
     long Food,
     long Manpower);
+
+/// <summary>
+/// Wire shape for one persisted news headline. Returned by
+/// <c>GET /api/worlds/{id}/news?since={tick}</c> so a reconnecting client can
+/// backfill the ticker without losing prior headlines. Mirrors the SignalR
+/// <c>NewsPublished</c> payload plus the original tick stamp.
+/// </summary>
+public sealed record NewsItemDto(
+    Guid Id,
+    int Tick,
+    string Headline,
+    string Body,
+    NewsSeverity Severity,
+    NewsCategory Category,
+    Guid? RelatedPlayerId);

@@ -12,7 +12,7 @@
 // (api/diffs.ts) and UI controllers don't have to know nanostores' API.
 
 import { atom, computed } from 'nanostores';
-import type { AuthResponse, WorldSnapshot, SnapshotProvince } from '../types/api';
+import type { AuthResponse, WorldSnapshot, SnapshotProvince, NewsItem } from '../types/api';
 
 export interface DraftOrder {
   kind: 'move' | 'build-unit' | 'build-building';
@@ -33,6 +33,12 @@ export const $world = atom<WorldSnapshot | null>(null);
 export const $selectedProvinceId = atom<string | null>(null);
 export const $draftOrder = atom<DraftOrder | null>(null);
 export const $tick = atom<number>(0);
+
+// Bounded ring of cable-news headlines. Newest-first so the ticker UI just
+// renders [0..n]. We keep at most NEWS_CAP entries to bound memory; the REST
+// endpoint can re-backfill if the user wants history.
+export const NEWS_CAP = 50;
+export const $news = atom<NewsItem[]>([]);
 
 // Derived: the SnapshotProvince row currently selected, if any.
 export const $selectedProvince = computed(
@@ -63,6 +69,7 @@ export function setAuth(auth: AuthResponse | null) {
     $world.set(null);
     $selectedProvinceId.set(null);
     $draftOrder.set(null);
+    $news.set([]);
   }
 }
 
@@ -89,6 +96,23 @@ export function setDraftOrder(draft: DraftOrder | null) {
 
 export function bumpTick(tick: number) {
   $tick.set(tick);
+}
+
+/** Push a new headline to the front of the news ring, deduping by id and capping length. */
+export function pushNews(item: NewsItem) {
+  const cur = $news.get();
+  if (cur.some(n => n.id === item.id)) return;
+  const next = [item, ...cur];
+  if (next.length > NEWS_CAP) next.length = NEWS_CAP;
+  $news.set(next);
+}
+
+/** Replace the news ring (used on snapshot load / hub reconnect backfill). */
+export function setNews(items: NewsItem[]) {
+  // Server returns ascending by tick; ticker wants newest-first.
+  const sorted = items.slice().sort((a, b) => b.tick - a.tick);
+  if (sorted.length > NEWS_CAP) sorted.length = NEWS_CAP;
+  $news.set(sorted);
 }
 
 // Convenience: locate a province row by id without going through the store.

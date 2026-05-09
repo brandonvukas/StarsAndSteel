@@ -18,4 +18,5 @@ public sealed record TickResult(
     IReadOnlyList<TickEvent> Events,
     IReadOnlyList<Unit>? UnitsToInsert = null,
     IReadOnlyList<Building>? BuildingsToInsert = null,
-    IReadOnlyList<Unit>? UnitsToDelete = null);
+    IReadOnlyList<Unit>? UnitsToDelete = null,
+    IReadOnlyList<NewsItem>? NewsItemsToInsert = null);

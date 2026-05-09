@@ -113,6 +113,34 @@ a, a:visited { color: #ffd166; }
 .province-panel .order-form .status { font-size: 12px; min-height: 16px; }
 .province-panel .hint, .lobby .hint, .login-card .hint { opacity: 0.6; font-style: italic; }
 
+/* ---- News ticker ---------------------------------------------------- */
+.news-ticker {
+  background: #0f0f1a;
+  border-top: 1px solid #2d2d44;
+  padding: 6px 12px;
+  max-height: 132px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+.news-ticker .news-empty { opacity: 0.5; font-style: italic; }
+.news-ticker .news-list { list-style: none; padding: 0; margin: 0; }
+.news-item {
+  display: grid;
+  grid-template-columns: 44px 80px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 4px;
+  border-bottom: 1px dashed #232336;
+}
+.news-item:last-child { border-bottom: none; }
+.news-tick { opacity: 0.55; font-variant-numeric: tabular-nums; }
+.news-sev { font-weight: 700; letter-spacing: 0.5px; font-size: 10px; }
+.news-headline { color: #e6e6f0; }
+.news-breaking .news-sev { color: #ff6b6b; }
+.news-breaking .news-headline { color: #ffdada; }
+.news-notable  .news-sev { color: #ffb84d; }
+.news-info     .news-sev { color: #88a4ff; opacity: 0.85; }
+
 /* ---- Error screen --------------------------------------------------- */
 .error-screen {
   margin: 60px auto; max-width: 600px; padding: 24px;

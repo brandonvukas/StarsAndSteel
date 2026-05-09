@@ -3,7 +3,7 @@
 // don't have to attach anything except for routes that explicitly require JSON.
 
 import type {
-  AuthResponse, WorldSummary, WorldSnapshot,
+  AuthResponse, WorldSummary, WorldSnapshot, NewsItem,
   MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
 } from '../types/api';
 
@@ -62,6 +62,11 @@ export const joinWorld = (worldId: string, nationName: string,
 
 export const getSnapshot = (worldId: string) =>
   call<WorldSnapshot>('GET', `/api/worlds/${worldId}/snapshot`);
+
+// Reconnect backfill: fetch headlines newer than `since` (default 0 = all,
+// capped at 200 server-side). Used by the news ticker after a hub reconnect.
+export const getNews = (worldId: string, since = 0) =>
+  call<NewsItem[]>('GET', `/api/worlds/${worldId}/news?since=${since}`);
 
 // ---- Orders --------------------------------------------------------------
 export const orderMove = (worldId: string, req: MoveOrderRequest) =>

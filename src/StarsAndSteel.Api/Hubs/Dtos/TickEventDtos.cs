@@ -85,6 +85,15 @@ public static class TickEventDtos
         Guid ProvinceId,
         BuildingType Type,
         int Level);
+
+    public sealed record NewsPublished(
+        int Tick,
+        Guid NewsItemId,
+        string Headline,
+        string Body,
+        NewsSeverity Severity,
+        NewsCategory Category,
+        Guid? RelatedPlayerId);
 }
 
 /// <summary>
@@ -102,4 +111,5 @@ public static class TickEventNames
     public const string ProvinceCaptured = "ProvinceCaptured";
     public const string UnitBuilt = "UnitBuilt";
     public const string BuildingCompleted = "BuildingCompleted";
+    public const string NewsPublished = "NewsPublished";
 }

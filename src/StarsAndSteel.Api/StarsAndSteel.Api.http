@@ -208,6 +208,7 @@ GET {{host}}/api/worlds/{{worldId}}/snapshot
 ###   conn.on("UnitMoved",         e => store.applyUnitMoved(e));
 ###   conn.on("CombatResolved",    e => store.applyCombat(e));
 ###   conn.on("BuildingCompleted", e => store.applyBuilt(e));
+###   conn.on("NewsPublished",     e => store.pushNews(e));
 ###   conn.on("TickAdvanced",      e => store.commit(e.tick));   // barrier
 ###   await conn.start();
 ###   await conn.invoke("JoinWorld", worldId);
@@ -219,7 +220,17 @@ GET {{host}}/api/worlds/{{worldId}}/snapshot
 ### ----------------------------------------------------------------
 
 ### ----------------------------------------------------------------
-### 16. Log out.
+### 16. News backfill — return persisted headlines newer than `since`.
+### Used by the client on SignalR reconnect so the ticker doesn't lose
+### entries that arrived during the disconnect. Capped at 200 rows.
+### Try since=0 to dump everything; bump it to skip what you've already seen.
+### Returns 403 if you haven't joined the world; 404 if it doesn't exist.
+### ----------------------------------------------------------------
+
+GET {{host}}/api/worlds/{{worldId}}/news?since=0
+
+### ----------------------------------------------------------------
+### 17. Log out.
 ### ----------------------------------------------------------------
 
 POST {{host}}/api/auth/logout

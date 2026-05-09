@@ -324,6 +324,64 @@ public sealed class WorldsController : ControllerBase
         return Ok(snapshot);
     }
 
+    /// <summary>
+    /// Returns persisted news headlines for this world with <c>Tick &gt; since</c>,
+    /// ordered ascending. Used by the client on SignalR reconnect to backfill any
+    /// <c>NewsPublished</c> hub events it missed while disconnected (per
+    /// <c>docs/06-BACKEND-API.md</c>). Read-only — no lock.
+    /// <para/>
+    /// 404 if the world doesn't exist; 403 if the caller isn't a player. Capped at
+    /// 200 rows to bound the response — older history is still in the DB but a
+    /// reconnect doesn't need it.
+    /// </summary>
+    [HttpGet("{id:guid}/news")]
+    public async Task<ActionResult<IEnumerable<NewsItemDto>>> News(
+        Guid id,
+        [FromQuery] int since = 0,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        // Cheap existence + membership check without loading the whole world graph.
+        var membership = await _db.GameWorlds
+            .AsNoTracking()
+            .Where(w => w.Id == id)
+            .Select(w => new { Exists = true, IsMember = w.Players.Any(p => p.UserId == user.Id) })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (membership is null)
+        {
+            return NotFound();
+        }
+
+        if (!membership.IsMember)
+        {
+            return Forbid();
+        }
+
+        var rows = await _db.NewsItems
+            .AsNoTracking()
+            .Where(n => n.GameWorldId == id && n.Tick > since)
+            .OrderBy(n => n.Tick)
+            .ThenBy(n => n.Id)
+            .Take(200)
+            .Select(n => new NewsItemDto(
+                n.Id,
+                n.Tick,
+                n.Headline,
+                n.Body,
+                n.Severity,
+                n.Category,
+                n.RelatedPlayerId))
+            .ToListAsync(cancellationToken);
+
+        return Ok(rows);
+    }
+
     private static ModelStateDictionary BuildModelState(IEnumerable<FluentValidation.Results.ValidationFailure> failures)
     {
         var modelState = new ModelStateDictionary();

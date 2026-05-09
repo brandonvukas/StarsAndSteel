@@ -43,6 +43,7 @@ public sealed class TickContext
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
+        NewsItemsToInsert = new List<NewsItem>();
         Events = new List<TickEvent>();
     }
 
@@ -102,6 +103,13 @@ public sealed class TickContext
     /// them from EF post-process.
     /// </summary>
     public IList<Unit> UnitsToDelete { get; }
+
+    /// <summary>
+    /// News headlines emitted this tick by <see cref="Steps.NewsStep"/>. Runner inserts
+    /// them with the rest of the SaveChanges so a row is never visible without the world
+    /// state that produced it.
+    /// </summary>
+    public IList<NewsItem> NewsItemsToInsert { get; }
 
     public IList<TickEvent> Events { get; }
 }
