@@ -29,10 +29,12 @@ public sealed class TickProcessor
     }
 
     /// <summary>
-    /// Default constructor — registers the canonical Phase 1O step list in docs/07 order:
+    /// Default constructor — registers the canonical Phase 2D step list in docs/07 order:
     /// AiTurn → ResourceProduction → LogisticsUpkeep → Attrition → Movement → AirStrike →
-    /// Combat → Construction → MoraleRecovery → VictoryCheck → News.
+    /// Combat → Construction → MoraleRecovery → OfferExpiry → VictoryCheck → News.
     /// LogisticsUpkeep follows ResourceProduction so freshly-produced income pays this tick's bills.
+    /// OfferExpiry runs after gameplay so any war declared this tick has already revoked
+    /// pending offers (a no-op for expiry, but defensive).
     /// VictoryCheck runs immediately before News so the victory headline emits the same tick.
     /// Cyber / random-event steps land in later phases.
     /// </summary>
@@ -47,6 +49,7 @@ public sealed class TickProcessor
         new CombatStep(),
         new ConstructionStep(),
         new MoraleRecoveryStep(),
+        new OfferExpiryStep(),
         new VictoryCheckStep(),
         new NewsStep(),
     })
@@ -69,7 +72,8 @@ public sealed class TickProcessor
             units: Array.Empty<Unit>(),
             pendingUnitOrders: Array.Empty<UnitOrder>(),
             pendingConstructionOrders: Array.Empty<ConstructionOrder>(),
-            adjacencies: Array.Empty<ProvinceAdjacency>());
+            adjacencies: Array.Empty<ProvinceAdjacency>(),
+            pendingTreatyOffers: Array.Empty<TreatyOffer>());
 
     /// <summary>
     /// Phase 1I overload that accepts the additional graphs (units, pending orders,
@@ -78,6 +82,9 @@ public sealed class TickProcessor
     /// plus they may emit new <see cref="Unit"/> / <see cref="Building"/> rows via
     /// <see cref="TickContext.UnitsToInsert"/> and <see cref="TickContext.BuildingsToInsert"/>
     /// and queue dead stacks via <see cref="TickContext.UnitsToDelete"/>.
+    /// <para/>
+    /// <paramref name="pendingTreatyOffers"/> (Phase 2D) carries every Pending offer in the
+    /// world; <see cref="Steps.OfferExpiryStep"/> mutates them in place to Expired.
     /// </summary>
     public TickResult ProcessOneTick(
         GameWorld world,
@@ -85,7 +92,8 @@ public sealed class TickProcessor
         IList<Unit> units,
         IList<UnitOrder> pendingUnitOrders,
         IList<ConstructionOrder> pendingConstructionOrders,
-        IList<ProvinceAdjacency> adjacencies)
+        IList<ProvinceAdjacency> adjacencies,
+        IList<TreatyOffer>? pendingTreatyOffers = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(units);
@@ -101,7 +109,8 @@ public sealed class TickProcessor
             units: new List<Unit>(units),
             pendingUnitOrders: pendingUnitOrders,
             pendingConstructionOrders: pendingConstructionOrders,
-            adjacencies: adjacencies);
+            adjacencies: adjacencies,
+            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>());
 
         foreach (var step in _steps)
         {

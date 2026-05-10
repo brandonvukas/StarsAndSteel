@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using StarsAndSteel.Api.Hubs.Dtos;
+using StarsAndSteel.Core.Enums;
 using StarsAndSteel.Game.Tick;
 using StarsAndSteel.Game.Tick.Events;
 
@@ -112,6 +113,16 @@ public sealed class TickBroadcaster
             TickEventNames.NewsPublished,
             new TickEventDtos.NewsPublished(
                 e.Tick, e.NewsItemId, e.Headline, e.Body, e.Severity, e.Category, e.RelatedPlayerId),
+            ct),
+
+        // Phase 2D: in-tick offer expiry. Reuse the diplomacy OfferResolved DTO so the client
+        // hits the same handler whether the terminal transition came from a player action or
+        // the expiry sweep. ResolvedAtTick equals the event tick by construction.
+        TreatyOfferExpiredEvent e => group.SendAsync(
+            DiplomacyEventNames.OfferResolved,
+            new DiplomacyEventDtos.OfferResolved(
+                e.OfferId, e.SenderPlayerId, e.ReceiverPlayerId,
+                e.Kind, TreatyOfferStatus.Expired, e.Tick),
             ct),
 
         // Unknown event types are logged at the call site after this returns.

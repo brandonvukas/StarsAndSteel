@@ -97,6 +97,13 @@ public sealed class TickRunner
             .Where(a => provinceIds.Contains(a.ProvinceAId) || provinceIds.Contains(a.ProvinceBId))
             .ToListAsync(cancellationToken);
 
+        // Phase 2D: load every Pending offer in this world. OfferExpiryStep mutates
+        // their Status in place; EF picks them up because they're tracked.
+        var pendingTreatyOffers = await _db.TreatyOffers
+            .Where(o => o.GameWorldId == worldId
+                && o.Status == TreatyOfferStatus.Pending)
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
@@ -104,7 +111,8 @@ public sealed class TickRunner
                 units: units,
                 pendingUnitOrders: pendingUnitOrders,
                 pendingConstructionOrders: pendingConstructionOrders,
-                adjacencies: adjacencies);
+                adjacencies: adjacencies,
+                pendingTreatyOffers: pendingTreatyOffers);
         }
         catch (Exception ex)
         {

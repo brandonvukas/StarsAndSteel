@@ -24,7 +24,8 @@ public sealed class TickContext
         IList<Unit> units,
         IList<UnitOrder> pendingUnitOrders,
         IList<ConstructionOrder> pendingConstructionOrders,
-        IList<ProvinceAdjacency> adjacencies)
+        IList<ProvinceAdjacency> adjacencies,
+        IList<TreatyOffer>? pendingTreatyOffers = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -40,6 +41,7 @@ public sealed class TickContext
         PendingUnitOrders = pendingUnitOrders;
         PendingConstructionOrders = pendingConstructionOrders;
         Adjacencies = adjacencies;
+        PendingTreatyOffers = pendingTreatyOffers ?? new List<TreatyOffer>();
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -86,6 +88,13 @@ public sealed class TickContext
 
     /// <summary>All adjacency edges in the world.</summary>
     public IList<ProvinceAdjacency> Adjacencies { get; }
+
+    /// <summary>
+    /// All <see cref="TreatyOffer"/> rows in the world whose <c>Status == Pending</c>. Loaded by
+    /// the runner; the offer-expiry tick step mutates <c>Status</c> on the in-place rows so EF
+    /// picks them up on SaveChanges. Out-of-tick controllers operate on a separate scoped query.
+    /// </summary>
+    public IList<TreatyOffer> PendingTreatyOffers { get; }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

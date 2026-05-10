@@ -196,6 +196,7 @@ internal static class TickTestGraph
         IList<UnitOrder>? unitOrders = null,
         IList<ConstructionOrder>? constructionOrders = null,
         IList<ProvinceAdjacency>? adjacencies = null,
+        IList<TreatyOffer>? pendingTreatyOffers = null,
         long? rngSeed = null)
     {
         return new TickContext(
@@ -205,6 +206,7 @@ internal static class TickTestGraph
             units: units ?? new List<Unit>(),
             pendingUnitOrders: unitOrders ?? new List<UnitOrder>(),
             pendingConstructionOrders: constructionOrders ?? new List<ConstructionOrder>(),
-            adjacencies: adjacencies ?? new List<ProvinceAdjacency>());
+            adjacencies: adjacencies ?? new List<ProvinceAdjacency>(),
+            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>());
     }
 }
