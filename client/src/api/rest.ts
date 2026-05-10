@@ -42,8 +42,10 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export const register = (email: string, displayName: string, password: string) =>
   call<void>('POST', '/api/auth/register', { email, displayName, password });
 
-export const login = (email: string, password: string) =>
-  call<AuthResponse>('POST', '/api/auth/login', { email, password });
+// The server accepts either email or display name in a single field; the client
+// sends whatever the user typed and lets the server resolve it.
+export const login = (emailOrDisplayName: string, password: string) =>
+  call<AuthResponse>('POST', '/api/auth/login', { emailOrDisplayName, password });
 
 export const logout = () =>
   call<void>('POST', '/api/auth/logout');

@@ -73,23 +73,40 @@ public sealed class WorldsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<WorldSummary>>> List(CancellationToken cancellationToken)
     {
+        // Project to an anonymous shape EF can translate (Status as the enum, not ToString'd
+        // inline — EF can't translate Enum.ToString in the SELECT). Map to the wire DTO
+        // in memory after the query lands.
         var rows = await _db.GameWorlds
             .AsNoTracking()
-            .Select(w => new WorldSummary(
+            .OrderByDescending(w => w.CreatedAt)
+            .Select(w => new
+            {
                 w.Id,
                 w.Name,
-                w.Status.ToString(),
+                w.Status,
                 w.CurrentTick,
                 w.TickIntervalSeconds,
                 w.MapSeed,
-                w.Players.Count,
-                w.Provinces.Count,
+                PlayerCount = w.Players.Count,
+                ProvinceCount = w.Provinces.Count,
                 w.CreatedAt,
-                w.StartedAt))
-            .OrderByDescending(w => w.CreatedAt)
+                w.StartedAt,
+            })
             .ToListAsync(cancellationToken);
 
-        return Ok(rows);
+        var summaries = rows.Select(w => new WorldSummary(
+            w.Id,
+            w.Name,
+            w.Status.ToString(),
+            w.CurrentTick,
+            w.TickIntervalSeconds,
+            w.MapSeed,
+            w.PlayerCount,
+            w.ProvinceCount,
+            w.CreatedAt,
+            w.StartedAt));
+
+        return Ok(summaries);
     }
 
     /// <summary>
@@ -153,23 +170,37 @@ public sealed class WorldsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<WorldSummary>> GetById(Guid id, CancellationToken cancellationToken)
     {
-        var summary = await _db.GameWorlds
+        var row = await _db.GameWorlds
             .AsNoTracking()
             .Where(w => w.Id == id)
-            .Select(w => new WorldSummary(
+            .Select(w => new
+            {
                 w.Id,
                 w.Name,
-                w.Status.ToString(),
+                w.Status,
                 w.CurrentTick,
                 w.TickIntervalSeconds,
                 w.MapSeed,
-                w.Players.Count,
-                w.Provinces.Count,
+                PlayerCount = w.Players.Count,
+                ProvinceCount = w.Provinces.Count,
                 w.CreatedAt,
-                w.StartedAt))
+                w.StartedAt,
+            })
             .FirstOrDefaultAsync(cancellationToken);
 
-        return summary is null ? NotFound() : Ok(summary);
+        if (row is null) return NotFound();
+
+        return Ok(new WorldSummary(
+            row.Id,
+            row.Name,
+            row.Status.ToString(),
+            row.CurrentTick,
+            row.TickIntervalSeconds,
+            row.MapSeed,
+            row.PlayerCount,
+            row.ProvinceCount,
+            row.CreatedAt,
+            row.StartedAt));
     }
 
     /// <summary>
@@ -241,7 +272,41 @@ public sealed class WorldsController : ControllerBase
                 return Conflict(new { error = "No candidate-capital provinces are available in this world." });
             }
 
-            await _db.SaveChangesAsync(cancellationToken);
+            // PlayerSpawner pre-assigns Guids on Player/Building/Unit so the
+            // in-memory graph (Province.OwnerPlayerId, etc.) is wired up before
+            // SaveChanges. EF's "Added vs Modified" heuristic for value-generated
+            // Guid keys uses default(Guid) as the signal that an entity is new.
+            // A pre-assigned Guid attached via a tracked navigation collection
+            // therefore comes out as Modified, and EF emits an UPDATE against a
+            // row that doesn't exist (DbUpdateConcurrencyException, "0 rows
+            // affected"). Force a DetectChanges sweep then flip any newly-grafted
+            // entities (Player/Building/Unit) from Modified → Added so EF emits
+            // INSERTs.
+            _db.ChangeTracker.DetectChanges();
+            foreach (var entry in _db.ChangeTracker.Entries().ToList())
+            {
+                if (entry.State != EntityState.Modified) continue;
+                if (entry.Entity is Player or Building or Unit)
+                {
+                    entry.State = EntityState.Added;
+                }
+            }
+
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Defensive logging: surface which entity tripped the concurrency
+                // check so we don't have to guess from a generic "0 rows affected"
+                // next time. Cheap on the happy path (no allocation unless thrown).
+                var details = string.Join(" | ", ex.Entries.Select(e =>
+                    $"{e.Entity.GetType().Name} state={e.State} " +
+                    $"props=[{string.Join(",", e.Properties.Where(p => p.IsModified).Select(p => p.Metadata.Name))}]"));
+                _logger.LogError(ex, "Join SaveChanges concurrency failure. Conflicting entries: {Details}", details);
+                throw;
+            }
 
             var capital = world.Provinces.Single(p => p.OwnerPlayerId == player.Id);
 
