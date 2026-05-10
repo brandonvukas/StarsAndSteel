@@ -222,6 +222,10 @@ builder.Services.AddSingleton<StarsAndSteel.Game.Orders.OrderService>();
 // singleton — the wrapper holds no per-request state.
 builder.Services.AddSingleton<TickBroadcaster>();
 
+// Diplomacy (Phase 2B): pure service + out-of-tick broadcaster. Both stateless / singleton.
+builder.Services.AddSingleton<StarsAndSteel.Game.Diplomacy.DiplomacyService>();
+builder.Services.AddSingleton<DiplomacyBroadcaster>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
