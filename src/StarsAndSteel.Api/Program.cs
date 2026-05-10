@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -178,16 +179,26 @@ builder.Services.AddRateLimiter(options =>
 
 // --- ASP.NET Core --------------------------------------------------------
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        // Serialize enums as their string names on the wire so the TS client can use
+        // narrow union types ('Peace' | 'War' | …) instead of opaque integers. Applies
+        // to all controller actions (REST). The matching SignalR JSON protocol below
+        // uses the same converter so hub events agree with REST payloads.
+        o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddOpenApi();
 
 // SignalR (docs/06 §"GameHub"). Built-in to ASP.NET Core; no extra package.
-// JSON serializer settings match the controllers' default (System.Text.Json,
-// camelCase, enum-as-string handled per-DTO via record properties typed as
-// enums — System.Text.Json serializes them as numbers, but the wire DTOs in
-// Hubs/Dtos use enum types deliberately so SignalR's MessagePack option is
-// available later without a DTO rewrite).
-builder.Services.AddSignalR();
+// Enums-as-strings here mirrors the controller config so a TickEventDto carrying
+// e.g. NewsSeverity arrives at the client as "Breaking" and the news ticker can
+// `severity.toLowerCase()` without crashing.
+builder.Services.AddSignalR()
+    .AddJsonProtocol(o =>
+    {
+        o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // --- Game tick (docs/07) -------------------------------------------------
 // TickProcessor itself is pure and stateless beyond the steps it composes;
