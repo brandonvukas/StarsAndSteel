@@ -64,6 +64,13 @@ public sealed class CombatStep : ITickStep
                 .OrderByDescending(x => x.Strength)
                 .First().Owner;
 
+            // Phase 2E: skip the engagement entirely if the two principals are not hostile
+            // (explicit Peace / NAP / Allied / TradeAgreement). This handles the awkward
+            // case where allied stacks sit in the same province via friendly passage:
+            // they should coexist, not melee. Implicit hostility (no row) still fights —
+            // diplomacy is opt-in.
+            if (!context.Relations.IsHostile(attackerPlayerId, defenderPlayerId)) continue;
+
             var attackerStacks = stacks.Where(s => s.OwnerPlayerId == attackerPlayerId).ToList();
             var defenderStacks = stacks.Where(s => s.OwnerPlayerId == defenderPlayerId).ToList();
 

@@ -34,6 +34,7 @@ public sealed class MovementStep : ITickStep
 
         // Index units by id for fast lookup.
         var unitsById = context.Units.ToDictionary(u => u.Id);
+        var provinceById = context.World.Provinces.ToDictionary(p => p.Id);
 
         foreach (var order in context.PendingUnitOrders)
         {
@@ -50,6 +51,38 @@ public sealed class MovementStep : ITickStep
 
             // Adjacency check (defensive — controller already checked, but state may have changed).
             if (!adj.Contains((from, to))) { order.Status = OrderStatus.Cancelled; continue; }
+
+            // Phase 2E: diplomacy gating. Both Move and Attack relocate the stack into the
+            // target province; if the destination is owned by a third party we have to know
+            // whether crossing is permitted. Same-owner / unowned / allied destinations are
+            // always permitted (allied = friendly passage). Otherwise the order is only
+            // valid if the relation is hostile (explicit War or no row), and even then a
+            // Move into a hostile owner's province is rejected — the player must use Attack
+            // to express intent. This protects against accidental friendly-fire from stale
+            // orders queued before a peace treaty was ratified.
+            if (provinceById.TryGetValue(to, out var destProvince) &&
+                destProvince.OwnerPlayerId is Guid destOwner &&
+                destOwner != unit.OwnerPlayerId)
+            {
+                var hostile = context.Relations.IsHostile(unit.OwnerPlayerId, destOwner);
+                if (!hostile)
+                {
+                    // Explicit Peace / NAP / TradeAgreement / Allied (allied is allowed below).
+                    if (!context.Relations.AreAllied(unit.OwnerPlayerId, destOwner))
+                    {
+                        order.Status = OrderStatus.Cancelled;
+                        continue;
+                    }
+                    // Allied: fall through, friendly passage permitted.
+                }
+                else if (order.OrderType == OrderType.Move)
+                {
+                    // Hostile owner but the player only issued Move (no combat intent).
+                    // Cancel rather than silently turning it into an attack.
+                    order.Status = OrderStatus.Cancelled;
+                    continue;
+                }
+            }
 
             unit.LocationProvinceId = to;
             unit.IsInTransit = false;

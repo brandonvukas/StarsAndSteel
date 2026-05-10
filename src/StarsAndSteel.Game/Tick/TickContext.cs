@@ -1,4 +1,5 @@
 using StarsAndSteel.Core.Entities;
+using StarsAndSteel.Game.Diplomacy;
 using StarsAndSteel.Game.Tick.Events;
 
 namespace StarsAndSteel.Game.Tick;
@@ -25,7 +26,8 @@ public sealed class TickContext
         IList<UnitOrder> pendingUnitOrders,
         IList<ConstructionOrder> pendingConstructionOrders,
         IList<ProvinceAdjacency> adjacencies,
-        IList<TreatyOffer>? pendingTreatyOffers = null)
+        IList<TreatyOffer>? pendingTreatyOffers = null,
+        RelationLookup? relations = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -42,6 +44,7 @@ public sealed class TickContext
         PendingConstructionOrders = pendingConstructionOrders;
         Adjacencies = adjacencies;
         PendingTreatyOffers = pendingTreatyOffers ?? new List<TreatyOffer>();
+        Relations = relations ?? RelationLookup.Empty;
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -95,6 +98,14 @@ public sealed class TickContext
     /// picks them up on SaveChanges. Out-of-tick controllers operate on a separate scoped query.
     /// </summary>
     public IList<TreatyOffer> PendingTreatyOffers { get; }
+
+    /// <summary>
+    /// Snapshot of the world's diplomatic relations as of tick start (Phase 2E). Movement,
+    /// air strikes, and combat consult this to skip actions targeting players the actor is
+    /// not at war with. Empty by default — older tests treat unset pairs as Peace, which
+    /// preserves their assumptions about hostility being implicit.
+    /// </summary>
+    public RelationLookup Relations { get; }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

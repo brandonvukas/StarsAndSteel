@@ -1,5 +1,6 @@
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Game.Diplomacy;
 using StarsAndSteel.Game.Tick;
 
 namespace StarsAndSteel.Tests.Game.Tick.Steps;
@@ -191,12 +192,33 @@ internal static class TickTestGraph
         Status = OrderStatus.Pending,
     };
 
+    public static RelationLookup RelationsBetween(GameWorld world, params (Player, Player, DiplomaticStatus)[] pairs)
+    {
+        var rows = new List<DiplomaticRelation>();
+        foreach (var (a, b, status) in pairs)
+        {
+            // Symmetric pair, mirroring DiplomacyService writes.
+            rows.Add(new DiplomaticRelation
+            {
+                Id = Guid.NewGuid(), GameWorldId = world.Id,
+                FromPlayerId = a.Id, ToPlayerId = b.Id, Status = status, LastChangedAtTick = world.CurrentTick,
+            });
+            rows.Add(new DiplomaticRelation
+            {
+                Id = Guid.NewGuid(), GameWorldId = world.Id,
+                FromPlayerId = b.Id, ToPlayerId = a.Id, Status = status, LastChangedAtTick = world.CurrentTick,
+            });
+        }
+        return new RelationLookup(rows);
+    }
+
     public static TickContext Context(GameWorld world,
         IList<Unit>? units = null,
         IList<UnitOrder>? unitOrders = null,
         IList<ConstructionOrder>? constructionOrders = null,
         IList<ProvinceAdjacency>? adjacencies = null,
         IList<TreatyOffer>? pendingTreatyOffers = null,
+        RelationLookup? relations = null,
         long? rngSeed = null)
     {
         return new TickContext(
@@ -207,6 +229,7 @@ internal static class TickTestGraph
             pendingUnitOrders: unitOrders ?? new List<UnitOrder>(),
             pendingConstructionOrders: constructionOrders ?? new List<ConstructionOrder>(),
             adjacencies: adjacencies ?? new List<ProvinceAdjacency>(),
-            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>());
+            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
+            relations: relations ?? RelationLookup.Empty);
     }
 }

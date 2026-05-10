@@ -1,4 +1,5 @@
 using StarsAndSteel.Core.Entities;
+using StarsAndSteel.Game.Diplomacy;
 using StarsAndSteel.Game.Tick.Steps;
 
 namespace StarsAndSteel.Game.Tick;
@@ -93,7 +94,8 @@ public sealed class TickProcessor
         IList<UnitOrder> pendingUnitOrders,
         IList<ConstructionOrder> pendingConstructionOrders,
         IList<ProvinceAdjacency> adjacencies,
-        IList<TreatyOffer>? pendingTreatyOffers = null)
+        IList<TreatyOffer>? pendingTreatyOffers = null,
+        RelationLookup? relations = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(units);
@@ -110,7 +112,8 @@ public sealed class TickProcessor
             pendingUnitOrders: pendingUnitOrders,
             pendingConstructionOrders: pendingConstructionOrders,
             adjacencies: adjacencies,
-            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>());
+            pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
+            relations: relations ?? RelationLookup.Empty);
 
         foreach (var step in _steps)
         {

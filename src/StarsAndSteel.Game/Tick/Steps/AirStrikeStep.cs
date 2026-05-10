@@ -43,8 +43,14 @@ public sealed class AirStrikeStep : ITickStep
             if (order.TargetProvinceId is null) { order.Status = OrderStatus.Cancelled; continue; }
 
             var targetId = order.TargetProvinceId.Value;
+            // Phase 2E: only stacks belonging to a player we may legitimately strike are
+            // valid targets. Allied / Peace / NAP / TradeAgreement units in the target
+            // province are filtered out (they sit there under friendly passage).
             var enemiesAtTarget = unitsByProvince.TryGetValue(targetId, out var stacks)
-                ? stacks.Where(u => u.OwnerPlayerId != attacker.OwnerPlayerId).ToList()
+                ? stacks
+                    .Where(u => u.OwnerPlayerId != attacker.OwnerPlayerId
+                        && context.Relations.IsHostile(attacker.OwnerPlayerId, u.OwnerPlayerId))
+                    .ToList()
                 : new List<Unit>();
 
             // Even with no defenders we still mark complete and emit an event.

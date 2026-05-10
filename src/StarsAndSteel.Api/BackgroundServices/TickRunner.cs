@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using StarsAndSteel.Api.Hubs;
 using StarsAndSteel.Core.Enums;
 using StarsAndSteel.Data;
+using StarsAndSteel.Game.Diplomacy;
 using StarsAndSteel.Game.Tick;
 
 namespace StarsAndSteel.Api.BackgroundServices;
@@ -104,6 +105,15 @@ public sealed class TickRunner
                 && o.Status == TreatyOfferStatus.Pending)
             .ToListAsync(cancellationToken);
 
+        // Phase 2E: snapshot diplomatic relations as of tick start. Read-only — gameplay
+        // steps consult RelationLookup to gate combat / movement / air strikes against
+        // active treaties. AsNoTracking because we never mutate these in the tick.
+        var relationRows = await _db.DiplomaticRelations
+            .AsNoTracking()
+            .Where(r => r.GameWorldId == worldId)
+            .ToListAsync(cancellationToken);
+        var relations = new RelationLookup(relationRows);
+
         TickResult result;
         try
         {
@@ -112,7 +122,8 @@ public sealed class TickRunner
                 pendingUnitOrders: pendingUnitOrders,
                 pendingConstructionOrders: pendingConstructionOrders,
                 adjacencies: adjacencies,
-                pendingTreatyOffers: pendingTreatyOffers);
+                pendingTreatyOffers: pendingTreatyOffers,
+                relations: relations);
         }
         catch (Exception ex)
         {
