@@ -35,6 +35,7 @@ public class StarsAndSteelDbContext : IdentityDbContext<User, IdentityRole<Guid>
     public DbSet<ConstructionOrder> ConstructionOrders => Set<ConstructionOrder>();
     public DbSet<Building> Buildings => Set<Building>();
     public DbSet<DiplomaticRelation> DiplomaticRelations => Set<DiplomaticRelation>();
+    public DbSet<TreatyOffer> TreatyOffers => Set<TreatyOffer>();
     public DbSet<ResearchProgress> ResearchProgress => Set<ResearchProgress>();
     public DbSet<NewsItem> NewsItems => Set<NewsItem>();
     public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
