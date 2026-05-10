@@ -8,6 +8,7 @@ import type {
   TickAdvanced, ResourcesUpdated, UnitMoved, UnitDestroyed,
   ProvinceCaptured, BuildingCompleted, UnitBuilt,
   CombatResolved, AirStrikeResolved, NewsPublished,
+  RelationChanged, OfferReceived, OfferResolved,
 } from '../types/api';
 
 export interface HubHandlers {
@@ -21,6 +22,9 @@ export interface HubHandlers {
   onCombatResolved?: (e: CombatResolved) => void;
   onAirStrikeResolved?: (e: AirStrikeResolved) => void;
   onNewsPublished?: (e: NewsPublished) => void;
+  onRelationChanged?: (e: RelationChanged) => void;
+  onOfferReceived?: (e: OfferReceived) => void;
+  onOfferResolved?: (e: OfferResolved) => void;
   /** Fired after the connection drops and the server snapshot may be stale. */
   onReconnected?: () => void;
 }
@@ -83,6 +87,9 @@ export class GameHubClient {
     if (h.onCombatResolved)     c.on(HubEvents.CombatResolved, h.onCombatResolved);
     if (h.onAirStrikeResolved)  c.on(HubEvents.AirStrikeResolved, h.onAirStrikeResolved);
     if (h.onNewsPublished)      c.on(HubEvents.NewsPublished, h.onNewsPublished);
+    if (h.onRelationChanged)    c.on(HubEvents.RelationChanged, h.onRelationChanged);
+    if (h.onOfferReceived)      c.on(HubEvents.OfferReceived, h.onOfferReceived);
+    if (h.onOfferResolved)      c.on(HubEvents.OfferResolved, h.onOfferResolved);
 
     if (h.onReconnected) c.onreconnected(h.onReconnected);
   }

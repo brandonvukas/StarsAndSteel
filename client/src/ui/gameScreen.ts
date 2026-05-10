@@ -5,9 +5,10 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MapScene } from '../scenes/MapScene';
 import { GameHubClient } from '../api/hub';
-import { getSnapshot, getNews } from '../api/rest';
+import { getSnapshot, getNews, getDiplomacy } from '../api/rest';
 import {
   $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
+  setDiplomacy, $diplomacy, applyRelationChanged, applyOfferReceived, applyOfferResolved,
 } from '../store/store';
 import {
   applyResourcesUpdated, applyUnitMoved, applyUnitDestroyed,
@@ -16,13 +17,21 @@ import {
 import { mountResourceBar } from './resourceBar';
 import { mountProvincePanel } from './provincePanel';
 import { mountNewsTicker } from './newsTicker';
+import { mountDiplomacyPanel } from './diplomacyPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
     <div id="resource-bar"></div>
     <div id="game-body">
       <div id="phaser-host"></div>
-      <aside id="side-panel"></aside>
+      <aside id="side-panel">
+        <nav class="side-tabs">
+          <button data-tab="province" class="active">Province</button>
+          <button data-tab="diplomacy">Diplomacy</button>
+        </nav>
+        <div id="side-tab-province" class="side-tab-pane"></div>
+        <div id="side-tab-diplomacy" class="side-tab-pane" hidden></div>
+      </aside>
     </div>
     <div id="news-ticker"></div>`;
 
@@ -36,6 +45,14 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     setNews(news);
   } catch {
     // News history is best-effort; failure here mustn't block the screen.
+  }
+
+  // 1c. Initial diplomacy state. Best-effort like news; the panel will show a
+  //    "Loading..." hint if it fails and recover on the next hub event.
+  try {
+    setDiplomacy(await getDiplomacy(worldId));
+  } catch {
+    // ignored
   }
 
   // 2. Boot Phaser into the dedicated host. Canvas is sized to match the
@@ -58,8 +75,10 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
 
   // 3. Mount HUD overlays. All three subscribe to the store and update on diffs.
   mountResourceBar(host.querySelector('#resource-bar')!);
-  mountProvincePanel(host.querySelector('#side-panel')!);
+  mountProvincePanel(host.querySelector('#side-tab-province')!);
+  mountDiplomacyPanel(host.querySelector('#side-tab-diplomacy')!);
   mountNewsTicker(host.querySelector('#news-ticker')!);
+  wireSideTabs(host);
 
   // 4. Connect SignalR. Diff handlers patch the store; on reconnect we
   //    re-snapshot per docs/06 because we may have missed events.
@@ -81,6 +100,18 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         category: e.category,
         relatedPlayerId: e.relatedPlayerId,
       }),
+      onRelationChanged:   e => {
+        const cur = $diplomacy.get();
+        if (cur) setDiplomacy(applyRelationChanged(cur, e));
+      },
+      onOfferReceived:     e => {
+        const cur = $diplomacy.get();
+        if (cur) setDiplomacy(applyOfferReceived(cur, e));
+      },
+      onOfferResolved:     e => {
+        const cur = $diplomacy.get();
+        if (cur) setDiplomacy(applyOfferResolved(cur, e));
+      },
       onTickAdvanced:      e => {
         bumpTick(e.tick);
         // Reflect tick into world snapshot for the resource bar's "tick N" cell.
@@ -96,10 +127,34 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         } catch {
           // Best-effort.
         }
+        // Backfill diplomacy too — relation/offer changes during the disconnect
+        // would otherwise leave the panel stale.
+        try {
+          setDiplomacy(await getDiplomacy(worldId));
+        } catch {
+          // ignored
+        }
       },
     },
   );
 
   await hub.connect();
   await hub.joinWorld(worldId);
+}
+
+function wireSideTabs(host: HTMLElement) {
+  const tabs = host.querySelectorAll<HTMLButtonElement>('.side-tabs button[data-tab]');
+  const panes = {
+    province: host.querySelector<HTMLElement>('#side-tab-province')!,
+    diplomacy: host.querySelector<HTMLElement>('#side-tab-diplomacy')!,
+  };
+  tabs.forEach(btn => {
+    btn.onclick = () => {
+      tabs.forEach(b => b.classList.toggle('active', b === btn));
+      const which = btn.dataset.tab as keyof typeof panes;
+      Object.entries(panes).forEach(([key, el]) => {
+        el.hidden = key !== which;
+      });
+    };
+  });
 }

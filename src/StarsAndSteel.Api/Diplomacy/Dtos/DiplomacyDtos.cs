@@ -32,3 +32,42 @@ public sealed record OfferResolutionAccepted(
     Guid OfferId,
     TreatyOfferStatus Status,
     int ResolvedAtTick);
+
+// ---- GET /diplomacy state shape -----------------------------------------
+
+/// <summary>
+/// Whole-world diplomacy snapshot for the calling player. Returned by
+/// <c>GET /api/worlds/{id}/diplomacy</c>. Relation pairs are reported in canonical
+/// (PartyA &lt; PartyB) order so clients can de-dupe trivially.
+/// </summary>
+public sealed record DiplomacyStateDto(
+    Guid CallerPlayerId,
+    IReadOnlyList<DiplomacyPlayerDto> Players,
+    IReadOnlyList<DiplomacyRelationDto> Relations,
+    IReadOnlyList<DiplomacyOfferDto> Inbox,
+    IReadOnlyList<DiplomacyOfferDto> Outbox);
+
+public sealed record DiplomacyPlayerDto(
+    Guid PlayerId,
+    string NationName,
+    string FlagPrimaryHex,
+    string FlagSecondaryHex,
+    bool IsAi,
+    bool IsAlive);
+
+public sealed record DiplomacyRelationDto(
+    Guid PartyAPlayerId,
+    Guid PartyBPlayerId,
+    DiplomaticStatus Status,
+    int LastChangedAtTick);
+
+public sealed record DiplomacyOfferDto(
+    Guid OfferId,
+    Guid SenderPlayerId,
+    Guid ReceiverPlayerId,
+    TreatyOfferKind Kind,
+    TreatyOfferStatus Status,
+    int ProposedAtTick,
+    int ExpiresAtTick,
+    int? ResolvedAtTick);
+

@@ -5,6 +5,7 @@
 import type {
   AuthResponse, WorldSummary, WorldSnapshot, NewsItem,
   MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
+  DiplomacyState, TreatyOfferKind,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -81,5 +82,24 @@ export const orderBuildBuilding = (worldId: string, req: BuildBuildingRequest) =
 export const orderBuildUnit = (worldId: string, req: BuildUnitRequest) =>
   call<{ orderId: string; ticksRemaining: number }>(
     'POST', `/api/worlds/${worldId}/orders/build-unit`, req);
+
+// ---- Diplomacy -----------------------------------------------------------
+export const getDiplomacy = (worldId: string) =>
+  call<DiplomacyState>('GET', `/api/worlds/${worldId}/diplomacy`);
+
+export const declareWar = (worldId: string, targetPlayerId: string) =>
+  call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/declare-war`, { targetPlayerId });
+
+export const proposeTreaty = (worldId: string, receiverPlayerId: string, kind: TreatyOfferKind) =>
+  call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/propose`, { receiverPlayerId, kind });
+
+export const acceptOffer = (worldId: string, offerId: string) =>
+  call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/accept`, { offerId });
+
+export const rejectOffer = (worldId: string, offerId: string) =>
+  call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/reject`, { offerId });
+
+export const revokeOffer = (worldId: string, offerId: string) =>
+  call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/revoke`, { offerId });
 
 export { HttpError };

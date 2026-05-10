@@ -141,6 +141,98 @@ a, a:visited { color: #ffd166; }
 .news-notable  .news-sev { color: #ffb84d; }
 .news-info     .news-sev { color: #88a4ff; opacity: 0.85; }
 
+/* ---- Side-panel tabs ----------------------------------------------- */
+.side-tabs {
+  display: flex; gap: 2px;
+  margin: -14px -14px 12px;
+  padding: 0 8px;
+  background: #0f0f1a;
+  border-bottom: 1px solid #2d2d44;
+}
+.side-tabs .side-tab {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #b0b0c0;
+}
+.side-tabs .side-tab:hover { background: #1a1a28; color: #e6e6f0; }
+.side-tabs .side-tab.active {
+  color: #ffd166;
+  border-bottom-color: #ffd166;
+}
+.side-tab-pane { display: block; }
+.side-tab-pane.hidden { display: none; }
+
+/* ---- Diplomacy panel ----------------------------------------------- */
+.diplomacy-panel h2 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  border-bottom: 1px solid #2d2d44;
+  padding-bottom: 6px;
+}
+.dp-section { margin-bottom: 14px; }
+.dp-section h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #b0b0c0;
+}
+.dp-empty { font-size: 12px; opacity: 0.55; font-style: italic; }
+.dp-status { font-size: 12px; min-height: 16px; margin: 6px 0 0; }
+.dp-status.dp-ok { color: #6bff95; }
+.dp-status.dp-err { color: #ff6b6b; }
+
+.dp-offer {
+  background: #1a1a28;
+  border: 1px solid #2d2d44;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.dp-offer-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+}
+.dp-kind { font-weight: 600; color: #ffd166; }
+.dp-expiry { margin-left: auto; opacity: 0.6; font-size: 11px; }
+.dp-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.dp-actions button { padding: 4px 10px; font-size: 12px; }
+
+.dp-player {
+  background: #1a1a28;
+  border: 1px solid #2d2d44;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 6px;
+}
+.dp-player-head {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.dp-player-name { flex: 1; font-weight: 500; }
+.dp-ai { font-size: 10px; opacity: 0.6; padding: 1px 5px; border: 1px solid #3d3d5a; border-radius: 3px; }
+.dp-dead { font-size: 10px; color: #ff6b6b; }
+
+.dp-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+.dp-status-badge.dp-peace         { background: #1f3a1f; color: #6bff95; }
+.dp-status-badge.dp-war           { background: #3a1515; color: #ff6b6b; }
+.dp-status-badge.dp-allied        { background: #1f2a3a; color: #88a4ff; }
+.dp-status-badge.dp-nonaggression { background: #2a2a1f; color: #ffd166; }
+.dp-status-badge.dp-tradeagreement{ background: #2a1f3a; color: #c88aff; }
+
 /* ---- Error screen --------------------------------------------------- */
 .error-screen {
   margin: 60px auto; max-width: 600px; padding: 24px;

@@ -245,4 +245,74 @@ export const HubEvents = {
   UnitBuilt: 'UnitBuilt',
   BuildingCompleted: 'BuildingCompleted',
   NewsPublished: 'NewsPublished',
+  RelationChanged: 'RelationChanged',
+  OfferReceived: 'OfferReceived',
+  OfferResolved: 'OfferResolved',
 } as const;
+
+// ---- Diplomacy (mirrors DiplomacyDtos.cs + DiplomacyEventDtos.cs) -------
+// Server enum-as-string converter sends these as strings.
+export type DiplomaticStatus = 'Peace' | 'Allied' | 'NonAggression' | 'War' | 'TradeAgreement';
+export type TreatyOfferKind = 'Peace' | 'NonAggression' | 'Alliance';
+export type TreatyOfferStatus = 'Pending' | 'Accepted' | 'Rejected' | 'Revoked' | 'Expired';
+
+export interface DiplomacyPlayer {
+  playerId: string;
+  nationName: string;
+  flagPrimaryHex: string;
+  flagSecondaryHex: string;
+  isAi: boolean;
+  isAlive: boolean;
+}
+
+export interface DiplomacyRelation {
+  partyAPlayerId: string;
+  partyBPlayerId: string;
+  status: DiplomaticStatus;
+  lastChangedAtTick: number;
+}
+
+export interface DiplomacyOffer {
+  offerId: string;
+  senderPlayerId: string;
+  receiverPlayerId: string;
+  kind: TreatyOfferKind;
+  status: TreatyOfferStatus;
+  proposedAtTick: number;
+  expiresAtTick: number;
+  resolvedAtTick: number | null;
+}
+
+export interface DiplomacyState {
+  callerPlayerId: string;
+  players: DiplomacyPlayer[];
+  relations: DiplomacyRelation[];
+  inbox: DiplomacyOffer[];
+  outbox: DiplomacyOffer[];
+}
+
+// Hub event payloads
+export interface RelationChanged {
+  partyAPlayerId: string;
+  partyBPlayerId: string;
+  newStatus: DiplomaticStatus;
+  atTick: number;
+}
+
+export interface OfferReceived {
+  offerId: string;
+  senderPlayerId: string;
+  receiverPlayerId: string;
+  kind: TreatyOfferKind;
+  proposedAtTick: number;
+  expiresAtTick: number;
+}
+
+export interface OfferResolved {
+  offerId: string;
+  senderPlayerId: string;
+  receiverPlayerId: string;
+  kind: TreatyOfferKind;
+  status: TreatyOfferStatus;
+  resolvedAtTick: number;
+}

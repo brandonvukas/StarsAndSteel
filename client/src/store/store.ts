@@ -12,7 +12,11 @@
 // (api/diffs.ts) and UI controllers don't have to know nanostores' API.
 
 import { atom, computed } from 'nanostores';
-import type { AuthResponse, WorldSnapshot, SnapshotProvince, NewsItem } from '../types/api';
+import type {
+  AuthResponse, WorldSnapshot, SnapshotProvince, NewsItem,
+  DiplomacyState, DiplomaticStatus, DiplomacyOffer,
+  RelationChanged, OfferReceived, OfferResolved,
+} from '../types/api';
 
 export interface DraftOrder {
   kind: 'move' | 'build-unit' | 'build-building';
@@ -70,6 +74,7 @@ export function setAuth(auth: AuthResponse | null) {
     $selectedProvinceId.set(null);
     $draftOrder.set(null);
     $news.set([]);
+    $diplomacy.set(null);
   }
 }
 
@@ -118,6 +123,70 @@ export function setNews(items: NewsItem[]) {
 // Convenience: locate a province row by id without going through the store.
 export function findProvince(world: WorldSnapshot, id: string): SnapshotProvince | undefined {
   return world.provinces.find(p => p.id === id);
+}
+
+// ---- Diplomacy state -----------------------------------------------------
+// Mirrors GET /api/worlds/{id}/diplomacy. Mutated incrementally by hub events
+// (RelationChanged / OfferReceived / OfferResolved) so the panel re-renders
+// without a full re-fetch.
+export const $diplomacy = atom<DiplomacyState | null>(null);
+
+export function setDiplomacy(state: DiplomacyState | null) {
+  $diplomacy.set(state);
+}
+
+/** Look up the canonical (PartyA<PartyB) relation between caller and another player. */
+export function findRelation(state: DiplomacyState, otherPlayerId: string): DiplomaticStatus {
+  const a = state.callerPlayerId, b = otherPlayerId;
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  const row = state.relations.find(r => r.partyAPlayerId === lo && r.partyBPlayerId === hi);
+  return row?.status ?? 'Peace';
+}
+
+export function applyRelationChanged(state: DiplomacyState, e: RelationChanged): DiplomacyState {
+  const others = state.relations.filter(r =>
+    !(r.partyAPlayerId === e.partyAPlayerId && r.partyBPlayerId === e.partyBPlayerId));
+  return {
+    ...state,
+    relations: [...others, {
+      partyAPlayerId: e.partyAPlayerId,
+      partyBPlayerId: e.partyBPlayerId,
+      status: e.newStatus,
+      lastChangedAtTick: e.atTick,
+    }],
+  };
+}
+
+export function applyOfferReceived(state: DiplomacyState, e: OfferReceived): DiplomacyState {
+  const offer: DiplomacyOffer = {
+    offerId: e.offerId,
+    senderPlayerId: e.senderPlayerId,
+    receiverPlayerId: e.receiverPlayerId,
+    kind: e.kind,
+    status: 'Pending',
+    proposedAtTick: e.proposedAtTick,
+    expiresAtTick: e.expiresAtTick,
+    resolvedAtTick: null,
+  };
+  const me = state.callerPlayerId;
+  if (e.receiverPlayerId === me) {
+    if (state.inbox.some(o => o.offerId === e.offerId)) return state;
+    return { ...state, inbox: [...state.inbox, offer] };
+  }
+  if (e.senderPlayerId === me) {
+    if (state.outbox.some(o => o.offerId === e.offerId)) return state;
+    return { ...state, outbox: [...state.outbox, offer] };
+  }
+  return state; // event for two other players, ignored locally
+}
+
+export function applyOfferResolved(state: DiplomacyState, e: OfferResolved): DiplomacyState {
+  // Resolved means terminal — just remove from both inbox and outbox.
+  return {
+    ...state,
+    inbox: state.inbox.filter(o => o.offerId !== e.offerId),
+    outbox: state.outbox.filter(o => o.offerId !== e.offerId),
+  };
 }
 
 // ---- session persistence -------------------------------------------------

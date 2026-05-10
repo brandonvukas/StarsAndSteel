@@ -63,6 +63,67 @@ public sealed class DiplomacyController : ControllerBase
         _logger = logger;
     }
 
+    /// <summary>
+    /// Whole-world diplomacy state from the caller's perspective: the player roster,
+    /// every relation pair (canonical PartyA &lt; PartyB ordering, default Peace omitted),
+    /// the caller's pending inbox (offers addressed to them), and outbox (offers they
+    /// sent). Terminal offers are excluded — clients reconstruct lifecycle from
+    /// <c>OfferReceived</c> / <c>OfferResolved</c> hub events.
+    /// </summary>
+    [HttpGet]
+    public async Task<ActionResult<DiplomacyStateDto>> GetState(Guid worldId, CancellationToken ct)
+    {
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var caller = await _db.Players
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.GameWorldId == worldId && p.UserId == user.Id, ct);
+        if (caller is null) return Forbid();
+
+        var players = await _db.Players
+            .AsNoTracking()
+            .Where(p => p.GameWorldId == worldId)
+            .Select(p => new DiplomacyPlayerDto(
+                p.Id, p.NationName, p.FlagPrimaryHex, p.FlagSecondaryHex, p.IsAi, p.IsAlive))
+            .ToListAsync(ct);
+
+        // Collapse the directional rows to canonical pairs (PartyA < PartyB by Guid).
+        var directional = await _db.DiplomaticRelations
+            .AsNoTracking()
+            .Where(r => r.GameWorldId == worldId)
+            .Select(r => new { r.FromPlayerId, r.ToPlayerId, r.Status, r.LastChangedAtTick })
+            .ToListAsync(ct);
+
+        var relationPairs = new Dictionary<(Guid, Guid), DiplomacyRelationDto>();
+        foreach (var r in directional)
+        {
+            var (a, b) = OrderedPair(r.FromPlayerId, r.ToPlayerId);
+            // If both directional rows exist (normal case), they should agree; the later
+            // wins on disagreement. A symmetric write always sets both atomically.
+            if (!relationPairs.TryGetValue((a, b), out var existing) || r.LastChangedAtTick >= existing.LastChangedAtTick)
+            {
+                relationPairs[(a, b)] = new DiplomacyRelationDto(a, b, r.Status, r.LastChangedAtTick);
+            }
+        }
+
+        var offers = await _db.TreatyOffers
+            .AsNoTracking()
+            .Where(o => o.GameWorldId == worldId
+                        && o.Status == TreatyOfferStatus.Pending
+                        && (o.SenderPlayerId == caller.Id || o.ReceiverPlayerId == caller.Id))
+            .Select(o => new DiplomacyOfferDto(
+                o.Id, o.SenderPlayerId, o.ReceiverPlayerId,
+                o.Kind, o.Status, o.ProposedAtTick, o.ExpiresAtTick, o.ResolvedAtTick))
+            .ToListAsync(ct);
+
+        var inbox = offers.Where(o => o.ReceiverPlayerId == caller.Id).ToList();
+        var outbox = offers.Where(o => o.SenderPlayerId == caller.Id).ToList();
+
+        return Ok(new DiplomacyStateDto(
+            caller.Id, players, relationPairs.Values.ToList(), inbox, outbox));
+    }
+
     [HttpPost("declare-war")]
     public async Task<ActionResult<DiplomacyActionAccepted>> DeclareWar(
         Guid worldId,
