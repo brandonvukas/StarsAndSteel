@@ -71,11 +71,23 @@ export function mountLobbyScreen(host: HTMLElement, onJoined: (worldId: string) 
           fd.get('secondary') as string);
         onJoined(w.id);
       } catch (e) {
+        // 409 "already joined" is the expected re-entry path: the user
+        // refreshed, came back later, or clicked Join twice. Drop them
+        // straight into the game instead of showing an error.
+        if (e instanceof HttpError && e.status === 409 && isAlreadyJoined(e)) {
+          onJoined(w.id);
+          return;
+        }
         status.textContent = formatErr(e);
       }
     });
     return li;
   }
+}
+
+function isAlreadyJoined(e: HttpError): boolean {
+  const body = e.body as { error?: unknown } | null | undefined;
+  return typeof body?.error === 'string' && body.error.toLowerCase().includes('already joined');
 }
 
 function escape(s: string): string {
@@ -86,8 +98,10 @@ function escape(s: string): string {
 
 function formatErr(e: unknown): string {
   if (e instanceof HttpError) {
-    if (e.body && typeof e.body === 'object' && 'detail' in e.body) {
-      return String((e.body as { detail: unknown }).detail);
+    if (e.body && typeof e.body === 'object') {
+      const body = e.body as { detail?: unknown; error?: unknown };
+      if (typeof body.detail === 'string') return body.detail;
+      if (typeof body.error === 'string') return body.error;
     }
     return `HTTP ${e.status}`;
   }

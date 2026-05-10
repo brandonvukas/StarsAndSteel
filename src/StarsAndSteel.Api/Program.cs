@@ -196,7 +196,11 @@ builder.Services.AddSignalR();
 // WorldLockRegistry is the shared lock map between the tick service and
 // (eventually) order endpoints.
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton<TickProcessor>();
+// Use the parameterless ctor so we get the canonical 11-step pipeline
+// (docs/07 §"What happens in a single tick"). The IEnumerable<ITickStep>
+// ctor exists for tests; if we let DI pick it, no steps are registered
+// and every tick throws "At least one tick step must be registered".
+builder.Services.AddSingleton(_ => new TickProcessor());
 builder.Services.AddSingleton<WorldLockRegistry>();
 builder.Services.AddScoped<TickRunner>();
 builder.Services.AddHostedService<GameTickService>();
