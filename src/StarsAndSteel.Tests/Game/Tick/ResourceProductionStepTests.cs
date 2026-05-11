@@ -212,4 +212,92 @@ public class ResourceProductionStepTests
 
     private static TickContext NewContext(GameWorld world) =>
         new(world, processingTick: world.CurrentTick + 1, rng: new DeterministicRandom(world.RngState));
+
+    // ---------- Phase 2F: logistics network bonus ----------
+
+    [Fact]
+    public void Logistics_network_bonus_applies_when_two_owned_provinces_with_base_are_adjacent()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        var p2 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p1.Buildings.Add(new Building { Id = Guid.NewGuid(), ProvinceId = p1.Id, Province = p1, Type = BuildingType.MilitaryBase, Level = 1 });
+
+        var adj = MakeAdj(p1, p2);
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency> { adj });
+
+        new ResourceProductionStep().Execute(ctx);
+
+        // Both p1 and p2 in network → 100 * 1.10 each = 110 + 110 = 220.
+        alice.Money.Should().Be(220);
+    }
+
+    [Fact]
+    public void Logistics_bonus_does_not_apply_to_isolated_owned_province()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p1.Buildings.Add(new Building { Id = Guid.NewGuid(), ProvinceId = p1.Id, Province = p1, Type = BuildingType.MilitaryBase, Level = 1 });
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        // Single province, no adjacency → no bonus.
+        alice.Money.Should().Be(100);
+    }
+
+    [Fact]
+    public void Logistics_bonus_skipped_when_no_military_base_in_component()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        var p2 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        // Adjacent, both owned, but no MilitaryBase anywhere.
+        var adj = MakeAdj(p1, p2);
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency> { adj });
+
+        new ResourceProductionStep().Execute(ctx);
+
+        alice.Money.Should().Be(200);
+    }
+
+    [Fact]
+    public void Logistics_bonus_does_not_cross_sea_adjacency()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        var p2 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p1.Buildings.Add(new Building { Id = Guid.NewGuid(), ProvinceId = p1.Id, Province = p1, Type = BuildingType.MilitaryBase, Level = 1 });
+
+        var adj = MakeAdj(p1, p2);
+        adj.IsSeaCrossing = true;
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency> { adj });
+
+        new ResourceProductionStep().Execute(ctx);
+
+        // p1 isolated (sea edge ignored) — no bonus.
+        alice.Money.Should().Be(200);
+    }
+
+    private static ProvinceAdjacency MakeAdj(Province a, Province b)
+    {
+        var (lo, hi) = a.Id.CompareTo(b.Id) < 0 ? (a, b) : (b, a);
+        return new ProvinceAdjacency
+        {
+            ProvinceAId = lo.Id, ProvinceA = lo,
+            ProvinceBId = hi.Id, ProvinceB = hi,
+            TerrainCost = 1.0f,
+        };
+    }
 }

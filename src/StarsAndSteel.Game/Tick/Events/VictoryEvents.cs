@@ -25,3 +25,19 @@ public sealed record PlayerEliminatedEvent(
     Guid PlayerId,
     string NationName
 ) : TickEvent(Tick);
+
+/// <summary>
+/// Emitted by <see cref="Steps.VictoryCheckStep"/> when a coalition of mutually-allied
+/// living players collectively owns at least 80% of the world's provinces (Phase 2F
+/// coalition-victory rule). All members in <see cref="WinnerPlayerIds"/> share the win
+/// and the world flips to <see cref="Core.Enums.GameWorldStatus.Ended"/>; non-coalition
+/// living players are eliminated. <see cref="WinnerPlayerIds"/> is sorted ascending by
+/// Guid for deterministic news rendering and replay.
+/// </summary>
+public sealed record CoalitionVictoryAchievedEvent(
+    int Tick,
+    IReadOnlyList<Guid> WinnerPlayerIds,
+    IReadOnlyList<string> WinnerNationNames,
+    int OwnedProvinceCount,
+    int TotalProvinceCount
+) : TickEvent(Tick);

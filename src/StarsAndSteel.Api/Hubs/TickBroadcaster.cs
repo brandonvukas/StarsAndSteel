@@ -115,6 +115,23 @@ public sealed class TickBroadcaster
                 e.Tick, e.NewsItemId, e.Headline, e.Body, e.Severity, e.Category, e.RelatedPlayerId),
             ct),
 
+        VictoryAchievedEvent e => group.SendAsync(
+            TickEventNames.VictoryAchieved,
+            new TickEventDtos.VictoryAchieved(
+                e.Tick, e.WinnerPlayerId, e.WinnerNationName, e.OwnedProvinceCount, e.TotalProvinceCount),
+            ct),
+
+        CoalitionVictoryAchievedEvent e => group.SendAsync(
+            TickEventNames.CoalitionVictoryAchieved,
+            new TickEventDtos.CoalitionVictoryAchieved(
+                e.Tick, e.WinnerPlayerIds, e.WinnerNationNames, e.OwnedProvinceCount, e.TotalProvinceCount),
+            ct),
+
+        PlayerEliminatedEvent e => group.SendAsync(
+            TickEventNames.PlayerEliminated,
+            new TickEventDtos.PlayerEliminated(e.Tick, e.PlayerId, e.NationName),
+            ct),
+
         // Phase 2D: in-tick offer expiry. Reuse the diplomacy OfferResolved DTO so the client
         // hits the same handler whether the terminal transition came from a player action or
         // the expiry sweep. ResolvedAtTick equals the event tick by construction.

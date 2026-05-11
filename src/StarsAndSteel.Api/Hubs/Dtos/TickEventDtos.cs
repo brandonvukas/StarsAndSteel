@@ -94,6 +94,25 @@ public static class TickEventDtos
         NewsSeverity Severity,
         NewsCategory Category,
         Guid? RelatedPlayerId);
+
+    public sealed record VictoryAchieved(
+        int Tick,
+        Guid WinnerPlayerId,
+        string WinnerNationName,
+        int OwnedProvinceCount,
+        int TotalProvinceCount);
+
+    public sealed record CoalitionVictoryAchieved(
+        int Tick,
+        IReadOnlyList<Guid> WinnerPlayerIds,
+        IReadOnlyList<string> WinnerNationNames,
+        int OwnedProvinceCount,
+        int TotalProvinceCount);
+
+    public sealed record PlayerEliminated(
+        int Tick,
+        Guid PlayerId,
+        string NationName);
 }
 
 /// <summary>
@@ -112,4 +131,7 @@ public static class TickEventNames
     public const string UnitBuilt = "UnitBuilt";
     public const string BuildingCompleted = "BuildingCompleted";
     public const string NewsPublished = "NewsPublished";
+    public const string VictoryAchieved = "VictoryAchieved";
+    public const string CoalitionVictoryAchieved = "CoalitionVictoryAchieved";
+    public const string PlayerEliminated = "PlayerEliminated";
 }

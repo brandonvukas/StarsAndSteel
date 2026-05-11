@@ -233,6 +233,28 @@ export interface NewsPublished {
   relatedPlayerId: string | null;
 }
 
+export interface VictoryAchieved {
+  tick: number;
+  winnerPlayerId: string;
+  winnerNationName: string;
+  ownedProvinceCount: number;
+  totalProvinceCount: number;
+}
+
+export interface CoalitionVictoryAchieved {
+  tick: number;
+  winnerPlayerIds: string[];
+  winnerNationNames: string[];
+  ownedProvinceCount: number;
+  totalProvinceCount: number;
+}
+
+export interface PlayerEliminated {
+  tick: number;
+  playerId: string;
+  nationName: string;
+}
+
 // ---- Server-to-client method names (must match TickEventNames.cs) -------
 export const HubEvents = {
   TickAdvanced: 'TickAdvanced',
@@ -245,6 +267,9 @@ export const HubEvents = {
   UnitBuilt: 'UnitBuilt',
   BuildingCompleted: 'BuildingCompleted',
   NewsPublished: 'NewsPublished',
+  VictoryAchieved: 'VictoryAchieved',
+  CoalitionVictoryAchieved: 'CoalitionVictoryAchieved',
+  PlayerEliminated: 'PlayerEliminated',
   RelationChanged: 'RelationChanged',
   OfferReceived: 'OfferReceived',
   OfferResolved: 'OfferResolved',

@@ -129,6 +129,21 @@ public static class NewsTemplates
             "Diplomats say {nation}'s remaining forces have laid down arms.",
         });
 
+    public static readonly NewsTemplate CoalitionVictoryAchieved = new(
+        Severity: NewsSeverity.Breaking,
+        Category: NewsCategory.Politics,
+        HeadlineVariants: new[]
+        {
+            "COALITION VICTORY: {coalition} jointly secure {owned}/{total} provinces",
+            "ALLIANCE TRIUMPHS: {coalition} declared co-victors of the war",
+            "BREAKING: {coalition} bloc wins the war — {owned} of {total} provinces under coalition control",
+        },
+        BodyVariants: new[]
+        {
+            "World capitals recognize the {coalition} alliance as the dominant bloc.",
+            "Analysts call it the largest coalition victory in the campaign's history.",
+        });
+
     /// <summary>
     /// Pick a variant deterministically from <paramref name="variants"/> via the per-world RNG.
     /// Empty list returns empty string so the caller never crashes on a misconfigured template.

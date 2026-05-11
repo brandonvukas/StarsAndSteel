@@ -20,25 +20,32 @@ namespace StarsAndSteel.Game.Tick.Steps;
 /// - &lt; 10  → province produces nothing
 /// - &lt; 30  → 50% production
 /// - otherwise full production
+///
+/// Phase 2F logistics network bonus: provinces in a connected component (BFS over
+/// land adjacencies between own-owned provinces, AT LEAST one of which has a
+/// MilitaryBase) of size ≥ 2 receive an additional <see cref="LogisticsBonus"/>
+/// production multiplier. Acts on top of building/morale multipliers.
 /// </summary>
 public sealed class ResourceProductionStep : ITickStep
 {
     public string Name => "ResourceProduction";
 
+    /// <summary>Multiplicative bonus applied to all 6 resources for each province in a qualifying logistics network.</summary>
+    public const double LogisticsBonus = 1.10;
+
     public void Execute(TickContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Group provinces by owner so we emit one event per player.
-        // (A player with no provinces produces nothing and emits nothing.)
         var byOwner = context.World.Provinces
             .Where(p => p.OwnerPlayerId.HasValue)
             .GroupBy(p => p.OwnerPlayerId!.Value);
 
-        // Map ownerId -> Player so we can apply the deltas to the denormalized
-        // resource columns. Players without a row in Players (shouldn't happen,
-        // but defensive) are silently skipped.
         var playersById = context.World.Players.ToDictionary(p => p.Id);
+
+        // Per-owner set of province ids that participate in a logistics network
+        // (a connected component containing ≥ 1 MilitaryBase and size ≥ 2).
+        var logisticsByOwner = ComputeLogisticsNetworks(context);
 
         foreach (var group in byOwner)
         {
@@ -46,6 +53,8 @@ public sealed class ResourceProductionStep : ITickStep
             {
                 continue;
             }
+
+            var logisticsSet = logisticsByOwner.GetValueOrDefault(group.Key) ?? new HashSet<Guid>();
 
             long money = 0, oil = 0, steel = 0, electronics = 0, food = 0, manpower = 0;
 
@@ -59,12 +68,15 @@ public sealed class ResourceProductionStep : ITickStep
 
                 var (mMoney, mOil, mSteel, mElec, mFood, mMan) = BuildingMultipliers(province.Buildings);
 
-                money += (long)Math.Round(province.MoneyPerTick * mMoney * moraleFactor);
-                oil += (long)Math.Round(province.OilPerTick * mOil * moraleFactor);
-                steel += (long)Math.Round(province.SteelPerTick * mSteel * moraleFactor);
-                electronics += (long)Math.Round(province.ElectronicsPerTick * mElec * moraleFactor);
-                food += (long)Math.Round(province.FoodPerTick * mFood * moraleFactor);
-                manpower += (long)Math.Round(province.ManpowerPerTick * mMan * moraleFactor);
+                var logistics = logisticsSet.Contains(province.Id) ? LogisticsBonus : 1.0;
+                var combined = moraleFactor * logistics;
+
+                money += (long)Math.Round(province.MoneyPerTick * mMoney * combined);
+                oil += (long)Math.Round(province.OilPerTick * mOil * combined);
+                steel += (long)Math.Round(province.SteelPerTick * mSteel * combined);
+                electronics += (long)Math.Round(province.ElectronicsPerTick * mElec * combined);
+                food += (long)Math.Round(province.FoodPerTick * mFood * combined);
+                manpower += (long)Math.Round(province.ManpowerPerTick * mMan * combined);
             }
 
             // Skip the no-op event when the player owns provinces but every one is
@@ -138,4 +150,81 @@ public sealed class ResourceProductionStep : ITickStep
         < 30 => 0.5,
         _ => 1.0,
     };
+
+    /// <summary>
+    /// Per-owner set of province ids that participate in a logistics network. A network is
+    /// a connected component of own-owned provinces (edges = land adjacencies between two
+    /// own-owned provinces) that contains at least one MilitaryBase and has size ≥ 2. All
+    /// provinces in a qualifying component receive the bonus, including those without a
+    /// MilitaryBase themselves (one base hubs the network).
+    /// </summary>
+    private static Dictionary<Guid, HashSet<Guid>> ComputeLogisticsNetworks(TickContext context)
+    {
+        var result = new Dictionary<Guid, HashSet<Guid>>();
+        var ownerByProvince = context.World.Provinces
+            .Where(p => p.OwnerPlayerId.HasValue)
+            .ToDictionary(p => p.Id, p => p.OwnerPlayerId!.Value);
+        var hasBaseByProvince = context.World.Provinces
+            .ToDictionary(p => p.Id, p => p.Buildings.Any(b => b.Type == BuildingType.MilitaryBase));
+
+        // Per-owner adjacency: only edges where BOTH endpoints belong to the same owner
+        // and the edge is land (no sea crossings — naval logistics would need NavalYard).
+        var adjByProvince = new Dictionary<Guid, List<Guid>>();
+        foreach (var edge in context.Adjacencies)
+        {
+            if (edge.IsSeaCrossing) continue;
+            if (!ownerByProvince.TryGetValue(edge.ProvinceAId, out var ownerA)) continue;
+            if (!ownerByProvince.TryGetValue(edge.ProvinceBId, out var ownerB)) continue;
+            if (ownerA != ownerB) continue;
+            if (!adjByProvince.TryGetValue(edge.ProvinceAId, out var listA))
+            {
+                listA = new List<Guid>();
+                adjByProvince[edge.ProvinceAId] = listA;
+            }
+            listA.Add(edge.ProvinceBId);
+            if (!adjByProvince.TryGetValue(edge.ProvinceBId, out var listB))
+            {
+                listB = new List<Guid>();
+                adjByProvince[edge.ProvinceBId] = listB;
+            }
+            listB.Add(edge.ProvinceAId);
+        }
+
+        var visited = new HashSet<Guid>();
+        foreach (var (provinceId, ownerId) in ownerByProvince)
+        {
+            if (visited.Contains(provinceId)) continue;
+
+            // BFS within this owner's connected component.
+            var component = new List<Guid>();
+            var anyBase = false;
+            var queue = new Queue<Guid>();
+            queue.Enqueue(provinceId);
+            visited.Add(provinceId);
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                component.Add(current);
+                if (hasBaseByProvince.GetValueOrDefault(current)) anyBase = true;
+                if (adjByProvince.TryGetValue(current, out var neighbors))
+                {
+                    foreach (var n in neighbors)
+                    {
+                        if (visited.Add(n)) queue.Enqueue(n);
+                    }
+                }
+            }
+
+            if (!anyBase || component.Count < 2) continue;
+
+            if (!result.TryGetValue(ownerId, out var bag))
+            {
+                bag = new HashSet<Guid>();
+                result[ownerId] = bag;
+            }
+            foreach (var id in component) bag.Add(id);
+        }
+
+        return result;
+    }
 }

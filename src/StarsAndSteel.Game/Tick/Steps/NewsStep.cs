@@ -59,6 +59,9 @@ public sealed class NewsStep : ITickStep
                 case VictoryAchievedEvent e:
                     EmitVictoryAchieved(context, e);
                     break;
+                case CoalitionVictoryAchievedEvent e:
+                    EmitCoalitionVictory(context, e);
+                    break;
                 case PlayerEliminatedEvent e:
                     EmitPlayerEliminated(context, e);
                     break;
@@ -177,6 +180,17 @@ public sealed class NewsStep : ITickStep
         {
             ["nation"] = e.NationName,
         }, relatedPlayerId: e.PlayerId);
+    }
+
+    private static void EmitCoalitionVictory(TickContext ctx, CoalitionVictoryAchievedEvent e)
+    {
+        var coalition = string.Join(" + ", e.WinnerNationNames);
+        Emit(ctx, NewsTemplates.CoalitionVictoryAchieved, new Dictionary<string, string>
+        {
+            ["coalition"] = coalition,
+            ["owned"] = e.OwnedProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            ["total"] = e.TotalProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        }, relatedPlayerId: e.WinnerPlayerIds.FirstOrDefault());
     }
 
     private static void Emit(
