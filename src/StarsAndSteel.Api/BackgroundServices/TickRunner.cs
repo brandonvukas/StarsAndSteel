@@ -114,6 +114,13 @@ public sealed class TickRunner
             .ToListAsync(cancellationToken);
         var relations = new RelationLookup(relationRows);
 
+        // Phase 2G: load every per-player research row that's still in progress
+        // (IsUnlocked == false). ResearchStep increments ProgressPoints and may
+        // flip IsUnlocked; rows are EF-tracked so SaveChanges below picks them up.
+        var activeResearch = await _db.ResearchProgress
+            .Where(r => r.Player.GameWorldId == worldId && !r.IsUnlocked)
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
@@ -123,7 +130,8 @@ public sealed class TickRunner
                 pendingConstructionOrders: pendingConstructionOrders,
                 adjacencies: adjacencies,
                 pendingTreatyOffers: pendingTreatyOffers,
-                relations: relations);
+                relations: relations,
+                activeResearch: activeResearch);
         }
         catch (Exception ex)
         {

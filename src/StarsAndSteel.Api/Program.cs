@@ -237,6 +237,10 @@ builder.Services.AddSingleton<TickBroadcaster>();
 builder.Services.AddSingleton<StarsAndSteel.Game.Diplomacy.DiplomacyService>();
 builder.Services.AddSingleton<DiplomacyBroadcaster>();
 
+// Research (Phase 2G): pure service + out-of-tick broadcaster. Same lifetime story.
+builder.Services.AddSingleton<StarsAndSteel.Game.Research.ResearchService>();
+builder.Services.AddSingleton<ResearchBroadcaster>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

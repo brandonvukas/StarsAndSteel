@@ -16,6 +16,7 @@ import type {
   AuthResponse, WorldSnapshot, SnapshotProvince, NewsItem,
   DiplomacyState, DiplomaticStatus, DiplomacyOffer,
   RelationChanged, OfferReceived, OfferResolved,
+  ResearchState, TechUnlocked, ResearchStartedEvent,
 } from '../types/api';
 
 export interface DraftOrder {
@@ -75,6 +76,7 @@ export function setAuth(auth: AuthResponse | null) {
     $draftOrder.set(null);
     $news.set([]);
     $diplomacy.set(null);
+    $research.set(null);
   }
 }
 
@@ -187,6 +189,55 @@ export function applyOfferResolved(state: DiplomacyState, e: OfferResolved): Dip
     inbox: state.inbox.filter(o => o.offerId !== e.offerId),
     outbox: state.outbox.filter(o => o.offerId !== e.offerId),
   };
+}
+
+// ---- Research state ------------------------------------------------------
+// Mirrors GET /api/worlds/{id}/research. Mutated incrementally by hub events
+// (ResearchStarted for the caller's own start, TechUnlocked when any player
+// completes a tech — only the owner's row is patched here).
+export const $research = atom<ResearchState | null>(null);
+
+export function setResearch(state: ResearchState | null) {
+  $research.set(state);
+}
+
+export function applyResearchStarted(state: ResearchState, e: ResearchStartedEvent): ResearchState {
+  if (e.playerId !== state.callerPlayerId) return state;
+  if (state.myProgress.some(r => r.techId === e.techId)) return state;
+  return {
+    ...state,
+    myProgress: [
+      ...state.myProgress,
+      { techId: e.techId, progressPoints: 0, ticksToResearch: e.ticksToResearch, isUnlocked: false },
+    ],
+  };
+}
+
+export function applyTechUnlocked(state: ResearchState, e: TechUnlocked): ResearchState {
+  if (e.playerId !== state.callerPlayerId) return state;
+  return {
+    ...state,
+    myProgress: state.myProgress.map(r =>
+      r.techId === e.techId ? { ...r, isUnlocked: true, progressPoints: r.ticksToResearch } : r),
+  };
+}
+
+/**
+ * Bump per-tick progress on every in-progress own tech. Called from the
+ * TickAdvanced handler so the panel's progress bars tick forward without a
+ * re-fetch. Caps at the threshold (server flips IsUnlocked separately via
+ * TechUnlocked).
+ */
+export function tickResearchProgress(state: ResearchState): ResearchState {
+  let mutated = false;
+  const next = state.myProgress.map(r => {
+    if (r.isUnlocked) return r;
+    const np = Math.min(r.progressPoints + 1, r.ticksToResearch);
+    if (np === r.progressPoints) return r;
+    mutated = true;
+    return { ...r, progressPoints: np };
+  });
+  return mutated ? { ...state, myProgress: next } : state;
 }
 
 // ---- session persistence -------------------------------------------------

@@ -5,10 +5,11 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MapScene } from '../scenes/MapScene';
 import { GameHubClient } from '../api/hub';
-import { getSnapshot, getNews, getDiplomacy } from '../api/rest';
+import { getSnapshot, getNews, getDiplomacy, getResearch } from '../api/rest';
 import {
   $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
   setDiplomacy, $diplomacy, applyRelationChanged, applyOfferReceived, applyOfferResolved,
+  setResearch, $research, applyResearchStarted, applyTechUnlocked, tickResearchProgress,
 } from '../store/store';
 import {
   applyResourcesUpdated, applyUnitMoved, applyUnitDestroyed,
@@ -18,6 +19,7 @@ import { mountResourceBar } from './resourceBar';
 import { mountProvincePanel } from './provincePanel';
 import { mountNewsTicker } from './newsTicker';
 import { mountDiplomacyPanel } from './diplomacyPanel';
+import { mountResearchPanel } from './researchPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -28,9 +30,11 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         <nav class="side-tabs">
           <button data-tab="province" class="active">Province</button>
           <button data-tab="diplomacy">Diplomacy</button>
+          <button data-tab="research">Research</button>
         </nav>
         <div id="side-tab-province" class="side-tab-pane"></div>
         <div id="side-tab-diplomacy" class="side-tab-pane" hidden></div>
+        <div id="side-tab-research" class="side-tab-pane" hidden></div>
       </aside>
     </div>
     <div id="news-ticker"></div>`;
@@ -51,6 +55,13 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   //    "Loading..." hint if it fails and recover on the next hub event.
   try {
     setDiplomacy(await getDiplomacy(worldId));
+  } catch {
+    // ignored
+  }
+
+  // 1d. Initial research state — catalog + caller's per-tech progress.
+  try {
+    setResearch(await getResearch(worldId));
   } catch {
     // ignored
   }
@@ -77,6 +88,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountResourceBar(host.querySelector('#resource-bar')!);
   mountProvincePanel(host.querySelector('#side-tab-province')!);
   mountDiplomacyPanel(host.querySelector('#side-tab-diplomacy')!);
+  mountResearchPanel(host.querySelector('#side-tab-research')!);
   mountNewsTicker(host.querySelector('#news-ticker')!);
   wireSideTabs(host);
 
@@ -112,10 +124,22 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         const cur = $diplomacy.get();
         if (cur) setDiplomacy(applyOfferResolved(cur, e));
       },
+      onResearchStarted:   e => {
+        const cur = $research.get();
+        if (cur) setResearch(applyResearchStarted(cur, e));
+      },
+      onTechUnlocked:      e => {
+        const cur = $research.get();
+        if (cur) setResearch(applyTechUnlocked(cur, e));
+      },
       onTickAdvanced:      e => {
         bumpTick(e.tick);
         // Reflect tick into world snapshot for the resource bar's "tick N" cell.
         patchWorld(w => ({ ...w, currentTick: e.tick }));
+        // Bump local research progress by 1 per tick so the bars animate without
+        // a per-tick fetch. Server is authoritative — TechUnlocked corrects any drift.
+        const r = $research.get();
+        if (r) setResearch(tickResearchProgress(r));
       },
       onReconnected: async () => {
         const fresh = await getSnapshot(worldId);
@@ -134,6 +158,11 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         } catch {
           // ignored
         }
+        try {
+          setResearch(await getResearch(worldId));
+        } catch {
+          // ignored
+        }
       },
     },
   );
@@ -147,6 +176,7 @@ function wireSideTabs(host: HTMLElement) {
   const panes = {
     province: host.querySelector<HTMLElement>('#side-tab-province')!,
     diplomacy: host.querySelector<HTMLElement>('#side-tab-diplomacy')!,
+    research: host.querySelector<HTMLElement>('#side-tab-research')!,
   };
   tabs.forEach(btn => {
     btn.onclick = () => {

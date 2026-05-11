@@ -65,6 +65,9 @@ public sealed class NewsStep : ITickStep
                 case PlayerEliminatedEvent e:
                     EmitPlayerEliminated(context, e);
                     break;
+                case TechUnlockedEvent e:
+                    EmitTechUnlocked(context, e);
+                    break;
                 // Other event types are not headline-worthy in MVP.
             }
         }
@@ -191,6 +194,15 @@ public sealed class NewsStep : ITickStep
             ["owned"] = e.OwnedProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
             ["total"] = e.TotalProvinceCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
         }, relatedPlayerId: e.WinnerPlayerIds.FirstOrDefault());
+    }
+
+    private static void EmitTechUnlocked(TickContext ctx, TechUnlockedEvent e)
+    {
+        Emit(ctx, NewsTemplates.TechUnlocked, new Dictionary<string, string>
+        {
+            ["nation"] = e.PlayerNationName,
+            ["tech"] = e.TechName,
+        }, relatedPlayerId: e.PlayerId);
     }
 
     private static void Emit(

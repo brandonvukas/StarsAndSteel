@@ -27,7 +27,8 @@ public sealed class TickContext
         IList<ConstructionOrder> pendingConstructionOrders,
         IList<ProvinceAdjacency> adjacencies,
         IList<TreatyOffer>? pendingTreatyOffers = null,
-        RelationLookup? relations = null)
+        RelationLookup? relations = null,
+        IList<ResearchProgress>? activeResearch = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -45,6 +46,7 @@ public sealed class TickContext
         Adjacencies = adjacencies;
         PendingTreatyOffers = pendingTreatyOffers ?? new List<TreatyOffer>();
         Relations = relations ?? RelationLookup.Empty;
+        ActiveResearch = activeResearch ?? new List<ResearchProgress>();
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -106,6 +108,14 @@ public sealed class TickContext
     /// preserves their assumptions about hostility being implicit.
     /// </summary>
     public RelationLookup Relations { get; }
+
+    /// <summary>
+    /// Per-player <see cref="ResearchProgress"/> rows that are currently in progress
+    /// (<see cref="ResearchProgress.IsUnlocked"/> false). The runner loads these per
+    /// tick; <see cref="Steps.ResearchStep"/> increments <c>ProgressPoints</c> and
+    /// flips <c>IsUnlocked</c> when the per-tech threshold is reached.
+    /// </summary>
+    public IList<ResearchProgress> ActiveResearch { get; }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

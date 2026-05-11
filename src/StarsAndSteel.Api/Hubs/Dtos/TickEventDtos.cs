@@ -113,6 +113,19 @@ public static class TickEventDtos
         int Tick,
         Guid PlayerId,
         string NationName);
+
+    /// <summary>
+    /// Phase 2G: a player's research effort just completed. Broadcast world-wide
+    /// (the news ticker shows it for everyone) — non-owners get this purely as a
+    /// flavor headline; the owner's research panel uses it to flip a tech to
+    /// "Unlocked" without re-fetching.
+    /// </summary>
+    public sealed record TechUnlocked(
+        int Tick,
+        Guid PlayerId,
+        string PlayerNationName,
+        string TechId,
+        string TechName);
 }
 
 /// <summary>
@@ -134,4 +147,6 @@ public static class TickEventNames
     public const string VictoryAchieved = "VictoryAchieved";
     public const string CoalitionVictoryAchieved = "CoalitionVictoryAchieved";
     public const string PlayerEliminated = "PlayerEliminated";
+    public const string TechUnlocked = "TechUnlocked";
+    public const string ResearchStarted = "ResearchStarted";
 }

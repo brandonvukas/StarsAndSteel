@@ -255,6 +255,45 @@ export interface PlayerEliminated {
   nationName: string;
 }
 
+// ---- Research (mirrors ResearchDtos.cs + TechUnlocked/ResearchStarted) ---
+export interface TechSpec {
+  id: string;
+  name: string;
+  category: string; // 'Military' | 'Industry' | 'Doctrine' | 'Logistics'
+  summary: string;
+  moneyCost: number;
+  electronicsCost: number;
+  ticksToResearch: number;
+  prerequisites: string[];
+}
+
+export interface ResearchProgress {
+  techId: string;
+  progressPoints: number;
+  ticksToResearch: number;
+  isUnlocked: boolean;
+}
+
+export interface ResearchState {
+  callerPlayerId: string;
+  catalog: TechSpec[];
+  myProgress: ResearchProgress[];
+}
+
+export interface TechUnlocked {
+  tick: number;
+  playerId: string;
+  playerNationName: string;
+  techId: string;
+  techName: string;
+}
+
+export interface ResearchStartedEvent {
+  playerId: string;
+  techId: string;
+  ticksToResearch: number;
+}
+
 // ---- Server-to-client method names (must match TickEventNames.cs) -------
 export const HubEvents = {
   TickAdvanced: 'TickAdvanced',
@@ -273,6 +312,8 @@ export const HubEvents = {
   RelationChanged: 'RelationChanged',
   OfferReceived: 'OfferReceived',
   OfferResolved: 'OfferResolved',
+  TechUnlocked: 'TechUnlocked',
+  ResearchStarted: 'ResearchStarted',
 } as const;
 
 // ---- Diplomacy (mirrors DiplomacyDtos.cs + DiplomacyEventDtos.cs) -------

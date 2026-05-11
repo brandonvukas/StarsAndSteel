@@ -233,6 +233,60 @@ a, a:visited { color: #ffd166; }
 .dp-status-badge.dp-nonaggression { background: #2a2a1f; color: #ffd166; }
 .dp-status-badge.dp-tradeagreement{ background: #2a1f3a; color: #c88aff; }
 
+/* ---- Research panel ------------------------------------------------- */
+.research-panel { padding: 8px 12px; }
+.rp-section { margin-bottom: 14px; }
+.rp-section h3 {
+  margin: 0 0 6px; font-size: 12px; text-transform: uppercase;
+  letter-spacing: 0.06em; color: #ffd166; opacity: 0.9;
+}
+.rp-tech {
+  border: 1px solid #2a2a3a; border-radius: 4px;
+  padding: 8px 10px; margin-bottom: 6px; background: #15151c;
+}
+.rp-tech.rp-unlocked    { border-color: #2d5a3a; background: #15211a; }
+.rp-tech.rp-in-progress { border-color: #3a3a5a; background: #181828; }
+.rp-tech.rp-locked      { opacity: 0.55; }
+.rp-tech-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 4px;
+}
+.rp-status-badge {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 3px; letter-spacing: 0.04em;
+}
+.rp-status-badge.rp-unlocked    { background: #1f3a1f; color: #6bff95; }
+.rp-status-badge.rp-in-progress { background: #1f2a3a; color: #88a4ff; }
+.rp-status-badge.rp-available   { background: #2a2a1f; color: #ffd166; }
+.rp-status-badge.rp-locked      { background: #2a2a2a; color: #888; }
+.rp-summary { font-size: 11px; opacity: 0.75; margin: 4px 0; }
+.rp-prereq { font-size: 11px; margin: 4px 0; }
+.rp-pre {
+  display: inline-block; padding: 1px 6px; margin: 0 4px 2px 0;
+  border-radius: 3px; font-size: 10px;
+}
+.rp-pre-ok      { background: #1f3a1f; color: #6bff95; }
+.rp-pre-missing { background: #3a1515; color: #ff9b9b; }
+.rp-cost { font-size: 11px; opacity: 0.7; margin: 4px 0; }
+.rp-bar {
+  position: relative; height: 14px; margin: 6px 0 2px;
+  background: #0a0a14; border: 1px solid #2a2a3a; border-radius: 3px;
+  overflow: hidden;
+}
+.rp-bar-fill {
+  position: absolute; inset: 0; right: auto;
+  background: linear-gradient(90deg, #2d5a8a, #88a4ff);
+}
+.rp-bar-label {
+  position: relative; display: block; text-align: center;
+  font-size: 10px; line-height: 14px; color: #fff; mix-blend-mode: difference;
+}
+.rp-actions { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+.rp-actions button { padding: 4px 10px; font-size: 12px; }
+.rp-action-status { font-size: 11px; min-height: 14px; }
+.rp-action-status.rp-ok  { color: #6bff95; }
+.rp-action-status.rp-err { color: #ff6b6b; }
+
 /* ---- Error screen --------------------------------------------------- */
 .error-screen {
   margin: 60px auto; max-width: 600px; padding: 24px;

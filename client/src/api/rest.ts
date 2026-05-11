@@ -6,6 +6,7 @@ import type {
   AuthResponse, WorldSummary, WorldSnapshot, NewsItem,
   MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
   DiplomacyState, TreatyOfferKind,
+  ResearchState,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -101,5 +102,13 @@ export const rejectOffer = (worldId: string, offerId: string) =>
 
 export const revokeOffer = (worldId: string, offerId: string) =>
   call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/revoke`, { offerId });
+
+// ---- Research ------------------------------------------------------------
+export const getResearch = (worldId: string) =>
+  call<ResearchState>('GET', `/api/worlds/${worldId}/research`);
+
+export const startResearch = (worldId: string, techId: string) =>
+  call<{ techId: string; ticksToResearch: number }>(
+    'POST', `/api/worlds/${worldId}/research/start`, { techId });
 
 export { HttpError };

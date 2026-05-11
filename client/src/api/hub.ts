@@ -9,6 +9,7 @@ import type {
   ProvinceCaptured, BuildingCompleted, UnitBuilt,
   CombatResolved, AirStrikeResolved, NewsPublished,
   RelationChanged, OfferReceived, OfferResolved,
+  TechUnlocked, ResearchStartedEvent,
 } from '../types/api';
 
 export interface HubHandlers {
@@ -25,6 +26,8 @@ export interface HubHandlers {
   onRelationChanged?: (e: RelationChanged) => void;
   onOfferReceived?: (e: OfferReceived) => void;
   onOfferResolved?: (e: OfferResolved) => void;
+  onTechUnlocked?: (e: TechUnlocked) => void;
+  onResearchStarted?: (e: ResearchStartedEvent) => void;
   /** Fired after the connection drops and the server snapshot may be stale. */
   onReconnected?: () => void;
 }
@@ -90,6 +93,8 @@ export class GameHubClient {
     if (h.onRelationChanged)    c.on(HubEvents.RelationChanged, h.onRelationChanged);
     if (h.onOfferReceived)      c.on(HubEvents.OfferReceived, h.onOfferReceived);
     if (h.onOfferResolved)      c.on(HubEvents.OfferResolved, h.onOfferResolved);
+    if (h.onTechUnlocked)       c.on(HubEvents.TechUnlocked, h.onTechUnlocked);
+    if (h.onResearchStarted)    c.on(HubEvents.ResearchStarted, h.onResearchStarted);
 
     if (h.onReconnected) c.onreconnected(h.onReconnected);
   }

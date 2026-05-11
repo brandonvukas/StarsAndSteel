@@ -132,6 +132,12 @@ public sealed class TickBroadcaster
             new TickEventDtos.PlayerEliminated(e.Tick, e.PlayerId, e.NationName),
             ct),
 
+        TechUnlockedEvent e => group.SendAsync(
+            TickEventNames.TechUnlocked,
+            new TickEventDtos.TechUnlocked(
+                e.Tick, e.PlayerId, e.PlayerNationName, e.TechId, e.TechName),
+            ct),
+
         // Phase 2D: in-tick offer expiry. Reuse the diplomacy OfferResolved DTO so the client
         // hits the same handler whether the terminal transition came from a player action or
         // the expiry sweep. ResolvedAtTick equals the event tick by construction.

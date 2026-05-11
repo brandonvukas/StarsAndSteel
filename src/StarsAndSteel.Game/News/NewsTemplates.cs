@@ -144,6 +144,21 @@ public static class NewsTemplates
             "Analysts call it the largest coalition victory in the campaign's history.",
         });
 
+    public static readonly NewsTemplate TechUnlocked = new(
+        Severity: NewsSeverity.Notable,
+        Category: NewsCategory.Economy,
+        HeadlineVariants: new[]
+        {
+            "{nation} completes research on {tech}",
+            "{nation} scientists deliver breakthrough: {tech}",
+            "Lab leaks point to {nation} fielding {tech} prototypes",
+        },
+        BodyVariants: new[]
+        {
+            "Defense analysts say the unlock will reshape {nation} doctrine in coming months.",
+            "{nation}'s research institutes celebrate the milestone.",
+        });
+
     /// <summary>
     /// Pick a variant deterministically from <paramref name="variants"/> via the per-world RNG.
     /// Empty list returns empty string so the caller never crashes on a misconfigured template.

@@ -64,7 +64,7 @@ Turn the demo into a real strategic game with social mechanics.
 - ☐ Treaty proposal/response flow
 - ☐ Coalition victory condition
 - ☐ Chat system (per-world + per-alliance)
-- ☐ Research / tech tree (basic — 12 techs)
+- ☑ Research / tech tree (basic — 12 techs)
 - ☐ Add air units: Recon Drone, Attack Helicopter, Strategic Bomber
 - ☐ Add ground unit: Special Forces, Mobile Artillery, National Guard
 - ☐ Naval Phase 2a: Frigate + Destroyer + sea-province adjacencies
