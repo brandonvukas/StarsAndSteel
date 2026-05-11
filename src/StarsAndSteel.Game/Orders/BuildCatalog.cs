@@ -58,6 +58,11 @@ public static class BuildCatalog
         new UnitBuildSpec(UnitType.MultiroleFighter, UnitDomain.Air,     Money: 1200, Oil: 300, Steel: 500, Electronics: 400,  Food: 0, Manpower: 0,   TicksToBuild: 14, RequiredBuilding: BuildingType.AirBase),
         new UnitBuildSpec(UnitType.StrategicBomber,  UnitDomain.Air,     Money: 2000, Oil: 500, Steel: 800, Electronics: 400,  Food: 0, Manpower: 0,   TicksToBuild: 18, RequiredBuilding: BuildingType.AirBase),
         new UnitBuildSpec(UnitType.StealthBomber,    UnitDomain.Air,     Money: 3500, Oil: 500, Steel: 800, Electronics: 1200, Food: 0, Manpower: 0,   TicksToBuild: 24, RequiredBuilding: BuildingType.AirBase),
+
+        // Naval (Phase 2I). Both gated to NavalYard, which is itself gated to coastal
+        // provinces in OrderService.ValidateBuildBuilding.
+        new UnitBuildSpec(UnitType.Frigate,          UnitDomain.Naval,   Money: 800,  Oil: 150, Steel: 600, Electronics: 100,  Food: 0, Manpower: 50,  TicksToBuild: 12, RequiredBuilding: BuildingType.NavalYard),
+        new UnitBuildSpec(UnitType.Destroyer,        UnitDomain.Naval,   Money: 1500, Oil: 300, Steel: 1000,Electronics: 250,  Food: 0, Manpower: 80,  TicksToBuild: 16, RequiredBuilding: BuildingType.NavalYard),
     }.ToDictionary(s => s.Type);
 
     // Building costs aren't in docs/04. MVP values are scoped so the level-1 starter pool
@@ -71,6 +76,8 @@ public static class BuildCatalog
         new BuildingBuildSpec(BuildingType.SteelMill,         Money: 1500, Oil: 50,  Steel: 100, Electronics: 0,   Food: 0, Manpower: 100, TicksToBuild: 12),
         new BuildingBuildSpec(BuildingType.Refinery,          Money: 1500, Oil: 0,   Steel: 200, Electronics: 50,  Food: 0, Manpower: 50,  TicksToBuild: 12),
         new BuildingBuildSpec(BuildingType.FinancialDistrict, Money: 2000, Oil: 0,   Steel: 100, Electronics: 100, Food: 0, Manpower: 50,  TicksToBuild: 14),
+        // Naval Yard (Phase 2I). Coastal-only, enforced in OrderService.ValidateBuildBuilding.
+        new BuildingBuildSpec(BuildingType.NavalYard,         Money: 3000, Oil: 100, Steel: 800, Electronics: 200, Food: 0, Manpower: 100, TicksToBuild: 20),
     }.ToDictionary(s => s.Type);
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>

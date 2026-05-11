@@ -38,6 +38,10 @@ public static class UpkeepCatalog
         new UnitUpkeepSpec(UnitType.MultiroleFighter, Money: 15, Oil: 8, Food: 0, Manpower: 0),
         new UnitUpkeepSpec(UnitType.StrategicBomber,  Money: 25, Oil: 15, Food: 0, Manpower: 0),
         new UnitUpkeepSpec(UnitType.StealthBomber,    Money: 40, Oil: 20, Food: 0, Manpower: 0),
+
+        // Naval (Phase 2I). Money + oil heavy (fuel + crew + maintenance).
+        new UnitUpkeepSpec(UnitType.Frigate,          Money: 12, Oil: 8,  Food: 1, Manpower: 0),
+        new UnitUpkeepSpec(UnitType.Destroyer,        Money: 20, Oil: 14, Food: 1, Manpower: 0),
     }.ToDictionary(s => s.Type);
 
     /// <summary>Lookup upkeep spec; returns zero-cost if the type is not catalogued.</summary>

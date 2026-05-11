@@ -67,7 +67,7 @@ Turn the demo into a real strategic game with social mechanics.
 - ☑ Research / tech tree (basic — 12 techs)
 - ☑ Add air units: Recon Drone, Attack Helicopter, Strategic Bomber
 - ☑ Add ground unit: Special Forces, Mobile Artillery, National Guard
-- ☐ Naval Phase 2a: Frigate + Destroyer + sea-province adjacencies
+- ☑ Naval Phase 2a: Frigate + Destroyer + NavalYard (MVP-lite — sea-crossing edges only; true ocean tiles deferred)
 - ☐ Aircraft Carriers (Phase 2b)
 - ☐ Remaining AI personalities: Industrialist, Isolationist
 - ☐ Schemer with dynamic recalculation

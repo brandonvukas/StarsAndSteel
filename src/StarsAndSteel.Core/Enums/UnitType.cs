@@ -20,5 +20,11 @@ public enum UnitType
     AttackHelicopter = 102,
     MultiroleFighter = 103,
     StrategicBomber = 104,
-    StealthBomber = 105
+    StealthBomber = 105,
+
+    // Naval (Phase 2I MVP-lite). Frigate = cheap escort, Destroyer = heavier multi-role.
+    // Both require a NavalYard at a coastal province; movement traverses sea-crossing
+    // edges between coastal land provinces (no true ocean tiles in MVP).
+    Frigate = 200,
+    Destroyer = 201
 }

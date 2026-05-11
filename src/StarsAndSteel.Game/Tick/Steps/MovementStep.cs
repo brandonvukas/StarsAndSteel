@@ -42,7 +42,9 @@ public sealed class MovementStep : ITickStep
             if (order.OrderType != OrderType.Move && order.OrderType != OrderType.Attack) continue;
             if (!unitsById.TryGetValue(order.UnitId, out var unit)) { order.Status = OrderStatus.Cancelled; continue; }
             if (unit.Strength <= 0) { order.Status = OrderStatus.Cancelled; continue; }
-            if (unit.Domain != UnitDomain.Ground) { order.Status = OrderStatus.Cancelled; continue; }
+            // Phase 2I: ground or naval may execute a Move/Attack order. Air units use AirStrike.
+            if (unit.Domain != UnitDomain.Ground && unit.Domain != UnitDomain.Naval)
+            { order.Status = OrderStatus.Cancelled; continue; }
             if (order.TargetProvinceId is null) { order.Status = OrderStatus.Cancelled; continue; }
             if (unit.LocationProvinceId is null) { order.Status = OrderStatus.Cancelled; continue; }
 
@@ -51,6 +53,20 @@ public sealed class MovementStep : ITickStep
 
             // Adjacency check (defensive — controller already checked, but state may have changed).
             if (!adj.Contains((from, to))) { order.Status = OrderStatus.Cancelled; continue; }
+
+            // Phase 2I: naval units may only move coastal-to-coastal (no inland traversal).
+            // True ocean tiles are deferred; sea-crossing edges in shared/map-data.json
+            // already connect coastal land provinces (HI<->CA, AK<->WA, etc.).
+            if (unit.Domain == UnitDomain.Naval)
+            {
+                var fromProv = provinceById.TryGetValue(from, out var fp) ? fp : null;
+                var toProv = provinceById.TryGetValue(to, out var tp) ? tp : null;
+                if (fromProv is null || toProv is null || !fromProv.IsCoastal || !toProv.IsCoastal)
+                {
+                    order.Status = OrderStatus.Cancelled;
+                    continue;
+                }
+            }
 
             // Phase 2E: diplomacy gating. Both Move and Attack relocate the stack into the
             // target province; if the destination is owned by a third party we have to know

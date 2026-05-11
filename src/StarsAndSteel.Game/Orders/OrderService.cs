@@ -82,14 +82,18 @@ public sealed class OrderService
         if (unit.OwnerPlayerId != caller.Id)
             return OrderValidationResult.Reject(OrderRejectionReason.UnitNotOwnedByCaller, "You do not own this unit.");
 
-        if (unit.Domain != UnitDomain.Ground)
-            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Only ground units can move.");
+        if (unit.Domain != UnitDomain.Ground && unit.Domain != UnitDomain.Naval)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Only ground or naval units can move.");
 
         if (unit.IsInTransit)
             return OrderValidationResult.Reject(OrderRejectionReason.UnitInTransit, "Unit is already in transit.");
 
         if (!adjacentProvinceIds.Contains(targetProvince.Id))
             return OrderValidationResult.Reject(OrderRejectionReason.TargetProvinceNotAdjacent, "Target province is not adjacent.");
+
+        // Phase 2I: naval may only traverse coastal-to-coastal edges (no inland).
+        if (unit.Domain == UnitDomain.Naval && !targetProvince.IsCoastal)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Naval units can only move to coastal provinces.");
 
         return OrderValidationResult.Accept(new UnitOrder
         {
@@ -117,14 +121,18 @@ public sealed class OrderService
         if (unit.OwnerPlayerId != caller.Id)
             return OrderValidationResult.Reject(OrderRejectionReason.UnitNotOwnedByCaller, "You do not own this unit.");
 
-        if (unit.Domain != UnitDomain.Ground)
-            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Only ground units can attack.");
+        if (unit.Domain != UnitDomain.Ground && unit.Domain != UnitDomain.Naval)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Only ground or naval units can attack.");
 
         if (unit.IsInTransit)
             return OrderValidationResult.Reject(OrderRejectionReason.UnitInTransit, "Unit is already in transit.");
 
         if (!adjacentProvinceIds.Contains(targetProvince.Id))
             return OrderValidationResult.Reject(OrderRejectionReason.TargetProvinceNotAdjacent, "Target province is not adjacent.");
+
+        // Phase 2I: naval may only attack into a coastal province.
+        if (unit.Domain == UnitDomain.Naval && !targetProvince.IsCoastal)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Naval units can only attack coastal provinces.");
 
         return OrderValidationResult.Accept(new UnitOrder
         {
@@ -259,6 +267,11 @@ public sealed class OrderService
 
         if (!BuildCatalog.IsBuildingBuildable(buildingType))
             return OrderValidationResult.Reject(OrderRejectionReason.BuildingNotInCatalogue, $"Building type {buildingType} is not buildable in MVP.");
+
+        // Phase 2I: NavalYard is only buildable in coastal provinces.
+        if (buildingType == BuildingType.NavalYard && !province.IsCoastal)
+            return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
+                "Naval Yard can only be built in a coastal province.");
 
         var spec = BuildCatalog.GetBuilding(buildingType);
 

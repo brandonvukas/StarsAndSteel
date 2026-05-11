@@ -52,6 +52,8 @@ public static class CombatStats
         UnitType.MultiroleFighter  => 1.6,
         UnitType.StrategicBomber   => 1.8,
         UnitType.StealthBomber     => 2.2,
+        UnitType.Frigate           => 1.4,
+        UnitType.Destroyer         => 1.8,
         _ => 1.0,
     };
 
@@ -122,6 +124,29 @@ public static class CombatStats
         Add(bomberClass, new[] { UnitType.MobileArtillery },  3);
         Add(bomberClass, new[] { UnitType.AABattery },        2);
 
+        // Naval (Phase 2I MVP-lite). Naval-vs-naval is the primary interaction; in
+        // the absence of true sea tiles, naval stacks only co-locate with each other
+        // when one moves into a coastal province occupied by an opposing naval stack.
+        // We also model frigates' AA suite (vs air) and bombers' anti-ship capability
+        // so a coastal raid scenario resolves sensibly.
+        var navalClass = new[] { UnitType.Frigate, UnitType.Destroyer };
+        // Frigate → naval (escort role)
+        Add(new[] { UnitType.Frigate },   navalClass, 2);
+        Add(new[] { UnitType.Destroyer }, navalClass, 3);
+        // Frigate → air (point-defense AA)
+        Add(new[] { UnitType.Frigate }, new[] { UnitType.ReconDrone, UnitType.CombatDrone, UnitType.AttackHelicopter }, 2);
+        Add(new[] { UnitType.Frigate }, new[] { UnitType.MultiroleFighter }, 1);
+        Add(new[] { UnitType.Frigate }, bomberClass, 2);
+        // Destroyer → air (heavier AA suite)
+        Add(new[] { UnitType.Destroyer }, new[] { UnitType.ReconDrone, UnitType.CombatDrone, UnitType.AttackHelicopter }, 3);
+        Add(new[] { UnitType.Destroyer }, new[] { UnitType.MultiroleFighter }, 2);
+        Add(new[] { UnitType.Destroyer }, bomberClass, 3);
+        // Air → naval (anti-ship)
+        Add(bomberClass, navalClass, 3);
+        Add(new[] { UnitType.CombatDrone }, navalClass, 2);
+        Add(new[] { UnitType.AttackHelicopter }, navalClass, 2);
+        Add(new[] { UnitType.MultiroleFighter }, navalClass, 1);
+
         return m;
     }
 
@@ -137,6 +162,10 @@ public static class CombatStats
     public static bool IsAir(UnitType t) =>
         t is UnitType.ReconDrone or UnitType.CombatDrone or UnitType.AttackHelicopter
           or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber;
+
+    /// <summary>True if this unit type is a naval combatant (Phase 2I).</summary>
+    public static bool IsNaval(UnitType t) =>
+        t is UnitType.Frigate or UnitType.Destroyer;
 
     /// <summary>Stealth-bomber bypass-AA roll target (60% bypass). Phase 1: no research bonus.</summary>
     public const double StealthBypassChance = 0.60;

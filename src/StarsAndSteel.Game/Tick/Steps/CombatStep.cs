@@ -28,11 +28,13 @@ public sealed class CombatStep : ITickStep
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        // Group living ground units by province.
+        // Group living ground/naval units by province. (Phase 2I: naval included so
+        // naval-vs-naval engagements at coastal provinces resolve. Air still raids
+        // separately via AirStrikeStep.)
         var byProvince = context.Units
             .Where(u => u.Strength > 0
                 && u.LocationProvinceId.HasValue
-                && u.Domain == UnitDomain.Ground)
+                && (u.Domain == UnitDomain.Ground || u.Domain == UnitDomain.Naval))
             .GroupBy(u => u.LocationProvinceId!.Value);
 
         foreach (var grp in byProvince)
@@ -97,7 +99,11 @@ public sealed class CombatStep : ITickStep
                 WinnerPlayerId: outcome.WinnerPlayerId));
 
             // Capture: defender wiped, attacker survives.
-            if (postDefender <= 0 && postAttacker > 0)
+            // Phase 2I: only ground-domain attackers can flip ownership. Naval can wipe
+            // a hostile naval defender at a coastal province but it takes boots-on-ground
+            // to plant a flag.
+            var attackerHasGround = attackerStacks.Any(s => s.Domain == UnitDomain.Ground && s.Strength > 0);
+            if (postDefender <= 0 && postAttacker > 0 && attackerHasGround)
             {
                 var fromOwner = province.OwnerPlayerId;
                 province.OwnerPlayerId = attackerPlayerId;

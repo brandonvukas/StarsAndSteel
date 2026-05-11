@@ -11,6 +11,10 @@ const BUILDABLE_BUILDINGS = [
   'SteelMill', 'Refinery', 'FinancialDistrict',
 ] as const;
 
+// Coastal-only buildings (filtered into the build menu when the selected
+// province has IsCoastal = true). Phase 2I.
+const COASTAL_ONLY_BUILDINGS = ['NavalYard'] as const;
+
 const BUILDABLE_UNITS = [
   // Ground (per docs/04 §"Unit catalogue")
   'MechInfantry', 'NationalGuard', 'SpecialForces',
@@ -18,6 +22,10 @@ const BUILDABLE_UNITS = [
   // Air. StealthBomber is intentionally excluded — Phase 3 gates it behind research.
   'ReconDrone', 'CombatDrone', 'AttackHelicopter',
   'MultiroleFighter', 'StrategicBomber',
+  // Naval (Phase 2I MVP-lite). Only buildable at coastal provinces with a NavalYard;
+  // server enforces RequiredBuilding=NavalYard. We surface both regardless of coast
+  // so the dropdown is stable; server will reject without a NavalYard.
+  'Frigate', 'Destroyer',
 ] as const;
 
 export function mountProvincePanel(container: HTMLElement) {
@@ -128,13 +136,16 @@ function renderOrderForms(world: WorldSnapshot, province: SnapshotProvince): HTM
 
   // ---- Build building form (owner only) ----
   if (isMine) {
+    const availableBuildings: readonly string[] = province.isCoastal
+      ? [...BUILDABLE_BUILDINGS, ...COASTAL_ONLY_BUILDINGS]
+      : BUILDABLE_BUILDINGS;
     const f = document.createElement('form');
     f.className = 'order-form';
     f.innerHTML = `
       <h3>Build building</h3>
       <label>Type
         <select name="bt">
-          ${BUILDABLE_BUILDINGS.map(b => `<option value="${b}">${b}</option>`).join('')}
+          ${availableBuildings.map(b => `<option value="${b}">${b}</option>`).join('')}
         </select>
       </label>
       <button type="submit">Queue construction</button>
