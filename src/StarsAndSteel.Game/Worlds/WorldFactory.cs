@@ -136,21 +136,54 @@ public sealed class WorldFactory
         var result = new WorldBuildResult(world, adjacencies);
         if (aiOpponentCount > 0)
         {
-            SeatHawkAi(world);
+            SeatAiOpponents(world, aiOpponentCount);
         }
         return result;
     }
 
     /// <summary>
-    /// Seat a single Hawk AI opponent. Pure mutation on the in-memory graph; uses
-    /// <see cref="PlayerSpawner"/> so it gets the same starter package + buildings + units
-    /// as a human. Does not flip world status: the tick loop will not pick this world up
-    /// until a human joins. See <c>docs/09-AI-OPPONENTS.md</c> §"Hawk".
+    /// Seat <paramref name="count"/> AI opponents with diverse personalities. Phase 2J.
+    /// Personality assignment is deterministic on (world.MapSeed, seat index): the rotation
+    /// is Hawk, Industrialist, Hawk, Isolationist, Hawk, Schemer (Hawk-weighted per
+    /// <c>docs/09-AI-OPPONENTS.md</c> §"We default each new AI player to a personality
+    /// randomly, weighted toward Hawk in MVP because it creates the most action").
+    /// Insurgent is reserved for Phase 3.
     /// </summary>
-    internal static void SeatHawkAi(GameWorld world)
+    internal static void SeatAiOpponents(GameWorld world, int count)
     {
         ArgumentNullException.ThrowIfNull(world);
+        if (count <= 0) return;
 
+        var rotation = new[]
+        {
+            (AiPersonality.Hawk,          "Iron Coalition", "#7a0c0c", "#1c1c1c"),
+            (AiPersonality.Industrialist, "Trade Concord",  "#0c4a7a", "#d4af37"),
+            (AiPersonality.Hawk,          "Crimson Pact",   "#8b1a1a", "#2a2a2a"),
+            (AiPersonality.Isolationist,  "Northern Watch", "#1c4a3a", "#cccccc"),
+            (AiPersonality.Hawk,          "Steel Vanguard", "#5a1414", "#3a3a3a"),
+            (AiPersonality.Schemer,       "Shadow Bureau",  "#2a1a4a", "#7a5a9a"),
+        };
+
+        // Deterministic offset by world seed so different worlds rotate differently.
+        var offset = (int)(((uint)world.MapSeed) % (uint)rotation.Length);
+
+        for (int i = 0; i < count; i++)
+        {
+            var (personality, nation, primary, secondary) = rotation[(offset + i) % rotation.Length];
+            SeatAiPlayer(world, personality, nation, primary, secondary);
+        }
+    }
+
+    /// <summary>
+    /// Backward-compat shim retained for tests that explicitly seated a Hawk. Prefer
+    /// <see cref="SeatAiOpponents"/>.
+    /// </summary>
+    internal static void SeatHawkAi(GameWorld world) =>
+        SeatAiPlayer(world, AiPersonality.Hawk, "Iron Coalition", "#7a0c0c", "#1c1c1c");
+
+    private static void SeatAiPlayer(GameWorld world, AiPersonality personality,
+        string nationName, string primaryHex, string secondaryHex)
+    {
         var ai = new Player
         {
             Id = Guid.NewGuid(),
@@ -158,11 +191,10 @@ public sealed class WorldFactory
             GameWorldId = world.Id,
             GameWorld = world,
             IsAi = true,
-            AiPersonality = AiPersonality.Hawk,
-            // Canned identity for MVP. A future personality factory can vary these.
-            NationName = "Iron Coalition",
-            FlagPrimaryHex = "#7a0c0c",
-            FlagSecondaryHex = "#1c1c1c",
+            AiPersonality = personality,
+            NationName = nationName,
+            FlagPrimaryHex = primaryHex,
+            FlagSecondaryHex = secondaryHex,
         };
         ai.AiMemory = new AiMemory
         {

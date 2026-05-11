@@ -12,6 +12,9 @@ namespace StarsAndSteel.Game.Tick.Steps;
 /// MVP supports a single personality (Hawk). Future personalities slot in here via a
 /// switch on <see cref="Core.Entities.Player.AiPersonality"/>.
 /// <para/>
+/// Phase 2J adds Industrialist, Isolationist, and Schemer planners. Insurgent stays
+/// deferred (Phase 3 — needs random multiplier rerolls per game).
+/// <para/>
 /// Determinism: the planner takes <see cref="TickContext.Rng"/>, so any AI tie-breaking
 /// pulls from the same per-world LCG that drives combat and other steps. Replays reproduce.
 /// </summary>
@@ -32,31 +35,22 @@ public sealed class AiTurnStep : ITickStep
 
         foreach (var ai in aiPlayers)
         {
-            switch (ai.AiPersonality!.Value)
+            AiPlan? plan = ai.AiPersonality!.Value switch
             {
-                case AiPersonality.Hawk:
-                    var plan = HawkPlanner.Plan(
-                        me: ai,
-                        world: context.World,
-                        allUnits: context.Units,
-                        adjacencies: context.Adjacencies,
-                        processingTick: context.ProcessingTick,
-                        rng: context.Rng);
+                AiPersonality.Hawk          => HawkPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
+                AiPersonality.Industrialist => IndustrialistPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
+                AiPersonality.Isolationist  => IsolationistPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
+                AiPersonality.Schemer       => SchemerPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
+                // Insurgent (random multipliers per game) lands in Phase 3.
+                _ => null,
+            };
 
-                    foreach (var order in plan.UnitOrders)
-                    {
-                        context.PendingUnitOrders.Add(order);
-                    }
-                    foreach (var order in plan.ConstructionOrders)
-                    {
-                        context.PendingConstructionOrders.Add(order);
-                    }
-                    break;
+            if (plan is null) continue;
 
-                // Other personalities land in later phases (docs/09 §"The five personalities").
-                default:
-                    break;
-            }
+            foreach (var order in plan.UnitOrders)
+                context.PendingUnitOrders.Add(order);
+            foreach (var order in plan.ConstructionOrders)
+                context.PendingConstructionOrders.Add(order);
         }
     }
 }
