@@ -12,8 +12,12 @@ const BUILDABLE_BUILDINGS = [
 ] as const;
 
 const BUILDABLE_UNITS = [
-  'MechInfantry', 'MainBattleTank', 'AntiAirBattery',
-  'CombatDrone', 'MultiroleFighter',
+  // Ground (per docs/04 §"Unit catalogue")
+  'MechInfantry', 'NationalGuard', 'SpecialForces',
+  'MainBattleTank', 'MobileArtillery', 'AABattery',
+  // Air. StealthBomber is intentionally excluded — Phase 3 gates it behind research.
+  'ReconDrone', 'CombatDrone', 'AttackHelicopter',
+  'MultiroleFighter', 'StrategicBomber',
 ] as const;
 
 export function mountProvincePanel(container: HTMLElement) {
