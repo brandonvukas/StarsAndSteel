@@ -186,16 +186,23 @@ public sealed class OrdersController : ControllerBase
                 p => p.Id == request.TargetProvinceId && p.GameWorldId == worldId, cancellationToken);
             if (target is null) return NotFound(new { error = "Target province not found in this world." });
 
-            // Air-strike eligibility looks at buildings at the unit's stationing province.
+            // Air-strike eligibility looks at buildings + units at the unit's stationing
+            // province. Phase 2b: a CarrierAirWing's "airbase" is its parent carrier, so
+            // we also need the units at that province for the validator.
             var hostingProvinceId = unit.LocationProvinceId ?? unit.HomeBaseProvinceId;
             var hostingBuildings = hostingProvinceId is null
                 ? Array.Empty<Building>()
                 : await _db.Buildings
                     .Where(b => b.ProvinceId == hostingProvinceId.Value)
                     .ToArrayAsync(cancellationToken);
+            var hostingUnits = hostingProvinceId is null
+                ? Array.Empty<Unit>()
+                : await _db.Units
+                    .Where(u => u.LocationProvinceId == hostingProvinceId.Value && u.Strength > 0)
+                    .ToArrayAsync(cancellationToken);
 
             var result = _orderService.ValidateAirStrike(
-                unit, ctx.Player!, target, hostingBuildings, ctx.World!.CurrentTick, ctx.World.Status);
+                unit, ctx.Player!, target, hostingBuildings, hostingUnits, ctx.World!.CurrentTick, ctx.World.Status);
 
             return await PersistUnitOrderAsync(result, ctx.World, cancellationToken);
         }
@@ -236,9 +243,24 @@ public sealed class OrdersController : ControllerBase
                 .Where(b => b.ProvinceId == province.Id)
                 .ToArrayAsync(cancellationToken);
 
+            // Phase 2b: carrier-wing builds need to see what's already in the province
+            // (carriers + parented wings) and what wing builds are still in flight.
+            var provinceUnits = await _db.Units
+                .Where(u => u.LocationProvinceId == province.Id && u.Strength > 0)
+                .ToArrayAsync(cancellationToken);
+            var pendingWingOrders = await _db.ConstructionOrders
+                .Where(o => o.GameWorldId == worldId
+                         && o.ProvinceId == province.Id
+                         && o.OrderType == OrderType.BuildUnit
+                         && o.UnitType == UnitType.CarrierAirWing
+                         && o.Status != OrderStatus.Complete
+                         && o.Status != OrderStatus.Cancelled)
+                .ToArrayAsync(cancellationToken);
+
             var result = _orderService.ValidateBuildUnit(
                 ctx.Player!, province, unitType, request.Quantity,
-                buildings, ctx.World!.CurrentTick, ctx.World.Status);
+                buildings, provinceUnits, pendingWingOrders,
+                ctx.World!.CurrentTick, ctx.World.Status);
 
             return await PersistConstructionOrderAsync(result, ctx.Player!, cancellationToken);
         }

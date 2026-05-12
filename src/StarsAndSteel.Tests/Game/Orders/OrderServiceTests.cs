@@ -112,7 +112,7 @@ public sealed class OrderServiceTests
         var hosting = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
 
         var result = _service.ValidateAirStrike(
-            f.Alice_CombatDrone, f.Alice, f.ProvinceC, hosting, CurrentTick, GameWorldStatus.Active);
+            f.Alice_CombatDrone, f.Alice, f.ProvinceC, hosting, Array.Empty<Unit>(), CurrentTick, GameWorldStatus.Active);
 
         result.IsAccepted.Should().BeTrue();
         result.UnitOrder!.OrderType.Should().Be(OrderType.AirStrike);
@@ -125,7 +125,7 @@ public sealed class OrderServiceTests
         var hosting = new[] { new Building { Type = BuildingType.MilitaryBase, ProvinceId = f.ProvinceA.Id } };
 
         var result = _service.ValidateAirStrike(
-            f.Alice_CombatDrone, f.Alice, f.ProvinceC, hosting, CurrentTick, GameWorldStatus.Active);
+            f.Alice_CombatDrone, f.Alice, f.ProvinceC, hosting, Array.Empty<Unit>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.AirUnitNotAtAirBase);
     }
@@ -137,7 +137,7 @@ public sealed class OrderServiceTests
         var hosting = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
 
         var result = _service.ValidateAirStrike(
-            f.Alice_MechInf, f.Alice, f.ProvinceC, hosting, CurrentTick, GameWorldStatus.Active);
+            f.Alice_MechInf, f.Alice, f.ProvinceC, hosting, Array.Empty<Unit>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.UnitDomainMismatch);
     }
@@ -152,7 +152,7 @@ public sealed class OrderServiceTests
 
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceA, UnitType.MechInfantry, quantity: 1000,
-            new[] { rc }, CurrentTick, GameWorldStatus.Active);
+            new[] { rc }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.IsAccepted.Should().BeTrue();
         result.ConstructionOrder!.OrderType.Should().Be(OrderType.BuildUnit);
@@ -170,7 +170,7 @@ public sealed class OrderServiceTests
 
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceB, UnitType.MechInfantry, 1000,
-            new[] { rc }, CurrentTick, GameWorldStatus.Active);
+            new[] { rc }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.ProvinceNotOwnedByCaller);
     }
@@ -181,7 +181,7 @@ public sealed class OrderServiceTests
         var f = new Fixture();
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceA, UnitType.MechInfantry, 1000,
-            Array.Empty<Building>(), CurrentTick, GameWorldStatus.Active);
+            Array.Empty<Building>(), Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.RequiredBuildingMissing);
     }
@@ -195,7 +195,7 @@ public sealed class OrderServiceTests
 
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceA, UnitType.MechInfantry, 1000,
-            new[] { rc }, CurrentTick, GameWorldStatus.Active);
+            new[] { rc }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.InsufficientResources);
     }
@@ -208,7 +208,7 @@ public sealed class OrderServiceTests
 
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceA, UnitType.MechInfantry, 0,
-            new[] { rc }, CurrentTick, GameWorldStatus.Active);
+            new[] { rc }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.QuantityOutOfRange);
     }
@@ -228,9 +228,124 @@ public sealed class OrderServiceTests
 
         var result = _service.ValidateBuildUnit(
             f.Alice, f.ProvinceA, UnitType.MechInfantry, 2000,
-            new[] { rc }, CurrentTick, GameWorldStatus.Active);
+            new[] { rc }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
 
         result.Rejection.Should().Be(OrderRejectionReason.InsufficientResources);
+    }
+
+    // ---- Phase 2b: Carrier wing capacity & embarked-wing air strike ---
+
+    [Fact]
+    public void ValidateBuildUnit_CarrierAirWing_rejects_when_no_friendly_carrier_at_province()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+        var nyard = new Building { Type = BuildingType.NavalYard, ProvinceId = f.ProvinceA.Id };
+
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.CarrierAirWing, 1,
+            new[] { nyard }, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.NoCarrierWithSpareCapacity);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_CarrierAirWing_accepts_when_friendly_carrier_has_spare_slot()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+        var nyard = new Building { Type = BuildingType.NavalYard, ProvinceId = f.ProvinceA.Id };
+        var carrier = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.AircraftCarrier, Domain = UnitDomain.Naval,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.CarrierAirWing, 1,
+            new[] { nyard }, new[] { carrier }, Array.Empty<ConstructionOrder>(), CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_CarrierAirWing_rejects_when_capacity_full_including_pending_orders()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+        var nyard = new Building { Type = BuildingType.NavalYard, ProvinceId = f.ProvinceA.Id };
+        var carrier = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.AircraftCarrier, Domain = UnitDomain.Naval,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+        // 2 wings already embarked + 2 in-flight build orders = 4 = full capacity.
+        var wings = Enumerable.Range(0, 2).Select(_ => new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.CarrierAirWing, Domain = UnitDomain.Air, ParentUnitId = carrier.Id,
+            Strength = 500, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        }).ToArray();
+        var pending = Enumerable.Range(0, 2).Select(_ => new ConstructionOrder
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            ProvinceId = f.ProvinceA.Id, OrderType = OrderType.BuildUnit,
+            UnitType = UnitType.CarrierAirWing, Quantity = 1,
+            IssuedAtTick = CurrentTick, TicksRemaining = 5, Status = OrderStatus.Pending,
+        }).ToArray();
+
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.CarrierAirWing, 1,
+            new[] { nyard }, new Unit[] { carrier }.Concat(wings).ToArray(), pending, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.NoCarrierWithSpareCapacity);
+    }
+
+    [Fact]
+    public void ValidateAirStrike_CarrierAirWing_accepts_without_AirBase_when_parent_carrier_present()
+    {
+        var f = new Fixture();
+        var carrier = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.AircraftCarrier, Domain = UnitDomain.Naval,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+        var wing = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.CarrierAirWing, Domain = UnitDomain.Air, ParentUnitId = carrier.Id,
+            Strength = 500, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+
+        // No AirBase building at province — wings sortie from the carrier instead.
+        var result = _service.ValidateAirStrike(
+            wing, f.Alice, f.ProvinceC, Array.Empty<Building>(),
+            new[] { carrier, wing }, CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+        result.UnitOrder!.OrderType.Should().Be(OrderType.AirStrike);
+    }
+
+    [Fact]
+    public void ValidateAirStrike_CarrierAirWing_rejects_when_parent_carrier_missing_at_location()
+    {
+        var f = new Fixture();
+        // Wing's parent id points at a carrier that's NOT in hostingUnits (sunk or moved).
+        var wing = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.CarrierAirWing, Domain = UnitDomain.Air, ParentUnitId = Guid.NewGuid(),
+            Strength = 500, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+
+        var result = _service.ValidateAirStrike(
+            wing, f.Alice, f.ProvinceC, Array.Empty<Building>(),
+            new[] { wing }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.AirUnitNotAtAirBase);
     }
 
     // ---- Build building -----------------------------------------------

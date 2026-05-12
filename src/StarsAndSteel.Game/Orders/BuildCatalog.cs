@@ -17,6 +17,13 @@ namespace StarsAndSteel.Game.Orders;
 public static class BuildCatalog
 {
     /// <summary>Cost + build-time for one unit type. Costs are per 1000 strength.</summary>
+    /// <param name="RequiresCarrier">
+    /// Phase 2b: if true, the building province must also host a friendly
+    /// <see cref="UnitType.AircraftCarrier"/> with spare capacity, and the resulting
+    /// unit is parented to that carrier rather than living on the province.
+    /// <see cref="RequiredBuilding"/> is still enforced (NavalYard for wings) so we
+    /// don't have to special-case unrelated land provinces.
+    /// </param>
     public sealed record UnitBuildSpec(
         UnitType Type,
         UnitDomain Domain,
@@ -27,7 +34,8 @@ public static class BuildCatalog
         long Food,
         long Manpower,
         int TicksToBuild,
-        BuildingType RequiredBuilding);
+        BuildingType RequiredBuilding,
+        bool RequiresCarrier = false);
 
     /// <summary>Cost + build-time for one building (level 1; higher levels deferred to Phase 2).</summary>
     public sealed record BuildingBuildSpec(
@@ -63,6 +71,12 @@ public static class BuildCatalog
         // provinces in OrderService.ValidateBuildBuilding.
         new UnitBuildSpec(UnitType.Frigate,          UnitDomain.Naval,   Money: 800,  Oil: 150, Steel: 600, Electronics: 100,  Food: 0, Manpower: 50,  TicksToBuild: 12, RequiredBuilding: BuildingType.NavalYard),
         new UnitBuildSpec(UnitType.Destroyer,        UnitDomain.Naval,   Money: 1500, Oil: 300, Steel: 1000,Electronics: 250,  Food: 0, Manpower: 80,  TicksToBuild: 16, RequiredBuilding: BuildingType.NavalYard),
+
+        // Naval Aviation (Phase 2b). The carrier itself is a heavy expensive ship that
+        // ferries CarrierAirWings. Wings have RequiresCarrier=true so the order service
+        // looks for a friendly carrier with spare capacity in the building province.
+        new UnitBuildSpec(UnitType.AircraftCarrier,  UnitDomain.Naval,   Money: 6000, Oil: 800, Steel: 3500,Electronics: 800,  Food: 0, Manpower: 200, TicksToBuild: 30, RequiredBuilding: BuildingType.NavalYard),
+        new UnitBuildSpec(UnitType.CarrierAirWing,   UnitDomain.Air,     Money: 1500, Oil: 300, Steel: 400, Electronics: 400,  Food: 0, Manpower: 50,  TicksToBuild: 12, RequiredBuilding: BuildingType.NavalYard, RequiresCarrier: true),
     }.ToDictionary(s => s.Type);
 
     // Building costs aren't in docs/04. MVP values are scoped so the level-1 starter pool
@@ -82,6 +96,13 @@ public static class BuildCatalog
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>
     public static bool IsUnitBuildable(UnitType type) => Units.ContainsKey(type);
+
+    /// <summary>
+    /// Phase 2b: Maximum number of <see cref="UnitType.CarrierAirWing"/> stacks that may
+    /// be parented to a single <see cref="UnitType.AircraftCarrier"/>. Counts in-flight
+    /// build orders too so spam-queueing wings doesn't bypass the cap.
+    /// </summary>
+    public const int CarrierWingCapacity = 4;
 
     /// <summary>True if this building type is buildable in MVP.</summary>
     public static bool IsBuildingBuildable(BuildingType type) => Buildings.ContainsKey(type);

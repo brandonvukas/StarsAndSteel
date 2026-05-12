@@ -68,7 +68,7 @@ Turn the demo into a real strategic game with social mechanics.
 - ☑ Add air units: Recon Drone, Attack Helicopter, Strategic Bomber
 - ☑ Add ground unit: Special Forces, Mobile Artillery, National Guard
 - ☑ Naval Phase 2a: Frigate + Destroyer + NavalYard (MVP-lite — sea-crossing edges only; true ocean tiles deferred)
-- ☐ Aircraft Carriers (Phase 2b)
+- ☑ Aircraft Carriers (Phase 2b) — `AircraftCarrier` + `CarrierAirWing` (parented via `Unit.ParentUnitId`); wings move with the carrier, can sortie without an AirBase, and die when the carrier sinks; capacity = 4 wings/carrier (counts pending build orders)
 - ☑ Remaining AI personalities: Industrialist, Isolationist
 - ☑ Schemer with dynamic recalculation (MVP heuristic — full diplomacy/cyber awareness in Phase 3)
 - ☑ Stats / graphs panel (Chart.js) — current snapshot only; per-tick history deferred

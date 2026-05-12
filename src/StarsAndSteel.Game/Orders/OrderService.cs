@@ -26,6 +26,7 @@ public enum OrderRejectionReason
     UnknownUnit,                    // 404
     UnknownProvince,                // 404
     UnitTypeRequiresAirBase,        // 400
+    NoCarrierWithSpareCapacity,     // 400 — Phase 2b
 }
 
 /// <summary>
@@ -149,12 +150,17 @@ public sealed class OrderService
     /// Air strike. Per docs/06: rejected if the air unit isn't stationed at a province with
     /// an Air Base. <paramref name="hostingBuildings"/> is the set of buildings at the unit's
     /// current location (the caller has loaded them).
+    /// <para/>
+    /// Phase 2b: a <see cref="UnitType.CarrierAirWing"/> may sortie WITHOUT an AirBase
+    /// at its current province as long as its parent carrier is also there (which it
+    /// always is, since wings move with the carrier — but we still verify defensively).
     /// </summary>
     public OrderValidationResult ValidateAirStrike(
         Unit unit,
         Player caller,
         Province targetProvince,
         IReadOnlyCollection<Building> hostingBuildings,
+        IReadOnlyCollection<Unit> hostingUnits,
         int currentTick,
         GameWorldStatus worldStatus)
     {
@@ -170,8 +176,28 @@ public sealed class OrderService
         if (unit.IsInTransit)
             return OrderValidationResult.Reject(OrderRejectionReason.UnitInTransit, "Unit is already in transit.");
 
-        if (!hostingBuildings.Any(b => b.Type == BuildingType.AirBase))
+        // Phase 2b: a CarrierAirWing's "airbase" is its parent carrier — it doesn't
+        // need a building at its current province. Verify the parent carrier is
+        // present and alive at the same location (defensive — MovementStep keeps
+        // them co-located, so this would only fail if data is corrupt).
+        bool isCarrierWing = unit.Type == UnitType.CarrierAirWing;
+        if (isCarrierWing)
+        {
+            var carrier = hostingUnits.FirstOrDefault(u =>
+                u.Id == unit.ParentUnitId
+                && u.Type == UnitType.AircraftCarrier
+                && u.OwnerPlayerId == caller.Id
+                && u.Strength > 0);
+            if (carrier is null)
+            {
+                return OrderValidationResult.Reject(OrderRejectionReason.AirUnitNotAtAirBase,
+                    "Carrier-air-wing has no parent carrier at its location.");
+            }
+        }
+        else if (!hostingBuildings.Any(b => b.Type == BuildingType.AirBase))
+        {
             return OrderValidationResult.Reject(OrderRejectionReason.AirUnitNotAtAirBase, "Air unit must be stationed at a province with an Air Base.");
+        }
 
         // Range check is Phase 2 (no per-air-unit range model in MVP). Documented in docs/06.
 
@@ -189,6 +215,12 @@ public sealed class OrderService
     /// <summary>
     /// Validate + construct (but do not persist) a build-unit order. Caller debits resources
     /// from <paramref name="caller"/> on accept.
+    /// <para/>
+    /// <paramref name="provinceUnits"/> is the set of units currently in the build province
+    /// (any owner). Used by Phase 2b to verify a friendly <see cref="UnitType.AircraftCarrier"/>
+    /// with spare wing capacity exists when building a <see cref="UnitType.CarrierAirWing"/>.
+    /// <paramref name="pendingCarrierWingOrders"/> are the in-flight wing builds targeting
+    /// this province so spam-queueing wings can't bypass the cap.
     /// </summary>
     public OrderValidationResult ValidateBuildUnit(
         Player caller,
@@ -196,6 +228,8 @@ public sealed class OrderService
         UnitType unitType,
         int quantity,
         IReadOnlyCollection<Building> provinceBuildings,
+        IReadOnlyCollection<Unit> provinceUnits,
+        IReadOnlyCollection<ConstructionOrder> pendingCarrierWingOrders,
         int currentTick,
         GameWorldStatus worldStatus)
     {
@@ -217,6 +251,43 @@ public sealed class OrderService
         if (!provinceBuildings.Any(b => b.Type == spec.RequiredBuilding))
             return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
                 $"Province requires a {spec.RequiredBuilding} to build {unitType}.");
+
+        // Phase 2b: CarrierAirWing requires a friendly carrier present with spare slot
+        // capacity. We count both already-embarked wings AND in-flight wing build
+        // orders at this province against each carrier (worst-case attribution: the
+        // pending orders are unattributed, so we just require total free capacity
+        // across all carriers >= 1 + pending count).
+        if (spec.RequiresCarrier)
+        {
+            var carriers = provinceUnits
+                .Where(u => u.Type == UnitType.AircraftCarrier
+                         && u.OwnerPlayerId == caller.Id
+                         && u.Strength > 0)
+                .ToArray();
+            if (carriers.Length == 0)
+            {
+                return OrderValidationResult.Reject(OrderRejectionReason.NoCarrierWithSpareCapacity,
+                    $"{unitType} requires a friendly Aircraft Carrier docked at this province.");
+            }
+
+            int totalCapacity = carriers.Length * BuildCatalog.CarrierWingCapacity;
+            int wingsHere = provinceUnits.Count(u => u.Type == UnitType.CarrierAirWing
+                                                   && u.OwnerPlayerId == caller.Id
+                                                   && u.Strength > 0
+                                                   && u.ParentUnitId.HasValue
+                                                   && carriers.Any(c => c.Id == u.ParentUnitId.Value));
+            int pending = pendingCarrierWingOrders.Count(o =>
+                o.ProvinceId == province.Id &&
+                o.OwnerPlayerId == caller.Id &&
+                o.UnitType == UnitType.CarrierAirWing &&
+                o.Status != OrderStatus.Complete &&
+                o.Status != OrderStatus.Cancelled);
+            if (wingsHere + pending >= totalCapacity)
+            {
+                return OrderValidationResult.Reject(OrderRejectionReason.NoCarrierWithSpareCapacity,
+                    "Carrier(s) at this province have no spare wing slots.");
+            }
+        }
 
         // Costs scale linearly with stack size (1000-strength baseline).
         var costFactor = quantity / 1000.0;

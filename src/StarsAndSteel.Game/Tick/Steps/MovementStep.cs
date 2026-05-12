@@ -105,6 +105,24 @@ public sealed class MovementStep : ITickStep
             unit.TransitFromProvinceId = null;
             unit.TransitToProvinceId = null;
             unit.TransitArrivalTick = null;
+
+            // Phase 2b: a moving AircraftCarrier drags its embarked CarrierAirWing
+            // stacks. Wings have no movement orders of their own; their location
+            // simply mirrors the parent. We also update HomeBaseProvinceId so
+            // AirStrike validation (which checks the wing's "home base = current
+            // location of carrier") stays consistent.
+            if (unit.Type == UnitType.AircraftCarrier)
+            {
+                foreach (var wing in context.Units)
+                {
+                    if (wing.ParentUnitId == unit.Id && wing.Strength > 0)
+                    {
+                        wing.LocationProvinceId = to;
+                        wing.HomeBaseProvinceId = to;
+                    }
+                }
+            }
+
             order.Status = OrderStatus.Complete;
 
             context.Events.Add(new UnitMovedEvent(

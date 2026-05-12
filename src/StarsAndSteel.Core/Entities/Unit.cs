@@ -48,5 +48,17 @@ public class Unit
     public Guid? HomeBaseProvinceId { get; set; }
     public Province? HomeBaseProvince { get; set; }
 
+    /// <summary>
+    /// Phase 2b: optional parent-unit FK. A <see cref="UnitType.CarrierAirWing"/> stack
+    /// is parented to its host <see cref="UnitType.AircraftCarrier"/> via this field.
+    /// When the carrier moves, its embarked wings move with it (MovementStep). When the
+    /// carrier is destroyed, all wings parented to it are destroyed too. The carrier
+    /// also acts as the wing's "AirBase equivalent" for AirStrike eligibility.
+    /// <para/>
+    /// Self-FK on Units. Null for everything else.
+    /// </summary>
+    public Guid? ParentUnitId { get; set; }
+    public Unit? ParentUnit { get; set; }
+
     public ICollection<UnitOrder> Orders { get; set; } = new List<UnitOrder>();
 }

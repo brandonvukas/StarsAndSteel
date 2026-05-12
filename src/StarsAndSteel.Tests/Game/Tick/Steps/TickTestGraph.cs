@@ -85,9 +85,18 @@ internal static class TickTestGraph
     }
 
     public static Unit AddUnit(GameWorld world, Player owner, Province location, UnitType type, int strength,
-        int morale = 100, int xp = 0)
+        int morale = 100, int xp = 0, UnitDomain? domain = null, Guid? parentUnitId = null)
     {
-        var domain = type >= UnitType.ReconDrone ? UnitDomain.Air : UnitDomain.Ground;
+        // Default domain inferred from numeric range. Phase 2b: AircraftCarrier (202)
+        // and CarrierAirWing (106) override the default mapping (carrier is naval; wing
+        // is air) so callers can omit the explicit domain in the common case.
+        var inferred = type switch
+        {
+            UnitType.AircraftCarrier => UnitDomain.Naval,
+            UnitType.CarrierAirWing  => UnitDomain.Air,
+            UnitType.Frigate or UnitType.Destroyer => UnitDomain.Naval,
+            _ => type >= UnitType.ReconDrone ? UnitDomain.Air : UnitDomain.Ground,
+        };
         var u = new Unit
         {
             Id = Guid.NewGuid(),
@@ -97,10 +106,11 @@ internal static class TickTestGraph
             LocationProvinceId = location.Id,
             LocationProvince = location,
             Type = type,
-            Domain = domain,
+            Domain = domain ?? inferred,
             Strength = strength,
             Morale = morale,
             Experience = xp,
+            ParentUnitId = parentUnitId,
         };
         location.UnitsStationed.Add(u);
         owner.OwnedUnits.Add(u);

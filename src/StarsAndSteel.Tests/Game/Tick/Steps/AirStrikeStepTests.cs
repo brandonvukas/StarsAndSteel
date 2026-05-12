@@ -114,4 +114,36 @@ public class AirStrikeStepTests
 
         order.Status.Should().Be(OrderStatus.Cancelled);
     }
+
+    [Fact]
+    public void Sinking_a_carrier_destroys_its_embarked_wings_with_CarrierLost_cause()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var bob = AddPlayer(world, "Bob");
+        var alicePr = AddProvince(world, alice, "AlicePr");
+        var bobPr = AddProvince(world, bob, "BobPr");
+        bobPr.IsCoastal = true;
+        // Heavy bomber, no AA at the carrier's province → strike carries through.
+        var attacker = AddUnit(world, alice, alicePr, UnitType.StrategicBomber, 5000);
+        // Tiny carrier so the strike is guaranteed to sink it.
+        var carrier = AddUnit(world, bob, bobPr, UnitType.AircraftCarrier, 1);
+        var wing1 = AddUnit(world, bob, bobPr, UnitType.CarrierAirWing, 500, parentUnitId: carrier.Id);
+        var wing2 = AddUnit(world, bob, bobPr, UnitType.CarrierAirWing, 500, parentUnitId: carrier.Id);
+        var order = AirStrikeOrder(attacker, bobPr);
+        var ctx = Context(world,
+            units: new[] { attacker, carrier, wing1, wing2 },
+            unitOrders: new[] { order });
+
+        new AirStrikeStep().Execute(ctx);
+
+        carrier.Strength.Should().Be(0);
+        wing1.Strength.Should().Be(0);
+        wing2.Strength.Should().Be(0);
+        ctx.UnitsToDelete.Should().Contain(new[] { carrier, wing1, wing2 });
+        var destroyed = ctx.Events.OfType<UnitDestroyedEvent>().ToList();
+        destroyed.Should().Contain(e => e.UnitId == carrier.Id);
+        destroyed.Should().Contain(e => e.UnitId == wing1.Id && e.Cause == "CarrierLost");
+        destroyed.Should().Contain(e => e.UnitId == wing2.Id && e.Cause == "CarrierLost");
+    }
 }

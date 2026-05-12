@@ -100,7 +100,13 @@ public sealed record SnapshotMyUnit(
     bool IsInTransit,
     Guid? TransitFromProvinceId,
     Guid? TransitToProvinceId,
-    int? TransitArrivalTick);
+    int? TransitArrivalTick,
+    /// <summary>
+    /// Phase 2b: parent unit id when this stack is embarked on a carrier.
+    /// Null for everything that isn't a CarrierAirWing. The client uses this
+    /// to render the carrier-composition view in the province panel.
+    /// </summary>
+    Guid? ParentUnitId);
 
 /// <summary>
 /// Enemy unit visible to the caller — only stationed (non-transit) units in

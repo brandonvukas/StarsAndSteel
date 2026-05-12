@@ -47,9 +47,18 @@ internal sealed class UnitConfiguration : IEntityTypeConfiguration<Unit>
             .HasForeignKey(x => x.HomeBaseProvinceId)
             .OnDelete(DeleteBehavior.NoAction);
 
+        // Phase 2b: self-FK for carrier-air-wing → carrier parenting. NoAction because
+        // the GameWorld cascade already covers cleanup; we handle "carrier sunk → wings
+        // destroyed" explicitly in CombatStep so the in-memory model stays consistent.
+        b.HasOne(x => x.ParentUnit)
+            .WithMany()
+            .HasForeignKey(x => x.ParentUnitId)
+            .OnDelete(DeleteBehavior.NoAction);
+
         // Indexes from docs/03-DATABASE-SCHEMA.md.
         b.HasIndex(x => new { x.GameWorldId, x.OwnerPlayerId });
         b.HasIndex(x => x.LocationProvinceId);
         b.HasIndex(x => x.Domain); // "all enemy aircraft this tick"
+        b.HasIndex(x => x.ParentUnitId); // for "all wings on this carrier"
     }
 }

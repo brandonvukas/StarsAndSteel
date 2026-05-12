@@ -26,5 +26,14 @@ public enum UnitType
     // Both require a NavalYard at a coastal province; movement traverses sea-crossing
     // edges between coastal land provinces (no true ocean tiles in MVP).
     Frigate = 200,
-    Destroyer = 201
+    Destroyer = 201,
+
+    // Naval Aviation (Phase 2b). AircraftCarrier is a heavy capital ship built at a
+    // NavalYard; it CARRIES air units. CarrierAirWing is a special air unit that
+    // is built only when the building province hosts a Carrier owned by the caller,
+    // and is parented to that carrier via Unit.ParentUnitId. Wings move with their
+    // parent carrier and can sortie (AirStrike) from wherever the carrier is, even
+    // without an AirBase building. Sinking the carrier kills its wings.
+    AircraftCarrier = 202,
+    CarrierAirWing = 106,
 }

@@ -119,6 +119,8 @@ export interface SnapshotMyUnit {
   transitFromProvinceId: string | null;
   transitToProvinceId: string | null;
   transitArrivalTick: number | null;
+  /** Phase 2b: parent carrier id when this unit is an embarked CarrierAirWing. */
+  parentUnitId: string | null;
 }
 
 export interface SnapshotEnemyUnit {

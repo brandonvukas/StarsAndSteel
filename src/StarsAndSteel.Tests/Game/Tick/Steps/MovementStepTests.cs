@@ -91,4 +91,33 @@ public class MovementStepTests
         attacker.LocationProvinceId.Should().Be(bobProv.Id);
         order.Status.Should().Be(OrderStatus.Complete);
     }
+
+    [Fact]
+    public void Carrier_move_drags_embarked_wings_and_updates_their_home_base()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var src = AddProvince(world, alice, "SrcPort");
+        src.IsCoastal = true;
+        var dst = AddProvince(world, alice, "DstPort");
+        dst.IsCoastal = true;
+        var carrier = AddUnit(world, alice, src, UnitType.AircraftCarrier, 1000);
+        var wing1 = AddUnit(world, alice, src, UnitType.CarrierAirWing, 500, parentUnitId: carrier.Id);
+        var wing2 = AddUnit(world, alice, src, UnitType.CarrierAirWing, 500, parentUnitId: carrier.Id);
+        wing1.HomeBaseProvinceId = src.Id;
+        wing2.HomeBaseProvinceId = src.Id;
+        var order = MoveOrder(carrier, dst);
+        var ctx = Context(world,
+            units: new[] { carrier, wing1, wing2 },
+            unitOrders: new[] { order },
+            adjacencies: new[] { Adj(src, dst) });
+
+        new MovementStep().Execute(ctx);
+
+        carrier.LocationProvinceId.Should().Be(dst.Id);
+        wing1.LocationProvinceId.Should().Be(dst.Id);
+        wing2.LocationProvinceId.Should().Be(dst.Id);
+        wing1.HomeBaseProvinceId.Should().Be(dst.Id);
+        wing2.HomeBaseProvinceId.Should().Be(dst.Id);
+    }
 }

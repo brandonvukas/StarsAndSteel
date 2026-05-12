@@ -79,6 +79,10 @@ public sealed class AirStrikeStep : ITickStep
     /// Apply <see cref="CombatResolver.StackCasualty"/> deltas to units in the context,
     /// emit <see cref="UnitDestroyedEvent"/> for any stack that hits 0, and queue the
     /// destroyed units for deletion by the runner.
+    /// <para/>
+    /// Phase 2b: when an <see cref="UnitType.AircraftCarrier"/> hits 0 strength, every
+    /// <see cref="UnitType.CarrierAirWing"/> parented to it is also destroyed (wings
+    /// can't survive without a flight deck). Wings are queued with cause "CarrierLost".
     /// </summary>
     internal static void ApplyCasualties(TickContext context, IReadOnlyList<CombatResolver.StackCasualty> casualties, string cause)
     {
@@ -96,6 +100,25 @@ public sealed class AirStrikeStep : ITickStep
                     OwnerPlayerId: unit.OwnerPlayerId,
                     LocationProvinceId: unit.LocationProvinceId,
                     Cause: cause));
+
+                // Phase 2b: carrier sunk → embarked wings die with it.
+                if (unit.Type == UnitType.AircraftCarrier)
+                {
+                    foreach (var wing in context.Units)
+                    {
+                        if (wing.ParentUnitId == unit.Id && wing.Strength > 0)
+                        {
+                            wing.Strength = 0;
+                            context.UnitsToDelete.Add(wing);
+                            context.Events.Add(new UnitDestroyedEvent(
+                                Tick: context.ProcessingTick,
+                                UnitId: wing.Id,
+                                OwnerPlayerId: wing.OwnerPlayerId,
+                                LocationProvinceId: wing.LocationProvinceId,
+                                Cause: "CarrierLost"));
+                        }
+                    }
+                }
             }
         }
     }

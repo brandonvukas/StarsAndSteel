@@ -95,4 +95,44 @@ public class ConstructionStepTests
         ctx.UnitsToInsert.Should().ContainSingle()
             .Which.HomeBaseProvinceId.Should().Be(capital.Id);
     }
+
+    [Fact]
+    public void CarrierAirWing_completes_with_ParentUnitId_pointing_at_friendly_carrier_at_province()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var port = AddProvince(world, alice, "Port");
+        port.IsCoastal = true;
+        AddBuilding(port, BuildingType.NavalYard);
+        var carrier = AddUnit(world, alice, port, UnitType.AircraftCarrier, 1000);
+        var order = BuildUnitOrder(world, alice, port, UnitType.CarrierAirWing, qty: 500, ticksRemaining: 1);
+        var ctx = Context(world, units: new List<Core.Entities.Unit> { carrier }, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Complete);
+        var built = ctx.UnitsToInsert.Should().ContainSingle().Subject;
+        built.Type.Should().Be(UnitType.CarrierAirWing);
+        built.ParentUnitId.Should().Be(carrier.Id);
+        built.LocationProvinceId.Should().Be(port.Id);
+        built.HomeBaseProvinceId.Should().Be(port.Id);
+    }
+
+    [Fact]
+    public void CarrierAirWing_cancels_when_carrier_left_or_was_sunk_before_completion()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var port = AddProvince(world, alice, "Port");
+        port.IsCoastal = true;
+        AddBuilding(port, BuildingType.NavalYard);
+        // No carrier in context.Units — simulates carrier moving away or sinking.
+        var order = BuildUnitOrder(world, alice, port, UnitType.CarrierAirWing, qty: 500, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Cancelled);
+        ctx.UnitsToInsert.Should().BeEmpty();
+    }
 }

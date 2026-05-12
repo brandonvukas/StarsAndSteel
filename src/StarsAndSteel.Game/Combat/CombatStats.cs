@@ -54,6 +54,12 @@ public static class CombatStats
         UnitType.StealthBomber     => 2.2,
         UnitType.Frigate           => 1.4,
         UnitType.Destroyer         => 1.8,
+        // Phase 2b: a carrier is a fat low-DPS hull. Survivability comes from its
+        // escort ships and embarked wings, not from its own gun. Wings are "elite"
+        // multirole air — slightly above MultiroleFighter to reflect their
+        // omni-role training.
+        UnitType.AircraftCarrier   => 2.5,
+        UnitType.CarrierAirWing    => 1.7,
         _ => 1.0,
     };
 
@@ -147,6 +153,36 @@ public static class CombatStats
         Add(new[] { UnitType.AttackHelicopter }, navalClass, 2);
         Add(new[] { UnitType.MultiroleFighter }, navalClass, 1);
 
+        // Phase 2b: Naval Aviation. AircraftCarrier acts mostly as a platform; it has
+        // light point-defense AA but cannot meaningfully hurt other ships on its own.
+        // CarrierAirWing fights as an elite multirole — strong vs all air, strong
+        // anti-ship (it's the carrier's main gun), and capable bombing of ground.
+        var navalClassWithCarrier = new[] { UnitType.Frigate, UnitType.Destroyer, UnitType.AircraftCarrier };
+        // Carrier light AA
+        Add(new[] { UnitType.AircraftCarrier }, new[] { UnitType.ReconDrone, UnitType.CombatDrone, UnitType.AttackHelicopter }, 1);
+        Add(new[] { UnitType.AircraftCarrier }, new[] { UnitType.MultiroleFighter, UnitType.CarrierAirWing }, 1);
+        Add(new[] { UnitType.AircraftCarrier }, bomberClass, 1);
+        // Existing-vs-carrier: carriers are valid naval targets for everything that
+        // already engages naval. Re-broadcast the entries to include the carrier.
+        Add(new[] { UnitType.Frigate, UnitType.Destroyer }, new[] { UnitType.AircraftCarrier }, 2);
+        Add(bomberClass,                          new[] { UnitType.AircraftCarrier }, 3);
+        Add(new[] { UnitType.CombatDrone, UnitType.AttackHelicopter }, new[] { UnitType.AircraftCarrier }, 2);
+        Add(new[] { UnitType.MultiroleFighter },  new[] { UnitType.AircraftCarrier }, 1);
+        // CarrierAirWing as attacker — fighter+bomber hybrid.
+        Add(new[] { UnitType.CarrierAirWing }, infantryClass,                 3);
+        Add(new[] { UnitType.CarrierAirWing }, new[] { UnitType.MainBattleTank },   2);
+        Add(new[] { UnitType.CarrierAirWing }, new[] { UnitType.MobileArtillery },  2);
+        Add(new[] { UnitType.CarrierAirWing }, new[] { UnitType.AABattery },        2);
+        Add(new[] { UnitType.CarrierAirWing }, new[] { UnitType.ReconDrone, UnitType.CombatDrone, UnitType.AttackHelicopter }, 3);
+        Add(new[] { UnitType.CarrierAirWing }, new[] { UnitType.MultiroleFighter, UnitType.CarrierAirWing }, 3);
+        Add(new[] { UnitType.CarrierAirWing }, bomberClass,                          3);
+        Add(new[] { UnitType.CarrierAirWing }, navalClassWithCarrier,                3);
+        // Anti-air vs CarrierAirWing — same tiers as MultiroleFighter (mid-tier interceptor).
+        Add(new[] { UnitType.AABattery },        new[] { UnitType.CarrierAirWing }, 2);
+        Add(new[] { UnitType.MultiroleFighter }, new[] { UnitType.CarrierAirWing }, 3);
+        Add(new[] { UnitType.Frigate },          new[] { UnitType.CarrierAirWing }, 1);
+        Add(new[] { UnitType.Destroyer },        new[] { UnitType.CarrierAirWing }, 2);
+
         return m;
     }
 
@@ -161,11 +197,12 @@ public static class CombatStats
     /// <summary>True if this unit type counts as air for combined-arms bonus.</summary>
     public static bool IsAir(UnitType t) =>
         t is UnitType.ReconDrone or UnitType.CombatDrone or UnitType.AttackHelicopter
-          or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber;
+          or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber
+          or UnitType.CarrierAirWing;
 
-    /// <summary>True if this unit type is a naval combatant (Phase 2I).</summary>
+    /// <summary>True if this unit type is a naval combatant (Phase 2I/2b).</summary>
     public static bool IsNaval(UnitType t) =>
-        t is UnitType.Frigate or UnitType.Destroyer;
+        t is UnitType.Frigate or UnitType.Destroyer or UnitType.AircraftCarrier;
 
     /// <summary>Stealth-bomber bypass-AA roll target (60% bypass). Phase 1: no research bonus.</summary>
     public const double StealthBypassChance = 0.60;

@@ -131,7 +131,8 @@ public sealed class SnapshotService
                 IsInTransit: u.IsInTransit,
                 TransitFromProvinceId: u.TransitFromProvinceId,
                 TransitToProvinceId: u.TransitToProvinceId,
-                TransitArrivalTick: u.TransitArrivalTick))
+                TransitArrivalTick: u.TransitArrivalTick,
+                ParentUnitId: u.ParentUnitId))
             .ToArray();
 
         // --- Visible enemy units -----------------------------------------

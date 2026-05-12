@@ -47,6 +47,39 @@ public sealed class ConstructionStep : ITickStep
                 case OrderType.BuildUnit when order.UnitType.HasValue:
                     {
                         var spec = BuildCatalog.GetUnit(order.UnitType.Value);
+
+                        // Phase 2b: a CarrierAirWing must be parented to a friendly carrier
+                        // at the build province with a free slot. If the carrier we'd parent
+                        // to was sunk or moved away while the wing was building, cancel the
+                        // order (no refund — same as province-changes-hands rule).
+                        Guid? parentUnitId = null;
+                        if (spec.RequiresCarrier)
+                        {
+                            var carriersHere = context.Units
+                                .Where(u => u.LocationProvinceId == province.Id
+                                         && u.OwnerPlayerId == order.OwnerPlayerId
+                                         && u.Type == UnitType.AircraftCarrier
+                                         && u.Strength > 0)
+                                .ToList();
+                            // Pick the carrier with the most free slots (deterministic by Id
+                            // as tiebreaker so tests are reproducible).
+                            Unit? host = null;
+                            int hostFree = 0;
+                            foreach (var carrier in carriersHere.OrderBy(c => c.Id))
+                            {
+                                int used = context.Units.Count(u => u.ParentUnitId == carrier.Id
+                                                                  && u.Strength > 0);
+                                int free = BuildCatalog.CarrierWingCapacity - used;
+                                if (free > hostFree) { host = carrier; hostFree = free; }
+                            }
+                            if (host is null)
+                            {
+                                order.Status = OrderStatus.Cancelled;
+                                continue;
+                            }
+                            parentUnitId = host.Id;
+                        }
+
                         var unit = new Unit
                         {
                             Id = Guid.NewGuid(),
@@ -60,6 +93,7 @@ public sealed class ConstructionStep : ITickStep
                             Experience = 0,
                             IsInTransit = false,
                             HomeBaseProvinceId = spec.Domain == UnitDomain.Air ? province.Id : null,
+                            ParentUnitId = parentUnitId,
                         };
                         context.UnitsToInsert.Add(unit);
                         context.Units.Add(unit); // keep in-memory consistent for subsequent steps in this tick (none yet, but future-proof)

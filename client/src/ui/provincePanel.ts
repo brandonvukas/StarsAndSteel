@@ -26,6 +26,11 @@ const BUILDABLE_UNITS = [
   // server enforces RequiredBuilding=NavalYard. We surface both regardless of coast
   // so the dropdown is stable; server will reject without a NavalYard.
   'Frigate', 'Destroyer',
+  // Naval Aviation (Phase 2b). AircraftCarrier needs NavalYard. CarrierAirWing
+  // additionally needs a friendly carrier docked at the build province with a
+  // free wing slot — server enforces this and returns NoCarrierWithSpareCapacity
+  // if not satisfied.
+  'AircraftCarrier', 'CarrierAirWing',
 ] as const;
 
 export function mountProvincePanel(container: HTMLElement) {
@@ -82,6 +87,42 @@ function renderDetails(p: SnapshotProvince): HTMLElement {
       <li><strong>Buildings:</strong> ${escape(buildings)}</li>
       <li><strong>Adjacent:</strong> ${p.adjacentProvinceIds.length}</li>
     </ul>`;
+
+  // Phase 2b: carrier composition. List each of MY carriers at this province with
+  // its embarked wings nested underneath, so the player can see which carrier is
+  // hosting which wings. Hidden when there are no carriers here.
+  const world = $world.get();
+  if (world) {
+    const myUnitsHere = world.myUnits.filter(u =>
+      u.locationProvinceId === p.id && !u.isInTransit);
+    const carriers = myUnitsHere.filter(u => u.type === 'AircraftCarrier');
+    if (carriers.length > 0) {
+      const cw = document.createElement('div');
+      cw.className = 'pp-carriers';
+      cw.innerHTML = '<h3>Carrier groups</h3>';
+      const ul = document.createElement('ul');
+      ul.className = 'pp-carrier-list';
+      for (const carrier of carriers) {
+        const wings = myUnitsHere.filter(u =>
+          u.type === 'CarrierAirWing' && u.parentUnitId === carrier.id);
+        const li = document.createElement('li');
+        const wingHtml = wings.length === 0
+          ? '<li class="pp-empty">no wings embarked</li>'
+          : wings.map(w => `<li>${escape(w.type)} (str ${w.strength})</li>`).join('');
+        li.innerHTML = `
+          <div class="pp-carrier-head">
+            <strong>${escape(carrier.type)}</strong>
+            <span class="pp-strength">str ${carrier.strength}</span>
+            <span class="pp-cap">${wings.length}/4 wings</span>
+          </div>
+          <ul class="pp-wing-list">${wingHtml}</ul>`;
+        ul.appendChild(li);
+      }
+      cw.appendChild(ul);
+      d.appendChild(cw);
+    }
+  }
+
   return d;
 }
 
