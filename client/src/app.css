@@ -78,7 +78,7 @@ a, a:visited { color: #ffd166; }
 .rc-val { font-weight: 600; }
 .tick-cell { margin-left: auto; opacity: 0.7; }
 
-#game-body { flex: 1; display: flex; min-height: 0; }
+#game-body { flex: 1; display: flex; min-height: 0; position: relative; }
 #phaser-host { flex: 1; min-width: 0; min-height: 0; }
 #phaser-host canvas { display: block; }
 #side-panel {
@@ -87,7 +87,41 @@ a, a:visited { color: #ffd166; }
   border-left: 1px solid #2d2d44;
   padding: 14px;
   overflow-y: auto;
+  transition: width 160ms ease, padding 160ms ease;
 }
+
+/* Collapsed state: hide panel, give canvas the freed width. The toggle
+   button stays visible (parked against the right edge) so the user can
+   re-open the panel. */
+#game-body.panel-collapsed #side-panel {
+  width: 0;
+  padding: 0;
+  border-left: none;
+  overflow: hidden;
+}
+
+/* Floating collapse handle, parked at the right edge of the map area. */
+#side-panel-toggle {
+  position: absolute;
+  top: 50%;
+  right: 340px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 56px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 56px;
+  background: #1a1a28;
+  color: #b0b0c0;
+  border: 1px solid #2d2d44;
+  border-right: none;
+  border-radius: 4px 0 0 4px;
+  cursor: pointer;
+  z-index: 5;
+  transition: right 160ms ease;
+}
+#side-panel-toggle:hover { color: #ffd166; background: #22223a; }
+#game-body.panel-collapsed #side-panel-toggle { right: 0; }
 
 .province-panel .pp-header {
   display: flex; align-items: center; gap: 8px;
@@ -367,6 +401,11 @@ a, a:visited { color: #ffd166; }
   #side-panel {
     width: 100%; max-height: 50vh; border-left: none;
     border-top: 1px solid #2d2d44;
+  }
+  /* Collapse handle is desktop-only; on mobile the panel stacks below. */
+  #side-panel-toggle { display: none; }
+  #game-body.panel-collapsed #side-panel {
+    width: 100%; padding: 14px; overflow-y: auto;
   }
   #resource-bar.resource-bar {
     flex-wrap: wrap; gap: 10px 14px; padding: 6px 10px; font-size: 12px;

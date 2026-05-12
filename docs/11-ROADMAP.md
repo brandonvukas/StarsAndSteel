@@ -75,6 +75,7 @@ Turn the demo into a real strategic game with social mechanics.
 - ☑ Quiet-hours setting
 - ☑ Mobile-friendly layout pass
 - ☑ Logistics network bonus
+- ☑ Map polish (Phase 2M): camera pan + wheel-zoom, smart label LOD, collapsible side panel
 
 **Demoable:** five-player session with humans + AI, alliances forming and breaking, research being raced, real strategic decisions to make.
 

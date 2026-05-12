@@ -30,6 +30,9 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     <div id="resource-bar"></div>
     <div id="game-body">
       <div id="phaser-host"></div>
+      <button id="side-panel-toggle" type="button"
+              aria-label="Collapse side panel"
+              title="Collapse side panel (toggle)">&rsaquo;</button>
       <aside id="side-panel">
         <nav class="side-tabs">
           <button data-tab="province" class="active">Province</button>
@@ -111,6 +114,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountSettingsPanel(host.querySelector('#side-tab-settings')!);
   mountNewsTicker(host.querySelector('#news-ticker')!);
   wireSideTabs(host);
+  wireSidePanelToggle(host);
 
   // 4. Connect SignalR. Diff handlers patch the store; on reconnect we
   //    re-snapshot per docs/06 because we may have missed events.
@@ -216,4 +220,31 @@ function wireSideTabs(host: HTMLElement) {
       });
     };
   });
+}
+
+// Side-panel collapse: toggling the `collapsed` class on #game-body hides the
+// panel via CSS, which lets the Phaser canvas reclaim the freed width.
+// Choice persists across reloads in sessionStorage. We dispatch a window
+// `resize` so Phaser's Scale manager refits the canvas to the new parent box.
+const COLLAPSE_KEY = 'side-panel-collapsed';
+function wireSidePanelToggle(host: HTMLElement) {
+  const body = host.querySelector<HTMLElement>('#game-body')!;
+  const btn  = host.querySelector<HTMLButtonElement>('#side-panel-toggle')!;
+
+  const apply = (collapsed: boolean) => {
+    body.classList.toggle('panel-collapsed', collapsed);
+    btn.textContent = collapsed ? '\u2039' : '\u203A'; // ‹ / ›
+    btn.setAttribute('aria-label',
+      collapsed ? 'Expand side panel' : 'Collapse side panel');
+    // Defer one frame so layout settles before Phaser re-measures.
+    requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
+  };
+
+  apply(sessionStorage.getItem(COLLAPSE_KEY) === '1');
+
+  btn.onclick = () => {
+    const next = !body.classList.contains('panel-collapsed');
+    sessionStorage.setItem(COLLAPSE_KEY, next ? '1' : '0');
+    apply(next);
+  };
 }
