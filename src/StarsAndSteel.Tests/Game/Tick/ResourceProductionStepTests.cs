@@ -73,6 +73,43 @@ public class ResourceProductionStepTests
         alice.Money.Should().Be(expectedMoney);
     }
 
+    // ---- Phase 3a: nuclear fallout multiplier --------------------------
+
+    [Theory]
+    [InlineData(0, 100)]   // unaffected
+    [InlineData(50, 50)]   // half output
+    [InlineData(100, 0)]   // wasteland
+    [InlineData(25, 75)]   // 25% radiation -> 75% output
+    public void Radiation_modifier_scales_output_linearly(int radiation, int expectedMoney)
+    {
+        var (world, alice) = WorldWithOnePlayer();
+
+        var province = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        province.RadiationLevel = radiation;
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(expectedMoney);
+    }
+
+    [Fact]
+    public void Radiation_stacks_multiplicatively_with_morale()
+    {
+        // 50% morale floor doesn't apply (50 morale = full output per docs/04 since
+        // moraleFactor returns 1.0 above the 30 cliff). So we need a morale below
+        // 30 to get the 0.5 morale factor: pick 20 morale and 50 radiation.
+        // Expected: 100 * 0.5 (morale) * 0.5 (radiation) = 25.
+        var (world, alice) = WorldWithOnePlayer();
+
+        var province = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        province.MoraleLevel = 20;
+        province.RadiationLevel = 50;
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(25);
+    }
+
     [Fact]
     public void Emits_one_ResourcesProducedEvent_per_player_with_deltas()
     {

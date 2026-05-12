@@ -96,6 +96,7 @@ export interface SnapshotProvince {
   ownerColorHex: string | null;
   visible: boolean;
   moraleLevel: number | null;
+  radiationLevel: number;
   garrisonStrength: number | null;
   buildings: SnapshotBuilding[];
   adjacentProvinceIds: string[];
@@ -134,6 +135,11 @@ export interface SnapshotEnemyUnit {
 
 // ---- Order requests ------------------------------------------------------
 export interface MoveOrderRequest {
+  unitId: string;
+  targetProvinceId: string;
+}
+
+export interface MissileLaunchRequest {
   unitId: string;
   targetProvinceId: string;
 }

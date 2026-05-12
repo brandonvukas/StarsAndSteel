@@ -77,6 +77,13 @@ public static class BuildCatalog
         // looks for a friendly carrier with spare capacity in the building province.
         new UnitBuildSpec(UnitType.AircraftCarrier,  UnitDomain.Naval,   Money: 6000, Oil: 800, Steel: 3500,Electronics: 800,  Food: 0, Manpower: 200, TicksToBuild: 30, RequiredBuilding: BuildingType.NavalYard),
         new UnitBuildSpec(UnitType.CarrierAirWing,   UnitDomain.Air,     Money: 1500, Oil: 300, Steel: 400, Electronics: 400,  Food: 0, Manpower: 50,  TicksToBuild: 12, RequiredBuilding: BuildingType.NavalYard, RequiresCarrier: true),
+
+        // Strategic missiles (Phase 3a). Both gated to MissileSilo. The unit row
+        // represents a stockpile (one stack-of-1 = one missile); MissileLaunch
+        // consumes the entire stack on fire (single-shot semantics).
+        // Nuclear is dramatically more expensive and slower.
+        new UnitBuildSpec(UnitType.CruiseMissile,    UnitDomain.Missile, Money: 1500, Oil: 200, Steel: 400, Electronics: 400,  Food: 0, Manpower: 0,   TicksToBuild: 10, RequiredBuilding: BuildingType.MissileSilo),
+        new UnitBuildSpec(UnitType.NuclearMissile,   UnitDomain.Missile, Money: 8000, Oil: 500, Steel: 1500,Electronics: 2000, Food: 0, Manpower: 0,   TicksToBuild: 30, RequiredBuilding: BuildingType.MissileSilo),
     }.ToDictionary(s => s.Type);
 
     // Building costs aren't in docs/04. MVP values are scoped so the level-1 starter pool
@@ -92,6 +99,9 @@ public static class BuildCatalog
         new BuildingBuildSpec(BuildingType.FinancialDistrict, Money: 2000, Oil: 0,   Steel: 100, Electronics: 100, Food: 0, Manpower: 50,  TicksToBuild: 14),
         // Naval Yard (Phase 2I). Coastal-only, enforced in OrderService.ValidateBuildBuilding.
         new BuildingBuildSpec(BuildingType.NavalYard,         Money: 3000, Oil: 100, Steel: 800, Electronics: 200, Food: 0, Manpower: 100, TicksToBuild: 20),
+        // Missile Silo (Phase 3a). Land-based; gates CruiseMissile + NuclearMissile builds
+        // and is the launch host for OrderType.MissileLaunch.
+        new BuildingBuildSpec(BuildingType.MissileSilo,       Money: 4000, Oil: 100, Steel: 1500,Electronics: 500, Food: 0, Manpower: 100, TicksToBuild: 25),
     }.ToDictionary(s => s.Type);
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>

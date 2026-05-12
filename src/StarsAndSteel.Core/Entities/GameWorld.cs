@@ -19,6 +19,13 @@ public class GameWorld
     /// <summary>Wall-clock seconds between ticks. Default 60 per the design doc.</summary>
     public int TickIntervalSeconds { get; set; } = 60;
 
+    /// <summary>
+    /// Phase 3a: per-world toggle for nuclear weapons. When false, the OrderService
+    /// rejects MissileLaunch orders for nuclear warheads (conventional cruise missiles
+    /// are still permitted). Default true so existing worlds get the spicy late-game.
+    /// </summary>
+    public bool NukesEnabled { get; set; } = true;
+
     /// <summary>When the tick service should next process this world.</summary>
     public DateTime NextTickDueUtc { get; set; }
 

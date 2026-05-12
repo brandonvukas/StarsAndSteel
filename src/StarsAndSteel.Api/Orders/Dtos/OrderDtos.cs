@@ -9,6 +9,13 @@ public sealed record AttackOrderRequest(Guid UnitId, Guid TargetProvinceId);
 /// <summary>Air strike from an Air Base–equipped province.</summary>
 public sealed record AirStrikeOrderRequest(Guid UnitId, Guid TargetProvinceId);
 
+/// <summary>
+/// Phase 3a: launch a stockpiled missile at any province (global range). The unit
+/// must be a CruiseMissile or NuclearMissile stationed at a friendly Missile Silo;
+/// the launch consumes the entire stack.
+/// </summary>
+public sealed record MissileLaunchOrderRequest(Guid UnitId, Guid TargetProvinceId);
+
 /// <summary>Build N units of <paramref name="UnitType"/> at <paramref name="ProvinceId"/>.</summary>
 public sealed record BuildUnitOrderRequest(Guid ProvinceId, string UnitType, int Quantity);
 

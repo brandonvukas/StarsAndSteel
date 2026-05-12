@@ -47,6 +47,7 @@ public sealed class TickProcessor
         new AttritionStep(),
         new MovementStep(),
         new AirStrikeStep(),
+        new MissileImpactStep(),
         new CombatStep(),
         new ConstructionStep(),
         new ResearchStep(),

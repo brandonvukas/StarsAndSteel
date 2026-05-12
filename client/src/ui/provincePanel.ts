@@ -3,12 +3,14 @@
 // the selected province or the world snapshot changes.
 
 import { $selectedProvince, $unitsAtSelected, $world } from '../store/store';
-import { orderMove, orderBuildBuilding, orderBuildUnit, HttpError } from '../api/rest';
+import { orderMove, orderBuildBuilding, orderBuildUnit, orderLaunchMissile, HttpError } from '../api/rest';
 import type { SnapshotProvince, WorldSnapshot } from '../types/api';
 
 const BUILDABLE_BUILDINGS = [
   'RecruitmentCenter', 'MilitaryBase', 'AirBase',
   'SteelMill', 'Refinery', 'FinancialDistrict',
+  // Phase 3a: launch host for Cruise/Nuclear missiles.
+  'MissileSilo',
 ] as const;
 
 // Coastal-only buildings (filtered into the build menu when the selected
@@ -31,6 +33,9 @@ const BUILDABLE_UNITS = [
   // free wing slot — server enforces this and returns NoCarrierWithSpareCapacity
   // if not satisfied.
   'AircraftCarrier', 'CarrierAirWing',
+  // Strategic missiles (Phase 3a). Both gated to MissileSilo. Nuclear is rejected
+  // server-side when GameWorld.NukesEnabled = false.
+  'CruiseMissile', 'NuclearMissile',
 ] as const;
 
 export function mountProvincePanel(container: HTMLElement) {
@@ -79,11 +84,18 @@ function renderDetails(p: SnapshotProvince): HTMLElement {
   const buildings = p.buildings.length === 0
     ? '<em>None</em>'
     : p.buildings.map(b => `${b.type} L${b.level}`).join(', ');
+  // Phase 3a: radiation is always populated on the snapshot (even on enemy
+  // provinces — fallout is a global concern). Hide the row when zero to keep
+  // the panel tidy on the 99% of provinces that have never been nuked.
+  const radiationRow = p.radiationLevel > 0
+    ? `<li><strong>Radiation:</strong> <span class="rad-${radBucket(p.radiationLevel)}">${p.radiationLevel}</span></li>`
+    : '';
 
   d.innerHTML = `
     <ul>
       <li><strong>Morale:</strong> ${morale}</li>
       <li><strong>Garrison:</strong> ${garrison}</li>
+      ${radiationRow}
       <li><strong>Buildings:</strong> ${escape(buildings)}</li>
       <li><strong>Adjacent:</strong> ${p.adjacentProvinceIds.length}</li>
     </ul>`;
@@ -175,6 +187,54 @@ function renderOrderForms(world: WorldSnapshot, province: SnapshotProvince): HTM
     wrap.appendChild(f);
   }
 
+  // ---- Launch missile form (Phase 3a) ----
+  // Shown when the current player has any Cruise/Nuclear missile stockpiled at
+  // this province. Range is global (any province in the world) — strategic
+  // missiles ignore adjacency. Server enforces MissileSilo presence and
+  // NukesEnabled for nuclear payloads.
+  const myMissilesHere = myUnitsHere.filter(u =>
+    u.type === 'CruiseMissile' || u.type === 'NuclearMissile');
+  if (myMissilesHere.length > 0) {
+    const lf = document.createElement('form');
+    lf.className = 'order-form';
+    // Sort target provinces alphabetically; include every visible & invisible
+    // province in the world (player can fire blind into the fog).
+    const targets = [...world.provinces].sort((a, b) => a.name.localeCompare(b.name));
+    lf.innerHTML = `
+      <h3>Launch missile</h3>
+      <label>Missile
+        <select name="unit">
+          ${myMissilesHere.map(u =>
+            `<option value="${u.id}">${u.type} (×${u.strength})</option>`).join('')}
+        </select>
+      </label>
+      <label>Target
+        <select name="target">
+          ${targets.map(t =>
+            `<option value="${t.id}">${escape(t.name)}</option>`).join('')}
+        </select>
+      </label>
+      <button type="submit">Launch</button>
+      <span class="status"></span>`;
+    lf.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const fd = new FormData(lf);
+      const status = lf.querySelector('.status') as HTMLElement;
+      try {
+        await orderLaunchMissile(world.worldId, {
+          unitId: fd.get('unit') as string,
+          targetProvinceId: fd.get('target') as string,
+        });
+        status.textContent = 'launched';
+        status.className = 'status ok';
+      } catch (e) {
+        status.textContent = formatError(e);
+        status.className = 'status err';
+      }
+    });
+    wrap.appendChild(lf);
+  }
+
   // ---- Build building form (owner only) ----
   if (isMine) {
     const availableBuildings: readonly string[] = province.isCoastal
@@ -258,6 +318,15 @@ function escape(s: string): string {
   return s.replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[c]!);
+}
+
+// Phase 3a: bucket radiation (0..100) into low/med/high so the CSS can tint
+// the number appropriately. Buckets are intentionally coarse — the player only
+// needs to know "is this place mildly hot, glowing, or a wasteland".
+function radBucket(level: number): 'low' | 'med' | 'high' {
+  if (level >= 60) return 'high';
+  if (level >= 25) return 'med';
+  return 'low';
 }
 
 function formatError(e: unknown): string {

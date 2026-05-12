@@ -37,6 +37,7 @@ public sealed class OrdersController : ControllerBase
     private readonly IValidator<MoveOrderRequest> _moveValidator;
     private readonly IValidator<AttackOrderRequest> _attackValidator;
     private readonly IValidator<AirStrikeOrderRequest> _airStrikeValidator;
+    private readonly IValidator<MissileLaunchOrderRequest> _missileLaunchValidator;
     private readonly IValidator<BuildUnitOrderRequest> _buildUnitValidator;
     private readonly IValidator<BuildBuildingOrderRequest> _buildBuildingValidator;
     private readonly ILogger<OrdersController> _logger;
@@ -49,6 +50,7 @@ public sealed class OrdersController : ControllerBase
         IValidator<MoveOrderRequest> moveValidator,
         IValidator<AttackOrderRequest> attackValidator,
         IValidator<AirStrikeOrderRequest> airStrikeValidator,
+        IValidator<MissileLaunchOrderRequest> missileLaunchValidator,
         IValidator<BuildUnitOrderRequest> buildUnitValidator,
         IValidator<BuildBuildingOrderRequest> buildBuildingValidator,
         ILogger<OrdersController> logger)
@@ -60,6 +62,7 @@ public sealed class OrdersController : ControllerBase
         _moveValidator = moveValidator;
         _attackValidator = attackValidator;
         _airStrikeValidator = airStrikeValidator;
+        _missileLaunchValidator = missileLaunchValidator;
         _buildUnitValidator = buildUnitValidator;
         _buildBuildingValidator = buildBuildingValidator;
         _logger = logger;
@@ -203,6 +206,57 @@ public sealed class OrdersController : ControllerBase
 
             var result = _orderService.ValidateAirStrike(
                 unit, ctx.Player!, target, hostingBuildings, hostingUnits, ctx.World!.CurrentTick, ctx.World.Status);
+
+            return await PersistUnitOrderAsync(result, ctx.World, cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    [HttpPost("launch-missile")]
+    public async Task<ActionResult<UnitOrderAccepted>> LaunchMissile(
+        Guid worldId,
+        [FromBody] MissileLaunchOrderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (badRequest, _) = await ValidateAsync(_missileLaunchValidator, request, cancellationToken);
+        if (badRequest is not null) return badRequest;
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var gate = _locks.GetOrCreate(worldId);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var ctx = await LoadCallerContextAsync(worldId, user.Id, cancellationToken);
+            if (ctx.NotFound) return NotFound();
+            if (ctx.Forbidden) return Forbid();
+
+            var unit = await _db.Units.FirstOrDefaultAsync(
+                u => u.Id == request.UnitId && u.GameWorldId == worldId, cancellationToken);
+            if (unit is null) return NotFound(new { error = "Unit not found in this world." });
+
+            if (unit.LocationProvinceId is null)
+                return BadRequest(new { error = "Missile has no current location." });
+
+            var launch = await _db.Provinces.FirstOrDefaultAsync(
+                p => p.Id == unit.LocationProvinceId.Value && p.GameWorldId == worldId, cancellationToken);
+            if (launch is null) return NotFound(new { error = "Launch province not found in this world." });
+
+            var target = await _db.Provinces.FirstOrDefaultAsync(
+                p => p.Id == request.TargetProvinceId && p.GameWorldId == worldId, cancellationToken);
+            if (target is null) return NotFound(new { error = "Target province not found in this world." });
+
+            var launchBuildings = await _db.Buildings
+                .Where(b => b.ProvinceId == launch.Id)
+                .ToArrayAsync(cancellationToken);
+
+            var result = _orderService.ValidateMissileLaunch(
+                unit, ctx.Player!, launch, target, launchBuildings,
+                ctx.World!.NukesEnabled, ctx.World.CurrentTick, ctx.World.Status);
 
             return await PersistUnitOrderAsync(result, ctx.World, cancellationToken);
         }
@@ -402,6 +456,7 @@ public sealed class OrdersController : ControllerBase
             OrderRejectionReason.GameEnded                => Conflict(new { error = msg }),
             OrderRejectionReason.UnknownUnit              => NotFound(new { error = msg }),
             OrderRejectionReason.UnknownProvince          => NotFound(new { error = msg }),
+            OrderRejectionReason.NukesDisabledForWorld    => Conflict(new { error = msg }),
             _ => BadRequest(new { error = msg }),
         };
     }

@@ -430,6 +430,108 @@ public sealed class OrderServiceTests
         f.Alice.Manpower.Should().Be(1000 - 100);
     }
 
+    // ---- MissileLaunch (Phase 3a) -------------------------------------
+
+    [Fact]
+    public void ValidateMissileLaunch_accepts_owned_missile_with_silo_at_launch_province()
+    {
+        var f = new Fixture();
+        var silos = new[] { new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.MissileSilo, Level = 1, ConstructedAtTick = 0,
+        } };
+
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_Cruise, f.Alice, f.ProvinceA, f.ProvinceB,
+            silos, nukesEnabledForWorld: true, CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+        result.UnitOrder!.OrderType.Should().Be(OrderType.MissileLaunch);
+        result.UnitOrder.TargetProvinceId.Should().Be(f.ProvinceB.Id);
+        result.UnitOrder.UnitId.Should().Be(f.Alice_Cruise.Id);
+    }
+
+    [Fact]
+    public void ValidateMissileLaunch_rejects_when_launch_province_has_no_silo()
+    {
+        var f = new Fixture();
+        // No buildings on ProvinceA — silo missing.
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_Cruise, f.Alice, f.ProvinceA, f.ProvinceB,
+            Array.Empty<Building>(), nukesEnabledForWorld: true, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.MissileSiloMissing);
+    }
+
+    [Fact]
+    public void ValidateMissileLaunch_rejects_nuclear_when_world_disables_nukes()
+    {
+        var f = new Fixture();
+        var silos = new[] { new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.MissileSilo, Level = 1, ConstructedAtTick = 0,
+        } };
+
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_Nuke, f.Alice, f.ProvinceA, f.ProvinceB,
+            silos, nukesEnabledForWorld: false, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.NukesDisabledForWorld);
+    }
+
+    [Fact]
+    public void ValidateMissileLaunch_allows_cruise_even_when_nukes_disabled()
+    {
+        var f = new Fixture();
+        var silos = new[] { new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.MissileSilo, Level = 1, ConstructedAtTick = 0,
+        } };
+
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_Cruise, f.Alice, f.ProvinceA, f.ProvinceB,
+            silos, nukesEnabledForWorld: false, CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateMissileLaunch_rejects_non_missile_unit()
+    {
+        var f = new Fixture();
+        var silos = new[] { new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.MissileSilo, Level = 1, ConstructedAtTick = 0,
+        } };
+
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_MechInf, f.Alice, f.ProvinceA, f.ProvinceB,
+            silos, nukesEnabledForWorld: true, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.UnitDomainMismatch);
+    }
+
+    [Fact]
+    public void ValidateMissileLaunch_rejects_unit_owned_by_other_player()
+    {
+        var f = new Fixture();
+        var silos = new[] { new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.MissileSilo, Level = 1, ConstructedAtTick = 0,
+        } };
+        // Bob tries to launch Alice's missile.
+        var result = _service.ValidateMissileLaunch(
+            f.Alice_Cruise, f.Bob, f.ProvinceA, f.ProvinceB,
+            silos, nukesEnabledForWorld: true, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.UnitNotOwnedByCaller);
+    }
+
     // ---- Test fixture --------------------------------------------------
 
     private sealed class Fixture
@@ -443,6 +545,9 @@ public sealed class OrderServiceTests
         public Unit Alice_MechInf { get; }
         public Unit Alice_CombatDrone { get; }
         public Unit Bob_MechInf { get; }
+        // Phase 3a: missile stockpiles for MissileLaunch tests.
+        public Unit Alice_Cruise { get; }
+        public Unit Alice_Nuke { get; }
 
         public Fixture()
         {
@@ -492,6 +597,18 @@ public sealed class OrderServiceTests
                 Id = Guid.NewGuid(), GameWorldId = WorldId, OwnerPlayerId = Bob.Id,
                 Type = UnitType.MechInfantry, Domain = UnitDomain.Ground,
                 Strength = 1000, Morale = 100, LocationProvinceId = ProvinceB.Id,
+            };
+            Alice_Cruise = new Unit
+            {
+                Id = Guid.NewGuid(), GameWorldId = WorldId, OwnerPlayerId = Alice.Id,
+                Type = UnitType.CruiseMissile, Domain = UnitDomain.Missile,
+                Strength = 1, Morale = 100, LocationProvinceId = ProvinceA.Id,
+            };
+            Alice_Nuke = new Unit
+            {
+                Id = Guid.NewGuid(), GameWorldId = WorldId, OwnerPlayerId = Alice.Id,
+                Type = UnitType.NuclearMissile, Domain = UnitDomain.Missile,
+                Strength = 1, Morale = 100, LocationProvinceId = ProvinceA.Id,
             };
         }
     }

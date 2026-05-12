@@ -31,6 +31,15 @@ public sealed class AirStrikeOrderRequestValidator : AbstractValidator<AirStrike
     }
 }
 
+public sealed class MissileLaunchOrderRequestValidator : AbstractValidator<MissileLaunchOrderRequest>
+{
+    public MissileLaunchOrderRequestValidator()
+    {
+        RuleFor(x => x.UnitId).NotEmpty();
+        RuleFor(x => x.TargetProvinceId).NotEmpty();
+    }
+}
+
 public sealed class BuildUnitOrderRequestValidator : AbstractValidator<BuildUnitOrderRequest>
 {
     public BuildUnitOrderRequestValidator()

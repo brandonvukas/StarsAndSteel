@@ -135,6 +135,12 @@ a, a:visited { color: #ffd166; }
 }
 .province-panel ul { list-style: none; padding: 0; margin: 0; font-size: 13px; }
 .province-panel ul li { padding: 2px 0; }
+/* Phase 3a: radiation severity tints. Low = pale yellow, med = orange, high = */
+/* glowing red. The number is wrapped in <span class="rad-low|med|high"> by    */
+/* renderDetails so the rest of the row stays at the default body color.       */
+.rad-low  { color: #d8c25a; font-weight: 600; }
+.rad-med  { color: #e09140; font-weight: 600; }
+.rad-high { color: #ff5c5c; font-weight: 700; text-shadow: 0 0 4px #ff5c5c66; }
 .province-panel .order-form {
   display: flex; flex-direction: column; gap: 6px;
   margin-top: 14px; padding-top: 10px;

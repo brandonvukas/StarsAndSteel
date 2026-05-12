@@ -95,6 +95,9 @@ internal static class TickTestGraph
             UnitType.AircraftCarrier => UnitDomain.Naval,
             UnitType.CarrierAirWing  => UnitDomain.Air,
             UnitType.Frigate or UnitType.Destroyer => UnitDomain.Naval,
+            // Phase 3a: strategic missile stockpiles live in their own domain so
+            // Movement/AirStrike/Combat steps skip them entirely.
+            UnitType.CruiseMissile or UnitType.NuclearMissile => UnitDomain.Missile,
             _ => type >= UnitType.ReconDrone ? UnitDomain.Air : UnitDomain.Ground,
         };
         var u = new Unit
@@ -162,6 +165,18 @@ internal static class TickTestGraph
         UnitId = unit.Id,
         Unit = unit,
         OrderType = OrderType.AirStrike,
+        TargetProvinceId = target.Id,
+        TargetProvince = target,
+        IssuedAtTick = issuedAtTick,
+        Status = OrderStatus.Pending,
+    };
+
+    public static UnitOrder MissileLaunchOrder(Unit unit, Province target, int issuedAtTick = 1) => new()
+    {
+        Id = Guid.NewGuid(),
+        UnitId = unit.Id,
+        Unit = unit,
+        OrderType = OrderType.MissileLaunch,
         TargetProvinceId = target.Id,
         TargetProvince = target,
         IssuedAtTick = issuedAtTick,

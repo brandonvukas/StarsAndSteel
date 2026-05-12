@@ -75,6 +75,9 @@ public sealed record SnapshotProvince(
     string? OwnerColorHex,
     bool Visible,
     int? MoraleLevel,
+    /// <summary>Phase 3a: 0-100 nuclear fallout level. Always visible (radiation is a
+    /// global concern), even on enemy provinces, so players can see strike damage.</summary>
+    int RadiationLevel,
     int? GarrisonStrength,
     IReadOnlyList<SnapshotBuilding> Buildings,
     IReadOnlyList<Guid> AdjacentProvinceIds);

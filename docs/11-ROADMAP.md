@@ -87,8 +87,8 @@ Make the late game spicy.
 
 - ☐ Stealth Bomber + research-gated stealth drones
 - ☐ Submarines
-- ☐ Strategic missiles (cruise, ballistic) + missile silos
-- ☐ Tactical nukes (toggleable per game)
+- ☑ Strategic missiles (cruise, ballistic) + missile silos *(Phase 3a — global range, no interception MVP)*
+- ☑ Tactical nukes (toggleable per game) *(Phase 3a — radiation persists, halves resource output linearly)*
 - ☐ Cyber warfare cells + Cyber Operations Centers
 - ☐ Special Forces operations (sabotage, intel)
 - ☐ Theater commanders (generals)

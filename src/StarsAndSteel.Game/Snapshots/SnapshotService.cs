@@ -112,6 +112,7 @@ public sealed class SnapshotService
                 OwnerColorHex: ownerColor,
                 Visible: visible,
                 MoraleLevel: morale,
+                RadiationLevel: province.RadiationLevel,
                 GarrisonStrength: garrison,
                 Buildings: buildings,
                 AdjacentProvinceIds: adjacentIds));

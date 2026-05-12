@@ -123,6 +123,10 @@ export function applyUnitBuilt(world: WorldSnapshot, e: UnitBuilt): WorldSnapsho
         transitFromProvinceId: null,
         transitToProvinceId: null,
         transitArrivalTick: null,
+        // Phase 2b: new units are never embarked at build time; the snapshot
+        // (or a future ParentChanged event) reconciles parentage if a wing is
+        // immediately auto-loaded onto a carrier.
+        parentUnitId: null,
       },
     ],
   };

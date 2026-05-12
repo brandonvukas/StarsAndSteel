@@ -4,7 +4,7 @@
 
 import type {
   AuthResponse, WorldSummary, WorldSnapshot, NewsItem,
-  MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
+  MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest, MissileLaunchRequest,
   DiplomacyState, TreatyOfferKind,
   ResearchState,
   ChatMessageDto, SendChatMessageRequest, SendChatMessageResponse,
@@ -92,6 +92,9 @@ export const orderBuildBuilding = (worldId: string, req: BuildBuildingRequest) =
 export const orderBuildUnit = (worldId: string, req: BuildUnitRequest) =>
   call<{ orderId: string; ticksRemaining: number }>(
     'POST', `/api/worlds/${worldId}/orders/build-unit`, req);
+
+export const orderLaunchMissile = (worldId: string, req: MissileLaunchRequest) =>
+  call<{ orderId: string }>('POST', `/api/worlds/${worldId}/orders/launch-missile`, req);
 
 // ---- Diplomacy -----------------------------------------------------------
 export const getDiplomacy = (worldId: string) =>

@@ -69,7 +69,11 @@ public sealed class ResourceProductionStep : ITickStep
                 var (mMoney, mOil, mSteel, mElec, mFood, mMan) = BuildingMultipliers(province.Buildings);
 
                 var logistics = logisticsSet.Contains(province.Id) ? LogisticsBonus : 1.0;
-                var combined = moraleFactor * logistics;
+                // Phase 3a: nuclear fallout permanently reduces output. RadiationLevel 100
+                // = zero production; 50 = half; 0 = unaffected. Multiplied alongside morale
+                // so a heavily-irradiated province with low morale is virtually dead.
+                var radiationFactor = RadiationFactor(province.RadiationLevel);
+                var combined = moraleFactor * logistics * radiationFactor;
 
                 money += (long)Math.Round(province.MoneyPerTick * mMoney * combined);
                 oil += (long)Math.Round(province.OilPerTick * mOil * combined);
@@ -150,6 +154,17 @@ public sealed class ResourceProductionStep : ITickStep
         < 30 => 0.5,
         _ => 1.0,
     };
+
+    /// <summary>
+    /// Phase 3a: linear scaling so RadiationLevel=0 → 1.0 (no penalty), 100 → 0.0 (dead),
+    /// 50 → 0.5. Clamped to non-negative so out-of-range values don't flip the sign.
+    /// </summary>
+    private static double RadiationFactor(int radiationLevel)
+    {
+        if (radiationLevel <= 0) return 1.0;
+        if (radiationLevel >= 100) return 0.0;
+        return 1.0 - (radiationLevel / 100.0);
+    }
 
     /// <summary>
     /// Per-owner set of province ids that participate in a logistics network. A network is

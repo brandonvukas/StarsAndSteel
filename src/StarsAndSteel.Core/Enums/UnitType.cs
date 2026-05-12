@@ -36,4 +36,13 @@ public enum UnitType
     // without an AirBase building. Sinking the carrier kills its wings.
     AircraftCarrier = 202,
     CarrierAirWing = 106,
+
+    // Strategic Missiles (Phase 3a). Built and stationed at a MissileSilo; launched via
+    // OrderType.MissileLaunch with global range (no adjacency check). Each launch consumes
+    // one stack-strength of missile. CruiseMissile = conventional warhead (kills units +
+    // damages buildings). NuclearMissile = also applies permanent RadiationLevel to the
+    // target province; gated behind GameWorld.NukesEnabled. Domain is Air for routing
+    // through validation but they don't use AirBases or carriers; the silo is their host.
+    CruiseMissile = 300,
+    NuclearMissile = 301,
 }

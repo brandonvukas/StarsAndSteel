@@ -29,6 +29,14 @@ public class Province
     /// <summary>0-100. Drops on combat losses and occupation; recovers slowly toward 100.</summary>
     public int MoraleLevel { get; set; } = 100;
 
+    /// <summary>
+    /// Phase 3a: 0-100 permanent radiation level applied by nuclear strikes. Multiplies
+    /// resource output by (1 - RadiationLevel/100) and caps morale recovery. Decays
+    /// extremely slowly (handled in <c>MoraleRecoveryStep</c>) so a hit province is
+    /// economically crippled for the rest of the game without being literally dead.
+    /// </summary>
+    public int RadiationLevel { get; set; }
+
     public int BasePopulation { get; set; }
 
     // Base resource output per tick. Buildings add multipliers on top during ResourceProductionStep.

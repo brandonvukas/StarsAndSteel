@@ -27,6 +27,8 @@ public enum OrderRejectionReason
     UnknownProvince,                // 404
     UnitTypeRequiresAirBase,        // 400
     NoCarrierWithSpareCapacity,     // 400 — Phase 2b
+    NukesDisabledForWorld,          // 409 — Phase 3a; world has NukesEnabled=false
+    MissileSiloMissing,             // 400 — Phase 3a; launch province has no MissileSilo
 }
 
 /// <summary>
@@ -140,6 +142,62 @@ public sealed class OrderService
             Id = Guid.NewGuid(),
             UnitId = unit.Id,
             OrderType = OrderType.Attack,
+            TargetProvinceId = targetProvince.Id,
+            IssuedAtTick = currentTick + 1,
+            Status = OrderStatus.Pending,
+        });
+    }
+
+    /// <summary>
+    /// Phase 3a: launch a stockpiled missile (CruiseMissile / NuclearMissile) at any
+    /// province (global range — no adjacency check). The launching unit must:
+    /// <list type="bullet">
+    ///   <item>be owned by the caller and of <see cref="UnitDomain.Missile"/></item>
+    ///   <item>be stationed at a province hosting a friendly <see cref="BuildingType.MissileSilo"/></item>
+    ///   <item>not be in transit (defensive — missiles don't move conventionally)</item>
+    /// </list>
+    /// Nuclear warheads additionally require <see cref="GameWorld.NukesEnabled"/>.
+    /// The order is consumed by <c>MissileImpactStep</c>, which deletes the missile stack
+    /// and applies damage / radiation at the target.
+    /// </summary>
+    public OrderValidationResult ValidateMissileLaunch(
+        Unit unit,
+        Player caller,
+        Province launchProvince,
+        Province targetProvince,
+        IReadOnlyCollection<Building> launchProvinceBuildings,
+        bool nukesEnabledForWorld,
+        int currentTick,
+        GameWorldStatus worldStatus)
+    {
+        if (worldStatus == GameWorldStatus.Ended)
+            return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
+
+        if (unit.OwnerPlayerId != caller.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitNotOwnedByCaller, "You do not own this unit.");
+
+        if (unit.Domain != UnitDomain.Missile)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitDomainMismatch, "Only missile units can be launched.");
+
+        if (unit.IsInTransit)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitInTransit, "Unit is in transit.");
+
+        if (unit.LocationProvinceId != launchProvince.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnknownProvince, "Missile is not at the specified launch province.");
+
+        if (!launchProvinceBuildings.Any(b => b.Type == BuildingType.MissileSilo))
+            return OrderValidationResult.Reject(OrderRejectionReason.MissileSiloMissing,
+                "Launch province must have a Missile Silo.");
+
+        if (unit.Type == UnitType.NuclearMissile && !nukesEnabledForWorld)
+            return OrderValidationResult.Reject(OrderRejectionReason.NukesDisabledForWorld,
+                "Nuclear weapons are disabled in this world.");
+
+        return OrderValidationResult.Accept(new UnitOrder
+        {
+            Id = Guid.NewGuid(),
+            UnitId = unit.Id,
+            OrderType = OrderType.MissileLaunch,
             TargetProvinceId = targetProvince.Id,
             IssuedAtTick = currentTick + 1,
             Status = OrderStatus.Pending,
