@@ -8,6 +8,7 @@ import type {
   DiplomacyState, TreatyOfferKind,
   ResearchState,
   ChatMessageDto, SendChatMessageRequest, SendChatMessageResponse,
+  MeResponse, UpdateQuietHoursRequest,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -52,6 +53,13 @@ export const login = (emailOrDisplayName: string, password: string) =>
 
 export const logout = () =>
   call<void>('POST', '/api/auth/logout');
+
+// ---- Account / settings (Phase 2L) ---------------------------------------
+export const getMe = () =>
+  call<MeResponse>('GET', '/api/auth/me');
+
+export const updateQuietHours = (req: UpdateQuietHoursRequest) =>
+  call<MeResponse>('PUT', '/api/auth/me/quiet-hours', req);
 
 // ---- Worlds --------------------------------------------------------------
 export const listWorlds = () =>

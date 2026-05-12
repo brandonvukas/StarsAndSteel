@@ -15,6 +15,21 @@ export interface AuthResponse {
   accessTokenExpiresAt: string;
 }
 
+/** Mirrors MeResponse (Phase 2L adds quietHours fields). */
+export interface MeResponse {
+  userId: string;
+  displayName: string;
+  email: string;
+  /** ISO 8601 time-of-day, e.g. "23:00:00". Null = no quiet hours configured. */
+  quietHoursStartUtc: string | null;
+  quietHoursEndUtc: string | null;
+}
+
+export interface UpdateQuietHoursRequest {
+  quietHoursStartUtc: string | null;
+  quietHoursEndUtc: string | null;
+}
+
 // ---- Worlds --------------------------------------------------------------
 export interface WorldSummary {
   id: string;

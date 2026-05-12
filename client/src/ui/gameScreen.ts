@@ -22,6 +22,8 @@ import { mountNewsTicker } from './newsTicker';
 import { mountDiplomacyPanel } from './diplomacyPanel';
 import { mountResearchPanel } from './researchPanel';
 import { mountChatPanel } from './chatPanel';
+import { mountStatsPanel } from './statsPanel';
+import { mountSettingsPanel } from './settingsPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -34,11 +36,15 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
           <button data-tab="diplomacy">Diplomacy</button>
           <button data-tab="research">Research</button>
           <button data-tab="chat">Chat</button>
+          <button data-tab="stats">Stats</button>
+          <button data-tab="settings">Settings</button>
         </nav>
         <div id="side-tab-province" class="side-tab-pane"></div>
         <div id="side-tab-diplomacy" class="side-tab-pane" hidden></div>
         <div id="side-tab-research" class="side-tab-pane" hidden></div>
         <div id="side-tab-chat" class="side-tab-pane" hidden></div>
+        <div id="side-tab-stats" class="side-tab-pane" hidden></div>
+        <div id="side-tab-settings" class="side-tab-pane" hidden></div>
       </aside>
     </div>
     <div id="news-ticker"></div>`;
@@ -101,6 +107,8 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountDiplomacyPanel(host.querySelector('#side-tab-diplomacy')!);
   mountResearchPanel(host.querySelector('#side-tab-research')!);
   mountChatPanel(host.querySelector('#side-tab-chat')!);
+  mountStatsPanel(host.querySelector('#side-tab-stats')!);
+  mountSettingsPanel(host.querySelector('#side-tab-settings')!);
   mountNewsTicker(host.querySelector('#news-ticker')!);
   wireSideTabs(host);
 
@@ -196,6 +204,8 @@ function wireSideTabs(host: HTMLElement) {
     diplomacy: host.querySelector<HTMLElement>('#side-tab-diplomacy')!,
     research: host.querySelector<HTMLElement>('#side-tab-research')!,
     chat: host.querySelector<HTMLElement>('#side-tab-chat')!,
+    stats: host.querySelector<HTMLElement>('#side-tab-stats')!,
+    settings: host.querySelector<HTMLElement>('#side-tab-settings')!,
   };
   tabs.forEach(btn => {
     btn.onclick = () => {

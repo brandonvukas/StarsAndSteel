@@ -25,6 +25,7 @@ public sealed class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly IValidator<RegisterRequest> _registerValidator;
     private readonly IValidator<LoginRequest> _loginValidator;
+    private readonly IValidator<UpdateQuietHoursRequest> _quietHoursValidator;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
@@ -33,6 +34,7 @@ public sealed class AuthController : ControllerBase
         ITokenService tokenService,
         IValidator<RegisterRequest> registerValidator,
         IValidator<LoginRequest> loginValidator,
+        IValidator<UpdateQuietHoursRequest> quietHoursValidator,
         ILogger<AuthController> logger)
     {
         _userManager = userManager;
@@ -40,6 +42,7 @@ public sealed class AuthController : ControllerBase
         _tokenService = tokenService;
         _registerValidator = registerValidator;
         _loginValidator = loginValidator;
+        _quietHoursValidator = quietHoursValidator;
         _logger = logger;
     }
 
@@ -189,7 +192,51 @@ public sealed class AuthController : ControllerBase
         return Ok(new MeResponse(
             UserId: user.Id,
             DisplayName: user.DisplayName,
-            Email: user.Email ?? string.Empty));
+            Email: user.Email ?? string.Empty,
+            QuietHoursStartUtc: user.QuietHoursStartUtc,
+            QuietHoursEndUtc: user.QuietHoursEndUtc));
+    }
+
+    /// <summary>
+    /// Phase 2L. Updates the calling user's quiet-hours window. Both bounds set
+    /// = configure (wrap-midnight allowed when start &gt; end). Both null = clear.
+    /// The window is advisory: the client uses it to suppress non-critical hub
+    /// notifications. Server-side ticking is unaffected.
+    /// </summary>
+    [HttpPut("me/quiet-hours")]
+    [Authorize]
+    public async Task<ActionResult<MeResponse>> UpdateQuietHours(
+        [FromBody] UpdateQuietHoursRequest request,
+        CancellationToken ct)
+    {
+        var validation = await _quietHoursValidator.ValidateAsync(request, ct);
+        if (!validation.IsValid)
+        {
+            return ValidationProblem(BuildModelState(validation.Errors));
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        user.QuietHoursStartUtc = request.QuietHoursStartUtc;
+        user.QuietHoursEndUtc = request.QuietHoursEndUtc;
+
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+            _logger.LogWarning(
+                "Failed to update quiet hours for user={UserId}: {Errors}",
+                user.Id, string.Join("; ", updateResult.Errors.Select(e => e.Description)));
+            return Problem("Failed to update quiet hours.");
+        }
+
+        _logger.LogInformation(
+            "Quiet hours updated: user={UserId} start={Start} end={End}",
+            user.Id, user.QuietHoursStartUtc, user.QuietHoursEndUtc);
+
+        return Ok(new MeResponse(
+            user.Id, user.DisplayName, user.Email ?? string.Empty,
+            user.QuietHoursStartUtc, user.QuietHoursEndUtc));
     }
 
     private static ModelStateDictionary BuildModelState(IEnumerable<FluentValidation.Results.ValidationFailure> failures)

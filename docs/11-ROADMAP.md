@@ -59,11 +59,11 @@ This is where we'd publish a playable build to your friends.
 
 Turn the demo into a real strategic game with social mechanics.
 
-- ☐ DiplomaticRelation entity + endpoints + Hub events
-- ☐ Diplomacy panel UI
-- ☐ Treaty proposal/response flow
-- ☐ Coalition victory condition
-- ☐ Chat system (per-world + per-alliance)
+- ☑ DiplomaticRelation entity + endpoints + Hub events
+- ☑ Diplomacy panel UI
+- ☑ Treaty proposal/response flow
+- ☑ Coalition victory condition
+- ☑ Chat system (per-world + per-alliance)
 - ☑ Research / tech tree (basic — 12 techs)
 - ☑ Add air units: Recon Drone, Attack Helicopter, Strategic Bomber
 - ☑ Add ground unit: Special Forces, Mobile Artillery, National Guard
@@ -71,10 +71,10 @@ Turn the demo into a real strategic game with social mechanics.
 - ☐ Aircraft Carriers (Phase 2b)
 - ☑ Remaining AI personalities: Industrialist, Isolationist
 - ☑ Schemer with dynamic recalculation (MVP heuristic — full diplomacy/cyber awareness in Phase 3)
-- ☐ Stats / graphs panel (Chart.js)
-- ☐ Quiet-hours setting
-- ☐ Mobile-friendly layout pass
-- ☐ Logistics network bonus
+- ☑ Stats / graphs panel (Chart.js) — current snapshot only; per-tick history deferred
+- ☑ Quiet-hours setting
+- ☑ Mobile-friendly layout pass
+- ☑ Logistics network bonus
 
 **Demoable:** five-player session with humans + AI, alliances forming and breaking, research being raced, real strategic decisions to make.
 
