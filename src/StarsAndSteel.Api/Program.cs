@@ -241,6 +241,10 @@ builder.Services.AddSingleton<DiplomacyBroadcaster>();
 builder.Services.AddSingleton<StarsAndSteel.Game.Research.ResearchService>();
 builder.Services.AddSingleton<ResearchBroadcaster>();
 
+// Chat (Phase 2K): pure service + out-of-tick broadcaster. Same lifetime story.
+builder.Services.AddSingleton<StarsAndSteel.Game.Chat.ChatService>();
+builder.Services.AddSingleton<ChatBroadcaster>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())

@@ -149,4 +149,5 @@ public static class TickEventNames
     public const string PlayerEliminated = "PlayerEliminated";
     public const string TechUnlocked = "TechUnlocked";
     public const string ResearchStarted = "ResearchStarted";
+    public const string ChatMessageReceived = "ChatMessageReceived";
 }

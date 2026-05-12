@@ -294,6 +294,30 @@ export interface ResearchStartedEvent {
   ticksToResearch: number;
 }
 
+// ---- Chat (mirrors ChatDtos.cs + ChatMessageReceived hub event) ----------
+// Server enum-as-string converter.
+export type ChatScope = 'Global' | 'Alliance' | 'Direct';
+
+export interface ChatMessageDto {
+  id: string;
+  fromPlayerId: string;
+  toPlayerId: string | null;
+  scope: ChatScope;
+  body: string;
+  sentAtUtc: string;
+}
+
+export interface SendChatMessageRequest {
+  scope: ChatScope;
+  toPlayerId: string | null;
+  body: string;
+}
+
+export interface SendChatMessageResponse {
+  messageId: string;
+  sentAtUtc: string;
+}
+
 // ---- Server-to-client method names (must match TickEventNames.cs) -------
 export const HubEvents = {
   TickAdvanced: 'TickAdvanced',
@@ -314,6 +338,7 @@ export const HubEvents = {
   OfferResolved: 'OfferResolved',
   TechUnlocked: 'TechUnlocked',
   ResearchStarted: 'ResearchStarted',
+  ChatMessageReceived: 'ChatMessageReceived',
 } as const;
 
 // ---- Diplomacy (mirrors DiplomacyDtos.cs + DiplomacyEventDtos.cs) -------

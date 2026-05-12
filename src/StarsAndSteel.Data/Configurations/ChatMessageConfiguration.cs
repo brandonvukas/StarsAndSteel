@@ -12,6 +12,9 @@ internal sealed class ChatMessageConfiguration : IEntityTypeConfiguration<ChatMe
 
         b.Property(x => x.Body).IsRequired().HasMaxLength(500);
 
+        // Phase 2K: enum stored as string per project convention.
+        b.Property(x => x.Scope).HasConversion<string>().HasMaxLength(20).IsRequired();
+
         b.HasOne(x => x.GameWorld)
             .WithMany()
             .HasForeignKey(x => x.GameWorldId)

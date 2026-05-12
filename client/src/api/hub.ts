@@ -10,6 +10,7 @@ import type {
   CombatResolved, AirStrikeResolved, NewsPublished,
   RelationChanged, OfferReceived, OfferResolved,
   TechUnlocked, ResearchStartedEvent,
+  ChatMessageDto,
 } from '../types/api';
 
 export interface HubHandlers {
@@ -28,6 +29,7 @@ export interface HubHandlers {
   onOfferResolved?: (e: OfferResolved) => void;
   onTechUnlocked?: (e: TechUnlocked) => void;
   onResearchStarted?: (e: ResearchStartedEvent) => void;
+  onChatMessageReceived?: (e: ChatMessageDto) => void;
   /** Fired after the connection drops and the server snapshot may be stale. */
   onReconnected?: () => void;
 }
@@ -95,6 +97,7 @@ export class GameHubClient {
     if (h.onOfferResolved)      c.on(HubEvents.OfferResolved, h.onOfferResolved);
     if (h.onTechUnlocked)       c.on(HubEvents.TechUnlocked, h.onTechUnlocked);
     if (h.onResearchStarted)    c.on(HubEvents.ResearchStarted, h.onResearchStarted);
+    if (h.onChatMessageReceived) c.on(HubEvents.ChatMessageReceived, h.onChatMessageReceived);
 
     if (h.onReconnected) c.onreconnected(h.onReconnected);
   }

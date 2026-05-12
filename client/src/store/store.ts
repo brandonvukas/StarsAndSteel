@@ -17,6 +17,7 @@ import type {
   DiplomacyState, DiplomaticStatus, DiplomacyOffer,
   RelationChanged, OfferReceived, OfferResolved,
   ResearchState, TechUnlocked, ResearchStartedEvent,
+  ChatMessageDto,
 } from '../types/api';
 
 export interface DraftOrder {
@@ -77,6 +78,7 @@ export function setAuth(auth: AuthResponse | null) {
     $news.set([]);
     $diplomacy.set(null);
     $research.set(null);
+    $chat.set([]);
   }
 }
 
@@ -238,6 +240,31 @@ export function tickResearchProgress(state: ResearchState): ResearchState {
     return { ...r, progressPoints: np };
   });
   return mutated ? { ...state, myProgress: next } : state;
+}
+
+// ---- Chat state ----------------------------------------------------------
+// Bounded ring of chat messages observed for the current world. Server returns
+// already-filtered (per-caller-visible) history; hub events arrive over the
+// world group and the panel applies its own client-side scope filtering for
+// alliance/direct (using $diplomacy + $world.me.playerId) so we don't need to
+// segment the store by scope.
+export const CHAT_CAP = 200;
+export const $chat = atom<ChatMessageDto[]>([]);
+
+export function setChat(messages: ChatMessageDto[]) {
+  // Server returns chronological asc; we keep that order. Apply cap.
+  const sorted = messages.slice().sort((a, b) =>
+    Date.parse(a.sentAtUtc) - Date.parse(b.sentAtUtc));
+  if (sorted.length > CHAT_CAP) sorted.splice(0, sorted.length - CHAT_CAP);
+  $chat.set(sorted);
+}
+
+export function pushChat(message: ChatMessageDto) {
+  const cur = $chat.get();
+  if (cur.some(m => m.id === message.id)) return;
+  const next = [...cur, message];
+  if (next.length > CHAT_CAP) next.splice(0, next.length - CHAT_CAP);
+  $chat.set(next);
 }
 
 // ---- session persistence -------------------------------------------------

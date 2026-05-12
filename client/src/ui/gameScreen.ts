@@ -5,11 +5,12 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MapScene } from '../scenes/MapScene';
 import { GameHubClient } from '../api/hub';
-import { getSnapshot, getNews, getDiplomacy, getResearch } from '../api/rest';
+import { getSnapshot, getNews, getDiplomacy, getResearch, getChatHistory } from '../api/rest';
 import {
   $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
   setDiplomacy, $diplomacy, applyRelationChanged, applyOfferReceived, applyOfferResolved,
   setResearch, $research, applyResearchStarted, applyTechUnlocked, tickResearchProgress,
+  setChat, pushChat,
 } from '../store/store';
 import {
   applyResourcesUpdated, applyUnitMoved, applyUnitDestroyed,
@@ -20,6 +21,7 @@ import { mountProvincePanel } from './provincePanel';
 import { mountNewsTicker } from './newsTicker';
 import { mountDiplomacyPanel } from './diplomacyPanel';
 import { mountResearchPanel } from './researchPanel';
+import { mountChatPanel } from './chatPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -31,10 +33,12 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
           <button data-tab="province" class="active">Province</button>
           <button data-tab="diplomacy">Diplomacy</button>
           <button data-tab="research">Research</button>
+          <button data-tab="chat">Chat</button>
         </nav>
         <div id="side-tab-province" class="side-tab-pane"></div>
         <div id="side-tab-diplomacy" class="side-tab-pane" hidden></div>
         <div id="side-tab-research" class="side-tab-pane" hidden></div>
+        <div id="side-tab-chat" class="side-tab-pane" hidden></div>
       </aside>
     </div>
     <div id="news-ticker"></div>`;
@@ -66,6 +70,13 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     // ignored
   }
 
+  // 1e. Initial chat backfill (most recent visible-to-caller messages).
+  try {
+    setChat(await getChatHistory(worldId));
+  } catch {
+    // ignored
+  }
+
   // 2. Boot Phaser into the dedicated host. Canvas is sized to match the
   //    map-data viewport (1600x1000 from scripts/build-map.mjs). Phaser scales
   //    the canvas to fit the parent via Scale.FIT so the full map is visible
@@ -89,6 +100,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountProvincePanel(host.querySelector('#side-tab-province')!);
   mountDiplomacyPanel(host.querySelector('#side-tab-diplomacy')!);
   mountResearchPanel(host.querySelector('#side-tab-research')!);
+  mountChatPanel(host.querySelector('#side-tab-chat')!);
   mountNewsTicker(host.querySelector('#news-ticker')!);
   wireSideTabs(host);
 
@@ -132,6 +144,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         const cur = $research.get();
         if (cur) setResearch(applyTechUnlocked(cur, e));
       },
+      onChatMessageReceived: e => pushChat(e),
       onTickAdvanced:      e => {
         bumpTick(e.tick);
         // Reflect tick into world snapshot for the resource bar's "tick N" cell.
@@ -163,6 +176,11 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         } catch {
           // ignored
         }
+        try {
+          setChat(await getChatHistory(worldId));
+        } catch {
+          // ignored
+        }
       },
     },
   );
@@ -177,6 +195,7 @@ function wireSideTabs(host: HTMLElement) {
     province: host.querySelector<HTMLElement>('#side-tab-province')!,
     diplomacy: host.querySelector<HTMLElement>('#side-tab-diplomacy')!,
     research: host.querySelector<HTMLElement>('#side-tab-research')!,
+    chat: host.querySelector<HTMLElement>('#side-tab-chat')!,
   };
   tabs.forEach(btn => {
     btn.onclick = () => {

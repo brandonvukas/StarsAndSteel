@@ -7,6 +7,7 @@ import type {
   MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest,
   DiplomacyState, TreatyOfferKind,
   ResearchState,
+  ChatMessageDto, SendChatMessageRequest, SendChatMessageResponse,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -110,5 +111,12 @@ export const getResearch = (worldId: string) =>
 export const startResearch = (worldId: string, techId: string) =>
   call<{ techId: string; ticksToResearch: number }>(
     'POST', `/api/worlds/${worldId}/research/start`, { techId });
+
+// ---- Chat ----------------------------------------------------------------
+export const getChatHistory = (worldId: string, take = 50) =>
+  call<ChatMessageDto[]>('GET', `/api/worlds/${worldId}/chat?take=${take}`);
+
+export const sendChatMessage = (worldId: string, req: SendChatMessageRequest) =>
+  call<SendChatMessageResponse>('POST', `/api/worlds/${worldId}/chat/send`, req);
 
 export { HttpError };

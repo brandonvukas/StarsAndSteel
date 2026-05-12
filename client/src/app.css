@@ -287,6 +287,45 @@ a, a:visited { color: #ffd166; }
 .rp-action-status.rp-ok  { color: #6bff95; }
 .rp-action-status.rp-err { color: #ff6b6b; }
 
+/* ---- Chat panel ----------------------------------------------------- */
+.chat-panel {
+  display: flex; flex-direction: column;
+  padding: 8px 12px; height: 100%; min-height: 320px; gap: 8px;
+}
+.chat-tabs { display: flex; gap: 4px; }
+.chat-tabs button {
+  flex: 1; padding: 4px 8px; font-size: 11px; text-transform: uppercase;
+  background: #15151c; color: #ccc; border: 1px solid #2a2a3a; border-radius: 3px;
+  cursor: pointer; letter-spacing: 0.04em;
+}
+.chat-tabs button.active { background: #2a2a4a; color: #ffd166; border-color: #4a4a6a; }
+.chat-messages {
+  flex: 1; min-height: 200px; max-height: 400px; overflow-y: auto;
+  background: #0a0a14; border: 1px solid #2a2a3a; border-radius: 3px;
+  padding: 6px; font-size: 12px;
+}
+.chat-msg { margin-bottom: 4px; line-height: 1.4; }
+.chat-msg-mine .chat-meta strong { color: #ffd166; }
+.chat-meta { display: block; font-size: 10px; opacity: 0.65; }
+.chat-body { display: block; word-break: break-word; }
+.chat-scope {
+  display: inline-block; margin-left: 4px; padding: 0 4px;
+  font-size: 9px; border-radius: 2px; letter-spacing: 0.04em;
+}
+.chat-scope-global   { background: #1f2a3a; color: #88a4ff; }
+.chat-scope-alliance { background: #1f3a1f; color: #6bff95; }
+.chat-scope-direct   { background: #3a1f3a; color: #ff95dd; }
+.chat-composer {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+}
+.chat-composer select { font-size: 11px; padding: 4px; flex: 1 1 100%; }
+.chat-composer input[type="text"] {
+  flex: 1 1 auto; padding: 4px 6px; font-size: 12px;
+  background: #15151c; color: #eee; border: 1px solid #2a2a3a; border-radius: 3px;
+}
+.chat-composer button { padding: 4px 12px; font-size: 12px; }
+.chat-err { flex: 1 1 100%; color: #ff6b6b; font-size: 11px; }
+
 /* ---- Error screen --------------------------------------------------- */
 .error-screen {
   margin: 60px auto; max-width: 600px; padding: 24px;
