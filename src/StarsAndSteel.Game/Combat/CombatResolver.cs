@@ -75,7 +75,29 @@ public static class CombatResolver
         IRandomSource rng,
         double defenderBonusMultiplier,
         double attackerCombinedArmsMultiplier,
-        double defenderCombinedArmsMultiplier)
+        double defenderCombinedArmsMultiplier) =>
+        ResolveGround(attacker, defender, rng,
+            defenderBonusMultiplier,
+            attackerCombinedArmsMultiplier,
+            defenderCombinedArmsMultiplier,
+            attackerBonusMultiplier: 1.0);
+
+    /// <summary>
+    /// Phase 4f overload: adds <paramref name="attackerBonusMultiplier"/>, the symmetric
+    /// counterpart to <paramref name="defenderBonusMultiplier"/>. Used by
+    /// <c>CombatStep</c> to apply the Maneuver Warfare doctrine bonus when the attacker
+    /// has the tech AND at least one of their stacks moved into the contested province
+    /// this same tick. Stacks multiplicatively with the combined-arms multiplier on
+    /// effective strength + outgoing damage. Pass <c>1.0</c> for no bonus.
+    /// </summary>
+    public static BattleOutcome ResolveGround(
+        Side attacker,
+        Side defender,
+        IRandomSource rng,
+        double defenderBonusMultiplier,
+        double attackerCombinedArmsMultiplier,
+        double defenderCombinedArmsMultiplier,
+        double attackerBonusMultiplier)
     {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(defender);
@@ -89,8 +111,11 @@ public static class CombatResolver
         if (defenderCombinedArmsMultiplier <= 0)
             throw new ArgumentOutOfRangeException(nameof(defenderCombinedArmsMultiplier),
                 "Defender combined-arms multiplier must be positive.");
+        if (attackerBonusMultiplier <= 0)
+            throw new ArgumentOutOfRangeException(nameof(attackerBonusMultiplier),
+                "Attacker bonus multiplier must be positive.");
 
-        var attackerEff = TotalEffectiveStrength(attacker.Stacks, rng) * attackerCombinedArmsMultiplier;
+        var attackerEff = TotalEffectiveStrength(attacker.Stacks, rng) * attackerCombinedArmsMultiplier * attackerBonusMultiplier;
         var defenderEff = TotalEffectiveStrength(defender.Stacks, rng) * defenderCombinedArmsMultiplier * defenderBonusMultiplier;
 
         // Damage = sum over (attackerStack -> targetStack) of attackerStack.eff * matrixFraction.
@@ -115,6 +140,12 @@ public static class CombatResolver
         if (defenderBonusMultiplier != 1.0)
             for (var i = 0; i < defenderDamageOnAttacker.Count; i++)
                 defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * defenderBonusMultiplier);
+
+        // Phase 4f: attacker bonus (Maneuver Warfare) symmetric to defender bonus —
+        // boosts attacker outgoing damage on top of combined-arms scaling.
+        if (attackerBonusMultiplier != 1.0)
+            for (var i = 0; i < attackerDamageOnDefender.Count; i++)
+                attackerDamageOnDefender[i] = (attackerDamageOnDefender[i].Item1, attackerDamageOnDefender[i].Item2 * attackerBonusMultiplier);
 
         var casualties = new List<StackCasualty>(attacker.Stacks.Count + defender.Stacks.Count);
         foreach (var (id, dmg) in attackerDamageOnDefender)

@@ -88,7 +88,7 @@ public static class TechCatalog
             MoneyCost: 1500, ElectronicsCost: 200, TicksToResearch: 12,
             Prerequisites: new[] { "combined_arms" }),
         new("maneuver_warfare", "Maneuver Warfare", "Doctrine",
-            "Reserved: meant to shave 1 tick off cheap-terrain moves; deferred until multi-tick movement (movement is single-tick MVP).",
+            "Attacker stacks that move into a contested province this tick gain +20% effective strength + outgoing damage in CombatStep (Phase 4f).",
             MoneyCost: 2500, ElectronicsCost: 500, TicksToResearch: 18,
             Prerequisites: new[] { "combined_arms" }),
 

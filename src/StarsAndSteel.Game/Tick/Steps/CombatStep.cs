@@ -111,13 +111,38 @@ public sealed class CombatStep : ITickStep
                 ? (context.HasTech(defenderPlayerId, "combined_arms") ? 1.25 : 1.20)
                 : 1.0;
 
+            // Phase 4f: Maneuver Warfare doctrine. If the attacker has the
+            // `maneuver_warfare` tech AND at least one of their committed stacks
+            // moved into this contested province this same tick (detected via the
+            // UnitMovedEvent emitted by MovementStep earlier in the pipeline),
+            // multiply attacker effective strength + outgoing damage by 1.20.
+            // Stacks multiplicatively with combined-arms.
+            var attackerBonusMultiplier = 1.0;
+            if (context.HasTech(attackerPlayerId, "maneuver_warfare"))
+            {
+                var attackerStackIds = new HashSet<Guid>(attackerStacks.Select(s => s.Id));
+                var anyMovedIn = false;
+                for (var i = 0; i < context.Events.Count; i++)
+                {
+                    if (context.Events[i] is UnitMovedEvent moved
+                        && moved.ToProvinceId == provinceId
+                        && attackerStackIds.Contains(moved.UnitId))
+                    {
+                        anyMovedIn = true;
+                        break;
+                    }
+                }
+                if (anyMovedIn) attackerBonusMultiplier = 1.20;
+            }
+
             var outcome = CombatResolver.ResolveGround(
                 attacker: new CombatResolver.Side(attackerPlayerId, attackerStacks),
                 defender: new CombatResolver.Side(defenderPlayerId, defenderStacks),
                 rng: context.Rng,
                 defenderBonusMultiplier: defenderBonusMultiplier,
                 attackerCombinedArmsMultiplier: attackerCombinedArms,
-                defenderCombinedArmsMultiplier: defenderCombinedArms);
+                defenderCombinedArmsMultiplier: defenderCombinedArms,
+                attackerBonusMultiplier: attackerBonusMultiplier);
 
             AirStrikeStep.ApplyCasualties(context, outcome.Casualties, "Combat");
 

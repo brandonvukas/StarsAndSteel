@@ -318,4 +318,191 @@ public class CombatStepTests
         lossB.Should().Be(lossA,
             "without ground+air+AA on bob's side the combined-arms boost can't trigger");
     }
+
+    // ---- Phase 4f: maneuver_warfare doctrine ----
+
+    /// <summary>
+    /// Helper: pre-seed a <see cref="UnitMovedEvent"/> for the attacker stack into
+    /// the context's Events list so CombatStep sees it as "moved into the contested
+    /// province this tick" without having to wire MovementStep into the test.
+    /// </summary>
+    private static void SeedMovedInto(global::StarsAndSteel.Game.Tick.TickContext ctx, Unit attacker, Guid fromProvinceId, Guid toProvinceId)
+    {
+        ctx.Events.Add(new UnitMovedEvent(
+            Tick: ctx.ProcessingTick,
+            UnitId: attacker.Id,
+            OwnerPlayerId: attacker.OwnerPlayerId,
+            FromProvinceId: fromProvinceId,
+            ToProvinceId: toProvinceId));
+    }
+
+    [Fact]
+    public void Maneuver_warfare_increases_defender_losses_when_attacker_moved_in()
+    {
+        const long seed = 42;
+
+        // Run A: no tech.
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var fromA = AddProvince(worldA, aliceA, "From");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 2000);
+        var defA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 2000);
+        var ctxA = Context(worldA, units: new[] { atkA, defA }, rngSeed: seed);
+        SeedMovedInto(ctxA, atkA, fromA.Id, pA.Id);
+        new CombatStep().Execute(ctxA);
+
+        // Run B: alice has maneuver_warfare AND moved in this tick.
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var fromB = AddProvince(worldB, aliceB, "From");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 2000);
+        var defB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 2000);
+        var ctxB = Context(worldB, units: new[] { atkB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(aliceB, "maneuver_warfare") });
+        SeedMovedInto(ctxB, atkB, fromB.Id, pB.Id);
+        new CombatStep().Execute(ctxB);
+
+        var defLossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+        var defLossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+
+        defLossB.Should().BeGreaterThan(defLossA,
+            "maneuver_warfare should magnify attacker outgoing damage when attacker moved in");
+    }
+
+    [Fact]
+    public void Maneuver_warfare_does_nothing_if_attacker_did_not_move_in()
+    {
+        // Tech but no UnitMovedEvent -> no bonus. Defender losses match baseline.
+        const long seed = 9;
+
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 2000);
+        var defA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 2000);
+        var ctxA = Context(worldA, units: new[] { atkA, defA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 2000);
+        var defB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 2000);
+        var ctxB = Context(worldB, units: new[] { atkB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(aliceB, "maneuver_warfare") });
+        // No SeedMovedInto: attacker is "in place" — bonus must NOT apply.
+        new CombatStep().Execute(ctxB);
+
+        var defLossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+        var defLossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+
+        defLossB.Should().Be(defLossA,
+            "maneuver_warfare requires a UnitMovedEvent into the contested province this tick");
+    }
+
+    [Fact]
+    public void Maneuver_warfare_does_not_buff_defender()
+    {
+        // Defender holds the tech and a (spurious) UnitMovedEvent points at the
+        // contested province with the defender's own unit. CombatStep checks
+        // attacker membership, not just any owner — so no bonus should apply.
+        const long seed = 11;
+
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 2000);
+        var defA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 2000);
+        var ctxA = Context(worldA, units: new[] { atkA, defA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 2000);
+        var defB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 2000);
+        // Bob (defender) has the tech.
+        var ctxB = Context(worldB, units: new[] { atkB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(bobB, "maneuver_warfare") });
+        // Spurious moved-event for the DEFENDER unit — must be ignored by attacker check.
+        SeedMovedInto(ctxB, defB, pB.Id, pB.Id);
+        new CombatStep().Execute(ctxB);
+
+        var atkLossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+        var atkLossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+        var defLossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+        var defLossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+
+        atkLossB.Should().Be(atkLossA, "maneuver_warfare on the defender must not buff defender");
+        defLossB.Should().Be(defLossA, "and must not change attacker outgoing damage either");
+    }
+
+    [Fact]
+    public void Maneuver_warfare_stacks_with_combined_arms()
+    {
+        // Same battle three ways, same RNG seed:
+        //   A: no techs, no moved-in event -> baseline.
+        //   B: maneuver_warfare + moved-in -> defender loss > A.
+        //   C: maneuver_warfare + combined_arms (qualifying composition) + moved-in
+        //      -> defender loss > B (multipliers stack multiplicatively).
+        const long seed = 17;
+
+        // Run A
+        var wA = NewWorld((int)seed);
+        var alA = AddPlayer(wA, "Alice");
+        var bA = AddPlayer(wA, "Bob");
+        var fA = AddProvince(wA, alA, "From");
+        var pA = AddProvince(wA, bA, "Battle");
+        var atkGroundA = AddUnit(wA, alA, pA, UnitType.MainBattleTank, 5000);
+        var defA = AddUnit(wA, bA, pA, UnitType.MechInfantry, 5000);
+        var ctxA = Context(wA, units: new[] { atkGroundA, defA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        // Run B: maneuver only.
+        var wB = NewWorld((int)seed);
+        var alB = AddPlayer(wB, "Alice");
+        var bB = AddPlayer(wB, "Bob");
+        var fB = AddProvince(wB, alB, "From");
+        var pB = AddProvince(wB, bB, "Battle");
+        var atkGroundB = AddUnit(wB, alB, pB, UnitType.MainBattleTank, 5000);
+        var defB = AddUnit(wB, bB, pB, UnitType.MechInfantry, 5000);
+        var ctxB = Context(wB, units: new[] { atkGroundB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(alB, "maneuver_warfare") });
+        SeedMovedInto(ctxB, atkGroundB, fB.Id, pB.Id);
+        new CombatStep().Execute(ctxB);
+
+        // Run C: maneuver + combined_arms with qualifying ground+air+AA composition.
+        var wC = NewWorld((int)seed);
+        var alC = AddPlayer(wC, "Alice");
+        var bC = AddPlayer(wC, "Bob");
+        var fC = AddProvince(wC, alC, "From");
+        var pC = AddProvince(wC, bC, "Battle");
+        var atkGroundC = AddUnit(wC, alC, pC, UnitType.MainBattleTank, 5000);
+        var atkAirC    = AddUnit(wC, alC, pC, UnitType.MultiroleFighter, 1000);
+        var atkAaC     = AddUnit(wC, alC, pC, UnitType.AABattery, 500);
+        var defC       = AddUnit(wC, bC, pC, UnitType.MechInfantry, 5000);
+        var ctxC = Context(wC, units: new[] { atkGroundC, atkAirC, atkAaC, defC }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress>
+            {
+                UnlockedTech(alC, "maneuver_warfare"),
+                UnlockedTech(alC, "combined_arms"),
+            });
+        SeedMovedInto(ctxC, atkGroundC, fC.Id, pC.Id);
+        new CombatStep().Execute(ctxC);
+
+        var defLossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+        var defLossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+        var defLossC = ctxC.Events.OfType<CombatResolvedEvent>().Single().DefenderStrengthLoss;
+
+        defLossB.Should().BeGreaterThan(defLossA, "maneuver alone boosts defender losses");
+        defLossC.Should().BeGreaterThan(defLossB, "combined_arms on top of maneuver stacks multiplicatively");
+    }
 }
