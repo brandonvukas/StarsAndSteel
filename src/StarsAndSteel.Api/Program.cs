@@ -229,6 +229,10 @@ builder.Services.AddSingleton<SnapshotService>();
 // + entity constructor; the controller does the loading + persistence.
 builder.Services.AddSingleton<StarsAndSteel.Game.Orders.OrderService>();
 
+// Generals service (Phase 3f). Pure recruit + assign with the one-per-player cap
+// enforced in code. Stateless — singleton.
+builder.Services.AddSingleton<StarsAndSteel.Game.Generals.GeneralsService>();
+
 // SignalR broadcast wrapper. Singleton because IHubContext<T> is itself a
 // singleton — the wrapper holds no per-request state.
 builder.Services.AddSingleton<TickBroadcaster>();

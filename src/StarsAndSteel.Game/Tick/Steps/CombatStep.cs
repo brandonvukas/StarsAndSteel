@@ -79,10 +79,23 @@ public sealed class CombatStep : ITickStep
             var preAttackerStrength = attackerStacks.Sum(s => s.Strength);
             var preDefenderStrength = defenderStacks.Sum(s => s.Strength);
 
+            // Phase 3f: if the defender owns a general assigned to this very
+            // province, multiply the defender's effective strength + outgoing
+            // damage by (1 + GeneralsService.DefenderCombatBonus). Looks up by
+            // (GameWorldId, ProvinceId, OwnerPlayerId) — only the assignment
+            // owner gets the bonus, not just any general parked there.
+            var defenderHasGeneralHere = context.Generals.Any(g =>
+                g.AssignedProvinceId == provinceId
+                && g.OwnerPlayerId == defenderPlayerId);
+            var defenderBonusMultiplier = defenderHasGeneralHere
+                ? 1.0 + StarsAndSteel.Game.Generals.GeneralsService.DefenderCombatBonus
+                : 1.0;
+
             var outcome = CombatResolver.ResolveGround(
                 attacker: new CombatResolver.Side(attackerPlayerId, attackerStacks),
                 defender: new CombatResolver.Side(defenderPlayerId, defenderStacks),
-                rng: context.Rng);
+                rng: context.Rng,
+                defenderBonusMultiplier: defenderBonusMultiplier);
 
             AirStrikeStep.ApplyCasualties(context, outcome.Casualties, "Combat");
 

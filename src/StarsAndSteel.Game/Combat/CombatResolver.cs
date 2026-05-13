@@ -39,14 +39,31 @@ public static class CombatResolver
     /// extend to N-way (free-for-all) by reducing pairwise; MVP only ever sees 2 because
     /// movement queues land one attacker per tick.
     /// </summary>
-    public static BattleOutcome ResolveGround(Side attacker, Side defender, IRandomSource rng)
+    public static BattleOutcome ResolveGround(Side attacker, Side defender, IRandomSource rng) =>
+        ResolveGround(attacker, defender, rng, defenderBonusMultiplier: 1.0);
+
+    /// <summary>
+    /// Phase 3f overload: identical to <see cref="ResolveGround(Side, Side, IRandomSource)"/>
+    /// but multiplies the defender's effective strength AND outgoing damage by
+    /// <paramref name="defenderBonusMultiplier"/> (e.g. <c>1.15</c> when the defender
+    /// has a general assigned at the province). The bonus stacks multiplicatively with
+    /// the combined-arms +20%. Pass <c>1.0</c> for "no bonus" (default behavior).
+    /// </summary>
+    public static BattleOutcome ResolveGround(
+        Side attacker,
+        Side defender,
+        IRandomSource rng,
+        double defenderBonusMultiplier)
     {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(defender);
         ArgumentNullException.ThrowIfNull(rng);
+        if (defenderBonusMultiplier <= 0)
+            throw new ArgumentOutOfRangeException(nameof(defenderBonusMultiplier),
+                "Defender bonus multiplier must be positive.");
 
         var attackerEff = TotalEffectiveStrength(attacker.Stacks, rng);
-        var defenderEff = TotalEffectiveStrength(defender.Stacks, rng);
+        var defenderEff = TotalEffectiveStrength(defender.Stacks, rng) * defenderBonusMultiplier;
 
         var attackerHasCombinedArms = HasCombinedArms(attacker.Stacks);
         var defenderHasCombinedArms = HasCombinedArms(defender.Stacks);
@@ -69,6 +86,12 @@ public static class CombatResolver
         if (defenderHasCombinedArms)
             for (var i = 0; i < defenderDamageOnAttacker.Count; i++)
                 defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * 1.20);
+
+        // Phase 3f: defender bonus also boosts defender outgoing damage so a general
+        // makes the garrison both tougher (effective-strength) and meaner (damage).
+        if (defenderBonusMultiplier != 1.0)
+            for (var i = 0; i < defenderDamageOnAttacker.Count; i++)
+                defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * defenderBonusMultiplier);
 
         var casualties = new List<StackCasualty>(attacker.Stacks.Count + defender.Stacks.Count);
         foreach (var (id, dmg) in attackerDamageOnDefender)

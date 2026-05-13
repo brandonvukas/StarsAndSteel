@@ -129,6 +129,16 @@ public sealed class TickRunner
                 && o.Status == OrderStatus.Pending)
             .ToListAsync(cancellationToken);
 
+        // Phase 3f: every general in the world (typically tiny — MVP caps it at one
+        // per player). Loaded read-only from the runner's perspective; CombatStep
+        // only reads the (AssignedProvinceId, OwnerPlayerId) pair to apply the
+        // defender bonus. Generals aren't mutated during a tick yet (XP gains are
+        // deferred), so we don't need EF tracking — but we keep them tracked for
+        // when XpLevel writes land in a later phase.
+        var generals = await _db.Generals
+            .Where(g => g.GameWorldId == worldId)
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
@@ -140,7 +150,8 @@ public sealed class TickRunner
                 pendingTreatyOffers: pendingTreatyOffers,
                 relations: relations,
                 activeResearch: activeResearch,
-                pendingCyberAttackOrders: pendingCyberAttackOrders);
+                pendingCyberAttackOrders: pendingCyberAttackOrders,
+                generals: generals);
         }
         catch (Exception ex)
         {

@@ -93,6 +93,62 @@ public class CombatResolverTests
         CombatStats.IsNaval(UnitType.Submarine).Should().BeTrue();
     }
 
+    // ---- Phase 3f: defender bonus multiplier (theater commander) ----
+
+    [Fact]
+    public void Defender_bonus_increases_defender_outgoing_damage_vs_attacker()
+    {
+        var (atkBaseline, defBaseline) = TwoSides();
+        var (atkBonus,    defBonus)    = TwoSides();
+
+        // Same RNG seed both runs: only difference is the bonus multiplier.
+        var baseline = CombatResolver.ResolveGround(atkBaseline, defBaseline,
+            new DeterministicRandom(42), defenderBonusMultiplier: 1.0);
+        var withBonus = CombatResolver.ResolveGround(atkBonus, defBonus,
+            new DeterministicRandom(42), defenderBonusMultiplier: 1.50); // exaggerated for signal
+
+        // Attacker (Alice) casualties should be higher when defender has the bonus.
+        var aliceAttackerIds = atkBaseline.Stacks.Select(s => s.Id).ToHashSet();
+        var attackerLossBaseline = baseline.Casualties
+            .Where(c => aliceAttackerIds.Contains(c.UnitId)).Sum(c => c.StrengthLoss);
+
+        var aliceAttackerIdsBonus = atkBonus.Stacks.Select(s => s.Id).ToHashSet();
+        var attackerLossBonus = withBonus.Casualties
+            .Where(c => aliceAttackerIdsBonus.Contains(c.UnitId)).Sum(c => c.StrengthLoss);
+
+        attackerLossBonus.Should().BeGreaterThan(attackerLossBaseline,
+            "the +50% defender bonus should magnify defender outgoing damage");
+    }
+
+    [Fact]
+    public void Defender_bonus_default_overload_matches_explicit_one()
+    {
+        var (atk1, def1) = TwoSides();
+        var (atk2, def2) = TwoSides();
+
+        var noOverload = CombatResolver.ResolveGround(atk1, def1, new DeterministicRandom(99));
+        var explicit10 = CombatResolver.ResolveGround(atk2, def2, new DeterministicRandom(99),
+            defenderBonusMultiplier: 1.0);
+
+        noOverload.WinnerPlayerId.Should().Be(explicit10.WinnerPlayerId);
+        noOverload.Casualties.Sum(c => c.StrengthLoss)
+            .Should().Be(explicit10.Casualties.Sum(c => c.StrengthLoss));
+    }
+
+    [Fact]
+    public void Defender_bonus_zero_or_negative_throws()
+    {
+        var (atk, def) = TwoSides();
+
+        Action zero = () => CombatResolver.ResolveGround(atk, def,
+            new DeterministicRandom(1), defenderBonusMultiplier: 0);
+        Action negative = () => CombatResolver.ResolveGround(atk, def,
+            new DeterministicRandom(1), defenderBonusMultiplier: -1);
+
+        zero.Should().Throw<ArgumentOutOfRangeException>();
+        negative.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
     private static (CombatResolver.Side Attacker, CombatResolver.Side Defender) TwoSides()
     {
         var aliceId = Guid.NewGuid();

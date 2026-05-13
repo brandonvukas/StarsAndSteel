@@ -244,7 +244,8 @@ internal static class TickTestGraph
         IList<ProvinceAdjacency>? adjacencies = null,
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
-        long? rngSeed = null)
+        long? rngSeed = null,
+        IList<General>? generals = null)
     {
         return new TickContext(
             world,
@@ -255,6 +256,7 @@ internal static class TickTestGraph
             pendingConstructionOrders: constructionOrders ?? new List<ConstructionOrder>(),
             adjacencies: adjacencies ?? new List<ProvinceAdjacency>(),
             pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
-            relations: relations ?? RelationLookup.Empty);
+            relations: relations ?? RelationLookup.Empty,
+            generals: generals);
     }
 }

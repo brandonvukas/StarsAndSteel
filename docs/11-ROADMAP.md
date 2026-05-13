@@ -91,7 +91,7 @@ Make the late game spicy.
 - ☑ Tactical nukes (toggleable per game) *(Phase 3a — radiation persists, halves resource output linearly)*
 - ☑ Cyber warfare cells + Cyber Operations Centers *(Phase 3d — order type only; tech-gated cyber_warfare; 50/50 effect roll DrainMoney/SlowResearch resolved server-side; UI hookup deferred)*
 - ☑ Special Forces operations (sabotage, intel) *(Phase 3e — Sabotage order: SF unit at adjacent enemy province destroys 1 random building, takes 200 strength casualties, target province loses 10 morale; intel ops deferred)*
-- ☐ Theater commanders (generals)
+- ☑ Theater commanders (generals) *(Phase 3f — General entity; one-per-player MVP; instant recruit at fixed money cost; assign to friendly province; +15% defender effective strength + outgoing damage at the assigned province via CombatResolver.ResolveGround overload; XP / named perks deferred)*
 - ☐ Doctrines (Maneuver / Firepower / Defense)
 - ☐ Wonders / megaprojects (5 to start)
 - ☐ Random world events

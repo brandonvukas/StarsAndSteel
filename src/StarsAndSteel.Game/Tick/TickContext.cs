@@ -29,7 +29,8 @@ public sealed class TickContext
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
         IList<ResearchProgress>? activeResearch = null,
-        IList<CyberAttackOrder>? pendingCyberAttackOrders = null)
+        IList<CyberAttackOrder>? pendingCyberAttackOrders = null,
+        IList<General>? generals = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -49,6 +50,7 @@ public sealed class TickContext
         Relations = relations ?? RelationLookup.Empty;
         ActiveResearch = activeResearch ?? new List<ResearchProgress>();
         PendingCyberAttackOrders = pendingCyberAttackOrders ?? new List<CyberAttackOrder>();
+        Generals = generals ?? new List<General>();
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -127,6 +129,14 @@ public sealed class TickContext
     /// Empty by default (older tests / overload that don't supply cyber orders).
     /// </summary>
     public IList<CyberAttackOrder> PendingCyberAttackOrders { get; }
+
+    /// <summary>
+    /// Phase 3f: every general in the world (typically very small — MVP caps it
+    /// at one per player). <see cref="Steps.CombatStep"/> looks up by
+    /// <c>(GameWorldId, AssignedProvinceId)</c> to apply the defender bonus
+    /// when a general is parked at the contested province.
+    /// </summary>
+    public IList<General> Generals { get; }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

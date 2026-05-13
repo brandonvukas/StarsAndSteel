@@ -101,7 +101,8 @@ public sealed class TickProcessor
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
         IList<ResearchProgress>? activeResearch = null,
-        IList<CyberAttackOrder>? pendingCyberAttackOrders = null)
+        IList<CyberAttackOrder>? pendingCyberAttackOrders = null,
+        IList<General>? generals = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(units);
@@ -121,7 +122,8 @@ public sealed class TickProcessor
             pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
             relations: relations ?? RelationLookup.Empty,
             activeResearch: activeResearch ?? new List<ResearchProgress>(),
-            pendingCyberAttackOrders: pendingCyberAttackOrders ?? new List<CyberAttackOrder>());
+            pendingCyberAttackOrders: pendingCyberAttackOrders ?? new List<CyberAttackOrder>(),
+            generals: generals ?? new List<General>());
 
         foreach (var step in _steps)
         {
