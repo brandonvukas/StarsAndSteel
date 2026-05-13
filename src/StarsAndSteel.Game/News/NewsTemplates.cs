@@ -101,6 +101,26 @@ public static class NewsTemplates
             "Local officials hail the project as a boost to regional output.",
         });
 
+    /// <summary>
+    /// Phase 4b1: separate template for wonder completions because they're a once-per-game
+    /// event with global implications, not a routine ribbon-cutting. Severity Breaking;
+    /// category Politics so the ticker styles it the same as a victory headline.
+    /// </summary>
+    public static readonly NewsTemplate WonderCompleted = new(
+        Severity: NewsSeverity.Breaking,
+        Category: NewsCategory.Politics,
+        HeadlineVariants: new[]
+        {
+            "MEGAPROJECT COMPLETE: {owner} unveils {wonderName} in {province}",
+            "{wonderName} GOES ONLINE — {owner} reshapes the global balance",
+            "BREAKING: {owner} completes {wonderName}, capitals worldwide reassess",
+        },
+        BodyVariants: new[]
+        {
+            "Foreign ministries scrambled overnight to issue statements on the new wonder.",
+            "Analysts warn the project will distort the strategic picture for the rest of the war.",
+        });
+
     public static readonly NewsTemplate VictoryAchieved = new(
         Severity: NewsSeverity.Breaking,
         Category: NewsCategory.Politics,

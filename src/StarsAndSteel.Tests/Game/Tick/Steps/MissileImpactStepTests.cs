@@ -1,4 +1,5 @@
 ﻿using FluentAssertions;
+using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Core.Enums;
 using StarsAndSteel.Game.Tick.Events;
 using StarsAndSteel.Game.Tick.Steps;
@@ -169,6 +170,130 @@ public class MissileImpactStepTests
         defender.Strength.Should().Be(5000);
         infantry.Strength.Should().Be(1000);
         ctx.Events.OfType<MissileImpactResolvedEvent>().Should().BeEmpty();
+    }
+
+    // ---------- Phase 4b1: SDI wonder interception ----------
+
+    [Fact]
+    public void Without_SDI_missile_lands_normally()
+    {
+        // Baseline: defender takes loss, missile destroyed (existing behaviour).
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var bob = AddPlayer(world, "Bob");
+        var alicePr = AddProvince(world, alice, "AlicePr");
+        var bobPr = AddProvince(world, bob, "BobPr");
+        var missile = AddUnit(world, alice, alicePr, UnitType.CruiseMissile, 1);
+        var defender = AddUnit(world, bob, bobPr, UnitType.MechInfantry, 5000);
+        var order = MissileLaunchOrder(missile, bobPr);
+
+        var ctx = Context(world,
+            units: new[] { missile, defender },
+            unitOrders: new[] { order });
+
+        new MissileImpactStep().Execute(ctx);
+
+        defender.Strength.Should().BeLessThan(5000);
+        var ev = ctx.Events.OfType<MissileImpactResolvedEvent>().Should().ContainSingle().Subject;
+        ev.DefenderStrengthLoss.Should().BeGreaterThan(0);
+        // No interception event payload distinction (RadiationApplied=0 for cruise is normal).
+        ctx.Events.OfType<UnitDestroyedEvent>()
+            .Where(e => e.UnitId == missile.Id)
+            .Should().ContainSingle()
+            .Which.Cause.Should().Be("MissileLaunched");
+    }
+
+    [Fact]
+    public void SDI_intercept_rate_is_roughly_50_percent_over_many_trials()
+    {
+        // Statistical test: with SDI present we expect ~50% intercepts. Run 200 launches
+        // and assert the observed rate falls in [0.35, 0.65] — a wide band that is
+        // virtually impossible to fail by chance for a true 50% Bernoulli.
+        const int trials = 200;
+        int intercepted = 0;
+        for (int i = 0; i < trials; i++)
+        {
+            var world = NewWorld();
+            var alice = AddPlayer(world, "Alice");
+            var bob = AddPlayer(world, "Bob");
+            var alicePr = AddProvince(world, alice, "AlicePr");
+            var bobPr = AddProvince(world, bob, "BobPr");
+            // Bob owns SDI on his own province.
+            bobPr.Buildings.Add(new Building
+            {
+                Id = Guid.NewGuid(),
+                ProvinceId = bobPr.Id, Province = bobPr,
+                Type = BuildingType.StrategicDefenseInitiative,
+                Level = 1,
+            });
+            var missile = AddUnit(world, alice, alicePr, UnitType.CruiseMissile, 1);
+            var defender = AddUnit(world, bob, bobPr, UnitType.MechInfantry, 5000);
+            var order = MissileLaunchOrder(missile, bobPr);
+
+            // Vary the seed per trial so we sample the distribution.
+            var ctx = Context(world,
+                units: new[] { missile, defender },
+                unitOrders: new[] { order },
+                rngSeed: i + 1);
+
+            new MissileImpactStep().Execute(ctx);
+
+            // Interception is recognizable by a "MissileIntercepted" UnitDestroyed cause +
+            // zero defender loss in the payload.
+            bool wasIntercepted = ctx.Events.OfType<UnitDestroyedEvent>()
+                .Any(e => e.UnitId == missile.Id && e.Cause == "MissileIntercepted");
+            if (wasIntercepted)
+            {
+                intercepted++;
+                defender.Strength.Should().Be(5000); // intercepts spare the defender
+            }
+            else
+            {
+                defender.Strength.Should().BeLessThan(5000); // landed missiles damage
+            }
+        }
+
+        var rate = intercepted / (double)trials;
+        rate.Should().BeInRange(0.35, 0.65,
+            because: $"a true 50% intercept rate over {trials} trials should sit comfortably inside [0.35, 0.65]; observed {rate:P0}");
+    }
+
+    [Fact]
+    public void SDI_only_protects_provinces_owned_by_the_SDI_player()
+    {
+        // Charlie owns SDI elsewhere; Bob is being targeted but doesn't own SDI.
+        // Missile must always land regardless of seed.
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var bob = AddPlayer(world, "Bob");
+        var charlie = AddPlayer(world, "Charlie");
+        var alicePr = AddProvince(world, alice, "AlicePr");
+        var bobPr = AddProvince(world, bob, "BobPr");
+        var charliePr = AddProvince(world, charlie, "CharliePr");
+        // Charlie's province carries SDI; Bob's doesn't. Missile aimed at Bob.
+        charliePr.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(),
+            ProvinceId = charliePr.Id, Province = charliePr,
+            Type = BuildingType.StrategicDefenseInitiative,
+            Level = 1,
+        });
+        var missile = AddUnit(world, alice, alicePr, UnitType.CruiseMissile, 1);
+        var defender = AddUnit(world, bob, bobPr, UnitType.MechInfantry, 5000);
+        var order = MissileLaunchOrder(missile, bobPr);
+
+        var ctx = Context(world,
+            units: new[] { missile, defender },
+            unitOrders: new[] { order });
+
+        new MissileImpactStep().Execute(ctx);
+
+        // Missile lands (Charlie's SDI doesn't shield Bob).
+        defender.Strength.Should().BeLessThan(5000);
+        ctx.Events.OfType<UnitDestroyedEvent>()
+            .Where(e => e.UnitId == missile.Id)
+            .Should().ContainSingle()
+            .Which.Cause.Should().Be("MissileLaunched");
     }
 }
 

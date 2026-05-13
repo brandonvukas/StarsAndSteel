@@ -36,6 +36,7 @@ public enum OrderRejectionReason
     SabotageRequiresSpecialForces,  // 400 — Phase 3e; only SpecialForces units may sabotage
     SabotageTargetHasNoBuildings,   // 400 — Phase 3e; nothing to destroy
     SabotageTargetNotEnemy,         // 400 — Phase 3e; target province must be owned by an enemy
+    WonderAlreadyExists,            // 409 — Phase 4b1; wonders are one-per-game (built or in-progress anywhere)
 }
 
 /// <summary>
@@ -546,12 +547,19 @@ public sealed class OrderService
     }
 
     /// <summary>Validate + construct (but do not persist) a build-building order.</summary>
+    /// <param name="wonderAlreadyClaimed">
+    /// Phase 4b1: when <paramref name="buildingType"/> is a wonder, this must be true if any
+    /// player anywhere in the world already has the wonder built or in-progress. Wonders are
+    /// one-per-game; the controller queries Buildings + ConstructionOrders for the world and
+    /// passes the result here so this method stays a pure function over its arguments.
+    /// </param>
     public OrderValidationResult ValidateBuildBuilding(
         Player caller,
         Province province,
         BuildingType buildingType,
         int currentTick,
-        GameWorldStatus worldStatus)
+        GameWorldStatus worldStatus,
+        bool wonderAlreadyClaimed = false)
     {
         if (worldStatus == GameWorldStatus.Ended)
             return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
@@ -566,6 +574,14 @@ public sealed class OrderService
         if (buildingType == BuildingType.NavalYard && !province.IsCoastal)
             return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
                 "Naval Yard can only be built in a coastal province.");
+
+        // Phase 4b1: wonders are global one-per-game. The "already claimed" flag is the
+        // controller's responsibility — we just react to it. The check happens before the
+        // resource sufficiency check so the player isn't told they're poor when the real
+        // problem is they're late.
+        if (StarsAndSteel.Core.Wonders.WonderCatalog.IsWonder(buildingType) && wonderAlreadyClaimed)
+            return OrderValidationResult.Reject(OrderRejectionReason.WonderAlreadyExists,
+                $"{buildingType} has already been claimed in this game.");
 
         var spec = BuildCatalog.GetBuilding(buildingType);
 

@@ -481,3 +481,40 @@ export interface CyberAttackOrderAccepted {
   targetProvinceId: string;
   issuedAtTick: number;
 }
+
+// ----- Phase 4b1: Wonders -----
+
+/** Mirrors WonderStatus enum on the server. Sent as a string by the JSON converter. */
+export type WonderStatus = 'Available' | 'InProgress' | 'Built';
+
+/** Mirrors WonderCost record. Per-resource build cost from BuildCatalog. */
+export interface WonderCost {
+  money: number;
+  oil: number;
+  steel: number;
+  electronics: number;
+  food: number;
+  manpower: number;
+}
+
+/**
+ * One row per wonder in the global catalogue (mirrors WonderRow on the server).
+ * Wonders are one-per-game globally; once Status flips to Built the rest of the
+ * game can never claim it. The server sets Owner* + Province* for InProgress
+ * and Built; nulls for Available.
+ */
+export interface WonderRow {
+  /** BuildingType enum value as a string, e.g. "HooverDamReborn". */
+  type: string;
+  name: string;
+  summary: string;
+  cost: WonderCost;
+  ticksToBuild: number;
+  status: WonderStatus;
+  ownerPlayerId: string | null;
+  ownerNationName: string | null;
+  provinceId: string | null;
+  provinceName: string | null;
+  /** Set when status is InProgress; null otherwise. */
+  ticksRemaining: number | null;
+}

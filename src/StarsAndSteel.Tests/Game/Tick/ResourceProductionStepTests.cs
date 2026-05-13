@@ -337,4 +337,94 @@ public class ResourceProductionStepTests
             TerrainCost = 1.0f,
         };
     }
+
+    // ---------- Phase 4b1: Hoover Dam Reborn wonder bonus ----------
+
+    [Fact]
+    public void HooverDam_grants_50pct_bonus_to_owners_provinces()
+    {
+        // Without the wonder Alice would earn 100 money. With the dam built on any
+        // owned province, every owned province gets ×1.50 → 150 money.
+        var (world, alice) = WorldWithOnePlayer();
+        var p = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(),
+            ProvinceId = p.Id, Province = p,
+            Type = BuildingType.HooverDamReborn,
+            Level = 1,
+        });
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(150);
+    }
+
+    [Fact]
+    public void HooverDam_bonus_applies_to_every_owned_province_not_just_the_dam_province()
+    {
+        // Wonder on p1 should still buff p2 (and p1 itself).
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        var p2 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p1.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(),
+            ProvinceId = p1.Id, Province = p1,
+            Type = BuildingType.HooverDamReborn,
+            Level = 1,
+        });
+        // Sanity-check p2 has no wonder of its own.
+        p2.Buildings.Should().BeEmpty();
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        // 100 * 1.5 + 100 * 1.5 = 300.
+        alice.Money.Should().Be(300);
+    }
+
+    [Fact]
+    public void HooverDam_does_not_buff_other_players()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        var bob = AddPlayer(world, "Bob", money: 0);
+        var alicesP = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        AddProvince(world, bob, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        alicesP.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(),
+            ProvinceId = alicesP.Id, Province = alicesP,
+            Type = BuildingType.HooverDamReborn,
+            Level = 1,
+        });
+
+        new ResourceProductionStep().Execute(NewContext(world));
+
+        alice.Money.Should().Be(150); // boosted
+        bob.Money.Should().Be(100);   // not boosted
+    }
+
+    [Fact]
+    public void HooverDam_stacks_multiplicatively_with_logistics_bonus()
+    {
+        // Two adjacent owned provinces with a MilitaryBase trigger the 1.10 logistics
+        // bonus; with a Hoover Dam built on one of them, both should produce
+        // 100 * 1.10 * 1.50 = 165 each = 330 total.
+        var (world, alice) = WorldWithOnePlayer();
+        var p1 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        var p2 = AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+        p1.Buildings.Add(new Building { Id = Guid.NewGuid(), ProvinceId = p1.Id, Province = p1, Type = BuildingType.MilitaryBase, Level = 1 });
+        p2.Buildings.Add(new Building { Id = Guid.NewGuid(), ProvinceId = p2.Id, Province = p2, Type = BuildingType.HooverDamReborn, Level = 1 });
+
+        var adj = MakeAdj(p1, p2);
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency> { adj });
+
+        new ResourceProductionStep().Execute(ctx);
+
+        alice.Money.Should().Be(330);
+    }
 }

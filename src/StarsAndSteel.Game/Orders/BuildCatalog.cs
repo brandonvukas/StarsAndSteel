@@ -119,6 +119,14 @@ public static class BuildCatalog
         // OrderType.CyberAttack; cyber_warfare tech additionally gates the order.
         // Electronics-heavy, no oil — represents server farms and intel staff.
         new BuildingBuildSpec(BuildingType.CyberOperationsCenter, Money: 3500, Oil: 0,   Steel: 400, Electronics: 1200, Food: 0, Manpower: 75, TicksToBuild: 20),
+
+        // ---- Wonders (Phase 4b1) ----
+        // One-per-game (enforced in OrderService.ValidateBuildBuilding via WonderCatalog).
+        // Costs are intentionally crushing — a wonder should represent a multi-day commitment
+        // that deforms the player's economy. TicksToBuild ~= 150 is roughly 2.5 hours real-time
+        // at the 60s tick rate, long enough that opponents can plan around it being inbound.
+        new BuildingBuildSpec(BuildingType.HooverDamReborn,            Money: 25000, Oil: 1000, Steel: 8000, Electronics: 2000, Food: 0, Manpower: 1500, TicksToBuild: 150),
+        new BuildingBuildSpec(BuildingType.StrategicDefenseInitiative, Money: 30000, Oil: 500,  Steel: 5000, Electronics: 6000, Food: 0, Manpower: 800,  TicksToBuild: 180),
     }.ToDictionary(s => s.Type);
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>

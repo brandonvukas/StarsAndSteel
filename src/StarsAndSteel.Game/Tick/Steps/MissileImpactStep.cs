@@ -46,6 +46,13 @@ public sealed class MissileImpactStep : ITickStep
     /// <summary>RadiationLevel added per nuke. Stacks (capped at 100); decays slowly.</summary>
     internal const int NuclearRadiationApplied = 60;
 
+    /// <summary>
+    /// Phase 4b1: Strategic Defense Initiative wonder grants this base interception
+    /// probability per incoming missile when the target province's owner controls
+    /// the SDI. Faithful to the docs ("intercepts 50% of incoming missiles").
+    /// </summary>
+    internal const double SdiInterceptChance = 0.50;
+
     public void Execute(TickContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -56,6 +63,16 @@ public sealed class MissileImpactStep : ITickStep
             .GroupBy(u => u.LocationProvinceId!.Value)
             .ToDictionary(g => g.Key, g => g.ToList());
         var provinceById = context.World.Provinces.ToDictionary(p => p.Id);
+
+        // Phase 4b1: which players own SDI? Wonder ownership = current province ownership
+        // of the wonder building. Cached once per tick so per-missile lookup is O(1).
+        var sdiOwners = new HashSet<Guid>();
+        foreach (var province in context.World.Provinces)
+        {
+            if (!province.OwnerPlayerId.HasValue) continue;
+            if (province.Buildings.Any(b => b.Type == BuildingType.StrategicDefenseInitiative))
+                sdiOwners.Add(province.OwnerPlayerId.Value);
+        }
 
         foreach (var order in context.PendingUnitOrders)
         {
@@ -71,6 +88,35 @@ public sealed class MissileImpactStep : ITickStep
 
             bool isNuclear = missile.Type == UnitType.NuclearMissile;
             int totalDamage = isNuclear ? NuclearDamagePerMissile : ConventionalDamagePerMissile;
+
+            // Phase 4b1: SDI interception. Roll once per missile against the target province
+            // owner's SDI ownership. On intercept the missile is consumed (same as a launch),
+            // no damage is applied, no radiation is laid, and a dedicated event is emitted so
+            // the news layer can headline the intercept.
+            bool intercepted = target.OwnerPlayerId.HasValue
+                               && sdiOwners.Contains(target.OwnerPlayerId.Value)
+                               && context.Rng.NextDouble() < SdiInterceptChance;
+            if (intercepted)
+            {
+                missile.Strength = 0;
+                context.UnitsToDelete.Add(missile);
+                context.Events.Add(new UnitDestroyedEvent(
+                    Tick: context.ProcessingTick,
+                    UnitId: missile.Id,
+                    OwnerPlayerId: missile.OwnerPlayerId,
+                    LocationProvinceId: missile.LocationProvinceId,
+                    Cause: "MissileIntercepted"));
+                order.Status = OrderStatus.Complete;
+                context.Events.Add(new MissileImpactResolvedEvent(
+                    Tick: context.ProcessingTick,
+                    AttackerUnitId: missile.Id,
+                    AttackerPlayerId: missile.OwnerPlayerId,
+                    TargetProvinceId: targetId,
+                    WasNuclear: isNuclear,
+                    DefenderStrengthLoss: 0,
+                    RadiationApplied: 0));
+                continue;
+            }
 
             // Distribute damage across enemy stacks at the target. Friendly stacks are
             // spared (the engine's view is "you wouldn't nuke your own units"; if you

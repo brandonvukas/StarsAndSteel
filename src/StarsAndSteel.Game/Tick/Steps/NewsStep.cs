@@ -159,6 +159,20 @@ public sealed class NewsStep : ITickStep
         if (!provinces.TryGetValue(e.ProvinceId, out var province)) return;
         var owner = players.TryGetValue(e.OwnerPlayerId, out var o) ? o.NationName : "Unknown";
 
+        // Phase 4b1: wonders get the breaking-news treatment instead of the routine
+        // ribbon-cutting line.
+        var wonderInfo = StarsAndSteel.Core.Wonders.WonderCatalog.TryGet(e.Type);
+        if (wonderInfo is not null)
+        {
+            Emit(ctx, NewsTemplates.WonderCompleted, new Dictionary<string, string>
+            {
+                ["owner"] = owner,
+                ["wonderName"] = wonderInfo.Name,
+                ["province"] = province.Name,
+            }, relatedPlayerId: e.OwnerPlayerId);
+            return;
+        }
+
         Emit(ctx, NewsTemplates.BuildingCompleted, new Dictionary<string, string>
         {
             ["owner"] = owner,

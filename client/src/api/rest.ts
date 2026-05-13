@@ -12,6 +12,7 @@ import type {
   GeneralDto, RecruitGeneralRequest, AssignGeneralRequest,
   GeneralRecruited, GeneralAssigned,
   SabotageOrderRequest, CyberAttackOrderRequest, CyberAttackOrderAccepted,
+  WonderRow,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -160,5 +161,12 @@ export const getChatHistory = (worldId: string, take = 50) =>
 
 export const sendChatMessage = (worldId: string, req: SendChatMessageRequest) =>
   call<SendChatMessageResponse>('POST', `/api/worlds/${worldId}/chat/send`, req);
+
+// ---- Wonders (Phase 4b1) -------------------------------------------------
+// Global one-per-game catalogue + per-world status. Wonders are built via the
+// regular orderBuildBuilding endpoint with one of the wonder BuildingType
+// values; this read-only endpoint just powers the Wonders panel.
+export const getWonders = (worldId: string) =>
+  call<WonderRow[]>('GET', `/api/worlds/${worldId}/wonders`);
 
 export { HttpError };

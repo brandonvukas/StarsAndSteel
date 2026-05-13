@@ -33,6 +33,14 @@ public sealed class ResourceProductionStep : ITickStep
     /// <summary>Multiplicative bonus applied to all 6 resources for each province in a qualifying logistics network.</summary>
     public const double LogisticsBonus = 1.10;
 
+    /// <summary>
+    /// Phase 4b1: multiplicative bonus to ALL six resources on EVERY owned province
+    /// when the player owns the <see cref="BuildingType.HooverDamReborn"/> wonder
+    /// anywhere in the world. Stacks multiplicatively with the logistics bonus
+    /// (so a Hoover-Dam-owner with a logistics network gets ×1.10 × 1.50 = ×1.65).
+    /// </summary>
+    public const double HooverDamBonus = 1.50;
+
     public void Execute(TickContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -47,6 +55,18 @@ public sealed class ResourceProductionStep : ITickStep
         // (a connected component containing ≥ 1 MilitaryBase and size ≥ 2).
         var logisticsByOwner = ComputeLogisticsNetworks(context);
 
+        // Phase 4b1: which players own the Hoover Dam Reborn wonder? Look across every
+        // province (not just the current owner's) so a wonder built on a province that
+        // later changed hands belongs to whoever currently controls that province. This
+        // matches the wonder=Building model: the building's owner is the province's owner.
+        var hooverOwners = new HashSet<Guid>();
+        foreach (var province in context.World.Provinces)
+        {
+            if (!province.OwnerPlayerId.HasValue) continue;
+            if (province.Buildings.Any(b => b.Type == BuildingType.HooverDamReborn))
+                hooverOwners.Add(province.OwnerPlayerId.Value);
+        }
+
         foreach (var group in byOwner)
         {
             if (!playersById.TryGetValue(group.Key, out var player))
@@ -55,6 +75,8 @@ public sealed class ResourceProductionStep : ITickStep
             }
 
             var logisticsSet = logisticsByOwner.GetValueOrDefault(group.Key) ?? new HashSet<Guid>();
+            // Phase 4b1: per-player wonder multiplier. Computed once per owner (constant across their provinces).
+            var hooverFactor = hooverOwners.Contains(group.Key) ? HooverDamBonus : 1.0;
 
             long money = 0, oil = 0, steel = 0, electronics = 0, food = 0, manpower = 0;
 
@@ -73,7 +95,7 @@ public sealed class ResourceProductionStep : ITickStep
                 // = zero production; 50 = half; 0 = unaffected. Multiplied alongside morale
                 // so a heavily-irradiated province with low morale is virtually dead.
                 var radiationFactor = RadiationFactor(province.RadiationLevel);
-                var combined = moraleFactor * logistics * radiationFactor;
+                var combined = moraleFactor * logistics * radiationFactor * hooverFactor;
 
                 money += (long)Math.Round(province.MoneyPerTick * mMoney * combined);
                 oil += (long)Math.Round(province.OilPerTick * mOil * combined);

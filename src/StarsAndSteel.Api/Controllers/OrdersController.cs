@@ -472,8 +472,34 @@ public sealed class OrdersController : ControllerBase
                 p => p.Id == request.ProvinceId && p.GameWorldId == worldId, cancellationToken);
             if (province is null) return NotFound(new { error = "Province not found in this world." });
 
+            // Phase 4b1: wonder uniqueness — check if anyone in this world has the wonder
+            // built or in-progress before validating. Cheap query (Buildings is keyed by
+            // ProvinceId; ConstructionOrders by GameWorldId), and only runs for wonder
+            // build attempts so non-wonder builds pay nothing extra.
+            bool wonderAlreadyClaimed = false;
+            if (StarsAndSteel.Core.Wonders.WonderCatalog.IsWonder(buildingType))
+            {
+                var existsBuilt = await _db.Buildings
+                    .AsNoTracking()
+                    .AnyAsync(b => b.Type == buildingType
+                                   && b.Province!.GameWorldId == worldId, cancellationToken);
+                bool existsInProgress = false;
+                if (!existsBuilt)
+                {
+                    existsInProgress = await _db.ConstructionOrders
+                        .AsNoTracking()
+                        .AnyAsync(o => o.GameWorldId == worldId
+                                       && o.OrderType == OrderType.BuildBuilding
+                                       && o.BuildingType == buildingType
+                                       && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.InProgress),
+                                  cancellationToken);
+                }
+                wonderAlreadyClaimed = existsBuilt || existsInProgress;
+            }
+
             var result = _orderService.ValidateBuildBuilding(
-                ctx.Player!, province, buildingType, ctx.World!.CurrentTick, ctx.World.Status);
+                ctx.Player!, province, buildingType, ctx.World!.CurrentTick, ctx.World.Status,
+                wonderAlreadyClaimed);
 
             return await PersistConstructionOrderAsync(result, ctx.Player!, cancellationToken);
         }
@@ -601,6 +627,7 @@ public sealed class OrdersController : ControllerBase
             OrderRejectionReason.UnknownProvince          => NotFound(new { error = msg }),
             OrderRejectionReason.NukesDisabledForWorld    => Conflict(new { error = msg }),
             OrderRejectionReason.RequiredTechMissing      => Conflict(new { error = msg }),
+            OrderRejectionReason.WonderAlreadyExists      => Conflict(new { error = msg }),
             _ => BadRequest(new { error = msg }),
         };
     }

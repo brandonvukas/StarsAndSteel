@@ -19,6 +19,7 @@ import type {
   ResearchState, TechUnlocked, ResearchStartedEvent,
   ChatMessageDto,
   GeneralDto,
+  WonderRow,
 } from '../types/api';
 
 export interface DraftOrder {
@@ -81,6 +82,7 @@ export function setAuth(auth: AuthResponse | null) {
     $research.set(null);
     $chat.set([]);
     $generals.set(null);
+    $wonders.set(null);
   }
 }
 
@@ -284,6 +286,18 @@ export function findGeneralAtProvince(provinceId: string): GeneralDto | null {
   const list = $generals.get();
   if (!list) return null;
   return list.find(g => g.assignedProvinceId === provinceId) ?? null;
+}
+
+// ---- Wonders state (Phase 4b1) -------------------------------------------
+// Catalogue + per-world status (Available / InProgress / Built). Wonders are
+// global one-per-game; the panel re-fetches after BuildingCompleted hub
+// events and after the caller submits a wonder build (the orderBuildBuilding
+// endpoint is shared with non-wonder buildings so the WondersController is
+// a pure read model). Null = not yet fetched (or fetch failed).
+export const $wonders = atom<WonderRow[] | null>(null);
+
+export function setWonders(wonders: WonderRow[] | null) {
+  $wonders.set(wonders);
 }
 
 // ---- session persistence -------------------------------------------------

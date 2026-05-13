@@ -387,6 +387,71 @@ public sealed class OrderServiceTests
         result.Rejection.Should().Be(OrderRejectionReason.InsufficientResources);
     }
 
+    // ---- Wonders (Phase 4b1) ------------------------------------------
+
+    [Fact]
+    public void ValidateBuildBuilding_accepts_wonder_when_unclaimed()
+    {
+        var f = new Fixture();
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.HooverDamReborn,
+            CurrentTick, GameWorldStatus.Active,
+            wonderAlreadyClaimed: false);
+
+        result.IsAccepted.Should().BeTrue();
+        result.ConstructionOrder!.BuildingType.Should().Be(BuildingType.HooverDamReborn);
+        // 150 ticks per BuildCatalog spec.
+        result.ConstructionOrder.TicksRemaining.Should().Be(150);
+    }
+
+    [Fact]
+    public void ValidateBuildBuilding_rejects_wonder_when_already_claimed()
+    {
+        var f = new Fixture();
+        // Simulates the controller having found an existing built or in-progress
+        // HooverDamReborn anywhere in the world (built Buildings or pending
+        // ConstructionOrders) — the controller is responsible for that pre-query;
+        // OrderService just consumes the boolean.
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.HooverDamReborn,
+            CurrentTick, GameWorldStatus.Active,
+            wonderAlreadyClaimed: true);
+
+        result.Rejection.Should().Be(OrderRejectionReason.WonderAlreadyExists);
+    }
+
+    [Fact]
+    public void ValidateBuildBuilding_wonder_already_claimed_short_circuits_resource_check()
+    {
+        var f = new Fixture();
+        // Player can't afford the wonder either, but we should report
+        // WonderAlreadyExists (not InsufficientResources) so the UI tells the
+        // truth: this race is over, not "you're poor".
+        f.Alice.Money = 0;
+
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.StrategicDefenseInitiative,
+            CurrentTick, GameWorldStatus.Active,
+            wonderAlreadyClaimed: true);
+
+        result.Rejection.Should().Be(OrderRejectionReason.WonderAlreadyExists);
+    }
+
+    [Fact]
+    public void ValidateBuildBuilding_non_wonder_ignores_wonderAlreadyClaimed_flag()
+    {
+        var f = new Fixture();
+        // Defensive: passing wonderAlreadyClaimed=true for a non-wonder must be
+        // a no-op. The catalog gate is keyed on WonderCatalog.IsWonder, so a
+        // truthy flag for SteelMill should not reject.
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.SteelMill,
+            CurrentTick, GameWorldStatus.Active,
+            wonderAlreadyClaimed: true);
+
+        result.IsAccepted.Should().BeTrue();
+    }
+
     [Fact]
     public void DebitForBuild_subtracts_unit_costs_scaled_by_quantity()
     {

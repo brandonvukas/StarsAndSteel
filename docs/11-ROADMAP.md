@@ -110,7 +110,12 @@ Make the late game spicy.
 The fun-stretch list. Tackle in any order.
 
 - ☑ **Phase 4a — UI sub-pass for Phase 3 features.** Surfaced generals (recruit / assign panel + per-province ★ badge for the +15% defender bonus), Special Forces sabotage (form on owned province with SF + adjacent enemy), and Cyber attack (form on own province with CyberOperationsCenter once `cyber_warfare` is unlocked, global target range). Added CyberOperationsCenter to the build catalog so players can actually build the launch host. No new API endpoints.
-- ☐ Wonders / megaprojects (5 to start) *(deferred from Phase 3)*
+- ☑ **Phase 4b1 — Wonders foundation + first 2 wonders.** Added one-per-game wonder framework: `WonderCatalog` (metadata + `IsWonder` predicate), wonder `BuildingType` enum entries (100+), `WonderCost`/`WonderRow`/`WonderStatus` DTOs, read-only `GET /api/worlds/{id}/wonders` controller, `WonderAlreadyExists` rejection reason wired through `OrdersController` (built + in-progress global pre-query). Wonders piggyback on the regular `BuildBuilding` order pipeline. Two wonders shipped:
+  - **Hoover Dam Reborn** — permanent +50% production from every owned province for the owner; stacks multiplicatively with logistics tech (`ResourceProductionStep`).
+  - **Strategic Defense Initiative** — 50% chance to intercept each missile (cruise or nuclear) targeting any owner province (`MissileImpactStep`); intercepted launches emit `UnitDestroyedEvent` with cause `MissileIntercepted`. Replaces "Manhattan Program" since nukes default ON.
+  - Client: dedicated **Wonders** side-tab listing every wonder with status (Available / InProgress / Built), owner + province when claimed, and a "Begin construction at..." form over the caller's owned provinces. Re-fetches on `BuildingCompleted` so completion flips the status immediately.
+  - Tests: 11 new (Hoover production stacking + per-owner isolation; SDI statistical interception + per-owner protection; OrderService wonder uniqueness gate including non-wonder no-op + already-claimed short-circuiting the resource check).
+- ☐ Wonders / megaprojects — remaining (GPS Constellation, Carrier Strike Group, Cyber Command HQ, ...)
 - ☐ Random world events *(deferred from Phase 3)*
 - ☐ Insurgent (Wildcard) AI personality *(deferred from Phase 3)*
 - ☐ Sanctions / embargoes *(deferred from Phase 3)*
