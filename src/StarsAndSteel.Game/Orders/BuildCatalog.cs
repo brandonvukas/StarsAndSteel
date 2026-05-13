@@ -127,6 +127,18 @@ public static class BuildCatalog
         // at the 60s tick rate, long enough that opponents can plan around it being inbound.
         new BuildingBuildSpec(BuildingType.HooverDamReborn,            Money: 25000, Oil: 1000, Steel: 8000, Electronics: 2000, Food: 0, Manpower: 1500, TicksToBuild: 150),
         new BuildingBuildSpec(BuildingType.StrategicDefenseInitiative, Money: 30000, Oil: 500,  Steel: 5000, Electronics: 6000, Food: 0, Manpower: 800,  TicksToBuild: 180),
+        // GPS Constellation (Phase 4b2). Pure intel — owner ignores fog of war globally.
+        // Heavy on electronics (satellites + ground stations); modest steel.
+        new BuildingBuildSpec(BuildingType.GpsConstellation,           Money: 28000, Oil: 800,  Steel: 3000, Electronics: 8000, Food: 0, Manpower: 600,  TicksToBuild: 160),
+        // Carrier Strike Group (Phase 4b2). Coastal-only (enforced in OrderService).
+        // On completion, ConstructionStep additionally spawns the veteran carrier + 2 wings.
+        // Cost reflects the bundled units; ticks set so the spawn isn't a no-brainer
+        // race-to-naval-supremacy button.
+        new BuildingBuildSpec(BuildingType.CarrierStrikeGroup,         Money: 22000, Oil: 1500, Steel: 9000, Electronics: 1500, Food: 0, Manpower: 1200, TicksToBuild: 140),
+        // Cyber Command HQ (Phase 4b2). Halves CyberAttack cost for the owner. The HQ
+        // building itself counts as a CyberOperationsCenter at its province (the
+        // launch-province requirement is satisfied without a separate COC).
+        new BuildingBuildSpec(BuildingType.CyberCommandHq,             Money: 24000, Oil: 200,  Steel: 2000, Electronics: 7000, Food: 0, Manpower: 500,  TicksToBuild: 150),
     }.ToDictionary(s => s.Type);
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>

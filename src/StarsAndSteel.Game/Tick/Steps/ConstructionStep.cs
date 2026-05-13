@@ -127,12 +127,89 @@ public sealed class ConstructionStep : ITickStep
                             ProvinceId: province.Id,
                             Type: building.Type,
                             Level: building.Level));
+
+                        // Phase 4b2: Carrier Strike Group spawns a free veteran
+                        // carrier + 2 wings at the wonder's province on completion.
+                        // OrderService already enforced the coastal requirement at
+                        // submit; we re-check here defensively (province could have
+                        // been captured/lost coastline between submit and resolution
+                        // — the coastal flag is static map data so it shouldn't
+                        // change, but the ownership flip above already cancelled
+                        // the order if so). UnitBuiltEvent fires once per spawned
+                        // unit so the client gets standard hub events.
+                        if (building.Type == BuildingType.CarrierStrikeGroup)
+                        {
+                            SpawnCarrierStrikeGroup(context, province, order.OwnerPlayerId);
+                        }
                         break;
                     }
                 default:
                     order.Status = OrderStatus.Cancelled;
                     break;
             }
+        }
+    }
+
+    /// <summary>
+    /// Phase 4b2: spawn the Carrier Strike Group's bundled units. One veteran
+    /// <see cref="UnitType.AircraftCarrier"/> (Strength 1000, Experience 1) and
+    /// two <see cref="UnitType.CarrierAirWing"/> (Strength 500 each, Experience 1,
+    /// parented to the carrier). Wings respect <see cref="BuildCatalog.CarrierWingCapacity"/>.
+    /// All three units skip the normal Money/Steel/Manpower debit — they're the wonder's reward.
+    /// </summary>
+    private static void SpawnCarrierStrikeGroup(TickContext context, Province province, Guid ownerPlayerId)
+    {
+        var carrier = new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = context.World.Id,
+            OwnerPlayerId = ownerPlayerId,
+            LocationProvinceId = province.Id,
+            Type = UnitType.AircraftCarrier,
+            Domain = UnitDomain.Naval,
+            Strength = 1000,
+            Morale = 100,
+            Experience = 1,
+            IsInTransit = false,
+            HomeBaseProvinceId = null,
+            ParentUnitId = null,
+        };
+        context.UnitsToInsert.Add(carrier);
+        context.Units.Add(carrier);
+        context.Events.Add(new UnitBuiltEvent(
+            Tick: context.ProcessingTick,
+            UnitId: carrier.Id,
+            OwnerPlayerId: ownerPlayerId,
+            ProvinceId: province.Id,
+            Type: carrier.Type,
+            Strength: carrier.Strength));
+
+        for (int i = 0; i < 2; i++)
+        {
+            var wing = new Unit
+            {
+                Id = Guid.NewGuid(),
+                GameWorldId = context.World.Id,
+                OwnerPlayerId = ownerPlayerId,
+                LocationProvinceId = province.Id,
+                Type = UnitType.CarrierAirWing,
+                Domain = UnitDomain.Air,
+                Strength = 500,
+                Morale = 100,
+                Experience = 1,
+                IsInTransit = false,
+                HomeBaseProvinceId = province.Id,
+                ParentUnitId = carrier.Id,
+            };
+            context.UnitsToInsert.Add(wing);
+            context.Units.Add(wing);
+            context.Events.Add(new UnitBuiltEvent(
+                Tick: context.ProcessingTick,
+                UnitId: wing.Id,
+                OwnerPlayerId: ownerPlayerId,
+                ProvinceId: province.Id,
+                Type: wing.Type,
+                Strength: wing.Strength));
         }
     }
 }

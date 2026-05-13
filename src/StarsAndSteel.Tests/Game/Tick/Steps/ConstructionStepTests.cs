@@ -135,4 +135,50 @@ public class ConstructionStepTests
         order.Status.Should().Be(OrderStatus.Cancelled);
         ctx.UnitsToInsert.Should().BeEmpty();
     }
+
+    // ---- Phase 4b2: Carrier Strike Group wonder ----------------------
+
+    [Fact]
+    public void CarrierStrikeGroup_completion_spawns_veteran_carrier_and_two_wings()
+    {
+        var world = NewWorld();
+        var alice = AddPlayer(world, "Alice");
+        var port = AddProvince(world, alice, "Port");
+        port.IsCoastal = true;
+        var order = BuildBuildingOrder(world, alice, port, BuildingType.CarrierStrikeGroup, ticksRemaining: 1);
+        var ctx = Context(world, constructionOrders: new[] { order });
+
+        new ConstructionStep().Execute(ctx);
+
+        order.Status.Should().Be(OrderStatus.Complete);
+        // Building inserted.
+        ctx.BuildingsToInsert.Should().ContainSingle()
+            .Which.Type.Should().Be(BuildingType.CarrierStrikeGroup);
+
+        // Three units inserted: one carrier + two wings.
+        ctx.UnitsToInsert.Should().HaveCount(3);
+
+        var carrier = ctx.UnitsToInsert.Single(u => u.Type == UnitType.AircraftCarrier);
+        carrier.OwnerPlayerId.Should().Be(alice.Id);
+        carrier.LocationProvinceId.Should().Be(port.Id);
+        carrier.Strength.Should().Be(1000);
+        carrier.Experience.Should().Be(1, "veteran spawn");
+        carrier.ParentUnitId.Should().BeNull();
+
+        var wings = ctx.UnitsToInsert.Where(u => u.Type == UnitType.CarrierAirWing).ToList();
+        wings.Should().HaveCount(2);
+        wings.Should().AllSatisfy(w =>
+        {
+            w.OwnerPlayerId.Should().Be(alice.Id);
+            w.LocationProvinceId.Should().Be(port.Id);
+            w.Strength.Should().Be(500);
+            w.Experience.Should().Be(1, "veteran spawn");
+            w.ParentUnitId.Should().Be(carrier.Id);
+            w.HomeBaseProvinceId.Should().Be(port.Id);
+        });
+
+        // One BuildingCompletedEvent + three UnitBuiltEvents.
+        ctx.Events.OfType<BuildingCompletedEvent>().Should().ContainSingle();
+        ctx.Events.OfType<UnitBuiltEvent>().Should().HaveCount(3);
+    }
 }

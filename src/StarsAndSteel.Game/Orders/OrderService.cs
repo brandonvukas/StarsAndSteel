@@ -286,6 +286,13 @@ public sealed class OrderService
     /// <paramref name="caller"/> with sufficient resources or pre-check before calling.
     /// The actual effect (slow research vs. drain money) is rolled at resolution time
     /// by <c>CyberAttackStep</c>; this method only constructs the pending order row.
+    /// <para/>
+    /// Phase 4b2: if <paramref name="callerHasCyberCommandHq"/> is true the caller's
+    /// CyberAttack cost is halved AND the launch-province requirement of a
+    /// <see cref="BuildingType.CyberOperationsCenter"/> is waived (the HQ is itself
+    /// a global cyber facility — it doesn't need a per-launch COC building). The
+    /// controller is responsible for setting the flag from a single
+    /// <c>EXISTS Buildings WHERE Type = CyberCommandHq</c> query.
     /// </summary>
     public OrderValidationResult ValidateCyberAttack(
         Player caller,
@@ -294,7 +301,8 @@ public sealed class OrderService
         IReadOnlyCollection<Building> launchProvinceBuildings,
         IReadOnlyCollection<string> unlockedTechIds,
         int currentTick,
-        GameWorldStatus worldStatus)
+        GameWorldStatus worldStatus,
+        bool callerHasCyberCommandHq = false)
     {
         if (worldStatus == GameWorldStatus.Ended)
             return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
@@ -303,7 +311,10 @@ public sealed class OrderService
             return OrderValidationResult.Reject(OrderRejectionReason.ProvinceNotOwnedByCaller,
                 "You do not own the launch province.");
 
-        if (!launchProvinceBuildings.Any(b => b.Type == BuildingType.CyberOperationsCenter))
+        // Phase 4b2: Cyber Command HQ owners bypass the per-launch-province COC requirement.
+        // The HQ acts as a global cyber facility; without it we still require a local COC.
+        if (!callerHasCyberCommandHq
+            && !launchProvinceBuildings.Any(b => b.Type == BuildingType.CyberOperationsCenter))
             return OrderValidationResult.Reject(OrderRejectionReason.CyberOpsCenterMissing,
                 "Launch province must have a Cyber Operations Center.");
 
@@ -319,9 +330,11 @@ public sealed class OrderService
             return OrderValidationResult.Reject(OrderRejectionReason.CyberCannotTargetSelf,
                 "Cannot launch a cyber attack against your own province.");
 
-        if (caller.Money < CyberAttackMoneyCost || caller.Electronics < CyberAttackElectronicsCost)
+        long moneyCost = EffectiveCyberAttackMoneyCost(callerHasCyberCommandHq);
+        long electronicsCost = EffectiveCyberAttackElectronicsCost(callerHasCyberCommandHq);
+        if (caller.Money < moneyCost || caller.Electronics < electronicsCost)
             return OrderValidationResult.Reject(OrderRejectionReason.InsufficientResources,
-                $"Cyber attack requires {CyberAttackMoneyCost} money and {CyberAttackElectronicsCost} electronics.");
+                $"Cyber attack requires {moneyCost} money and {electronicsCost} electronics.");
 
         return OrderValidationResult.Accept(new CyberAttackOrder
         {
@@ -342,16 +355,32 @@ public sealed class OrderService
     /// <summary>Electronics cost debited from the attacker on a successful CyberAttack submission (Phase 3d).</summary>
     public const long CyberAttackElectronicsCost = 200;
 
+    /// <summary>Phase 4b2: Cyber Command HQ wonder grants a 50% discount on the attacker's CyberAttack cost.</summary>
+    public const double CyberCommandHqDiscount = 0.50;
+
+    /// <summary>Effective money cost for one CyberAttack submission — halved when <paramref name="hasCyberCommandHq"/> is true.</summary>
+    public static long EffectiveCyberAttackMoneyCost(bool hasCyberCommandHq) =>
+        hasCyberCommandHq ? (long)Math.Ceiling(CyberAttackMoneyCost * (1.0 - CyberCommandHqDiscount)) : CyberAttackMoneyCost;
+
+    /// <summary>Effective electronics cost for one CyberAttack submission — halved when <paramref name="hasCyberCommandHq"/> is true.</summary>
+    public static long EffectiveCyberAttackElectronicsCost(bool hasCyberCommandHq) =>
+        hasCyberCommandHq ? (long)Math.Ceiling(CyberAttackElectronicsCost * (1.0 - CyberCommandHqDiscount)) : CyberAttackElectronicsCost;
+
     /// <summary>
     /// Phase 3d: subtract the cyber-attack submission cost from the attacker. Mirrors
     /// <see cref="DebitForBuild"/> in shape — controller calls this on a tracked Player
     /// row right before <c>SaveChangesAsync</c>.
+    /// <para/>
+    /// Phase 4b2: pass <paramref name="hasCyberCommandHq"/>=true when the caller owns
+    /// a built Cyber Command HQ wonder anywhere on the map; this halves the debit to
+    /// match <see cref="EffectiveCyberAttackMoneyCost"/> /
+    /// <see cref="EffectiveCyberAttackElectronicsCost"/>.
     /// </summary>
-    public static void DebitForCyberAttack(Player caller)
+    public static void DebitForCyberAttack(Player caller, bool hasCyberCommandHq = false)
     {
         ArgumentNullException.ThrowIfNull(caller);
-        caller.Money -= CyberAttackMoneyCost;
-        caller.Electronics -= CyberAttackElectronicsCost;
+        caller.Money -= EffectiveCyberAttackMoneyCost(hasCyberCommandHq);
+        caller.Electronics -= EffectiveCyberAttackElectronicsCost(hasCyberCommandHq);
     }
 
     /// <summary>
@@ -574,6 +603,14 @@ public sealed class OrderService
         if (buildingType == BuildingType.NavalYard && !province.IsCoastal)
             return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
                 "Naval Yard can only be built in a coastal province.");
+
+        // Phase 4b2: Carrier Strike Group spawns a carrier on completion, so it must
+        // be built at a coastal province (carriers can't park inland). Mirrors the
+        // NavalYard rule. Reuses RequiredBuildingMissing because that's the closest
+        // existing reason; UI shows the message text directly.
+        if (buildingType == BuildingType.CarrierStrikeGroup && !province.IsCoastal)
+            return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
+                "Carrier Strike Group can only be built in a coastal province.");
 
         // Phase 4b1: wonders are global one-per-game. The "already claimed" flag is the
         // controller's responsibility — we just react to it. The check happens before the

@@ -835,6 +835,91 @@ public sealed class OrderServiceTests
         f.Alice.Electronics.Should().Be(1000 - OrderService.CyberAttackElectronicsCost);
     }
 
+    // ---- Phase 4b2: Cyber Command HQ flag --------------------------------
+
+    [Fact]
+    public void ValidateCyberAttack_with_CyberCommandHq_flag_waives_COC_requirement()
+    {
+        var f = new Fixture();
+        // No COC at launch province, but HQ flag is true → should still accept.
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, Array.Empty<Building>(),
+            unlockedTechIds: new[] { "cyber_warfare" },
+            CurrentTick, GameWorldStatus.Active,
+            callerHasCyberCommandHq: true);
+
+        result.IsAccepted.Should().BeTrue();
+        result.CyberAttackOrder!.LaunchProvinceId.Should().Be(f.ProvinceA.Id);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_with_CyberCommandHq_flag_uses_halved_resource_check()
+    {
+        var f = new Fixture();
+        // Set Alice just below normal cost but above halved cost.
+        f.Alice.Money = OrderService.CyberAttackMoneyCost - 1;
+        f.Alice.Electronics = OrderService.CyberAttackElectronicsCost - 1;
+
+        // Without HQ → InsufficientResources.
+        var withoutHq = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB,
+            new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } },
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active,
+            callerHasCyberCommandHq: false);
+        withoutHq.Rejection.Should().Be(OrderRejectionReason.InsufficientResources);
+
+        // With HQ → accepted (halved cost fits).
+        var withHq = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, Array.Empty<Building>(),
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active,
+            callerHasCyberCommandHq: true);
+        withHq.IsAccepted.Should().BeTrue();
+    }
+
+    [Fact]
+    public void DebitForCyberAttack_with_CyberCommandHq_halves_money_and_electronics()
+    {
+        var f = new Fixture();
+        f.Alice.Money = 1_000;
+        f.Alice.Electronics = 1_000;
+
+        OrderService.DebitForCyberAttack(f.Alice, hasCyberCommandHq: true);
+
+        var expectedMoney = (long)Math.Ceiling(OrderService.CyberAttackMoneyCost * (1.0 - OrderService.CyberCommandHqDiscount));
+        var expectedElec = (long)Math.Ceiling(OrderService.CyberAttackElectronicsCost * (1.0 - OrderService.CyberCommandHqDiscount));
+        f.Alice.Money.Should().Be(1_000 - expectedMoney);
+        f.Alice.Electronics.Should().Be(1_000 - expectedElec);
+    }
+
+    // ---- Phase 4b2: Carrier Strike Group coastal requirement -------------
+
+    [Fact]
+    public void ValidateBuildBuilding_rejects_CarrierStrikeGroup_in_inland_province()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = false;
+
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.CarrierStrikeGroup,
+            CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.RequiredBuildingMissing);
+    }
+
+    [Fact]
+    public void ValidateBuildBuilding_accepts_CarrierStrikeGroup_in_coastal_province()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+
+        var result = _service.ValidateBuildBuilding(
+            f.Alice, f.ProvinceA, BuildingType.CarrierStrikeGroup,
+            CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+        result.ConstructionOrder!.BuildingType.Should().Be(BuildingType.CarrierStrikeGroup);
+    }
+
     // ---- Sabotage (Phase 3e) ------------------------------------------
 
     [Fact]

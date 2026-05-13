@@ -318,11 +318,20 @@ public sealed class OrdersController : ControllerBase
                 .Select(r => r.TechId)
                 .ToArrayAsync(cancellationToken);
 
+            // Phase 4b2: Cyber Command HQ wonder grants the caller a 50% cost
+            // discount AND waives the per-launch-province CyberOperationsCenter
+            // requirement. One EXISTS query per cyber-attack submission; the wonder
+            // is one-per-game so this is at most one row.
+            bool callerHasCyberCommandHq = await _db.Buildings
+                .AnyAsync(b => b.Type == BuildingType.CyberCommandHq
+                            && b.Province.OwnerPlayerId == ctx.Player!.Id, cancellationToken);
+
             var result = _orderService.ValidateCyberAttack(
                 ctx.Player!, launch, target, launchBuildings,
-                unlockedTechIds, ctx.World!.CurrentTick, ctx.World.Status);
+                unlockedTechIds, ctx.World!.CurrentTick, ctx.World.Status,
+                callerHasCyberCommandHq);
 
-            return await PersistCyberAttackOrderAsync(result, ctx.Player!, cancellationToken);
+            return await PersistCyberAttackOrderAsync(result, ctx.Player!, callerHasCyberCommandHq, cancellationToken);
         }
         finally
         {
@@ -594,7 +603,7 @@ public sealed class OrdersController : ControllerBase
     }
 
     private async Task<ActionResult<CyberAttackOrderAccepted>> PersistCyberAttackOrderAsync(
-        OrderValidationResult result, Player caller, CancellationToken ct)
+        OrderValidationResult result, Player caller, bool callerHasCyberCommandHq, CancellationToken ct)
     {
         if (!result.IsAccepted)
         {
@@ -602,7 +611,9 @@ public sealed class OrdersController : ControllerBase
         }
 
         var order = result.CyberAttackOrder!;
-        OrderService.DebitForCyberAttack(caller); // mutates tracked Player row
+        // Phase 4b2: pass the wonder flag so the debit matches the discounted cost
+        // ValidateCyberAttack used for its sufficiency check.
+        OrderService.DebitForCyberAttack(caller, callerHasCyberCommandHq); // mutates tracked Player row
         _db.CyberAttackOrders.Add(order);
         await _db.SaveChangesAsync(ct);
 

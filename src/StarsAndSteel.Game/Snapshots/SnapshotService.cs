@@ -65,6 +65,20 @@ public sealed class SnapshotService
             }
         }
 
+        // Phase 4b2: GPS Constellation wonder. If the calling player owns a built
+        // GpsConstellation building anywhere on the map, every province becomes
+        // visible to them and submarine stealth is disabled (handled below in
+        // the visibleEnemyUnits filter). The wonder is global one-per-game and
+        // permanent — so this is a single boolean check per snapshot build.
+        bool callerHasGps = world.Provinces
+            .Where(p => p.OwnerPlayerId == callingPlayerId)
+            .SelectMany(p => p.Buildings)
+            .Any(b => b.Type == BuildingType.GpsConstellation);
+        if (callerHasGps)
+        {
+            foreach (var p in world.Provinces) visibleProvinceIds.Add(p.Id);
+        }
+
         // Player color lookup (for province ownership coloring on the client).
         var playerColor = world.Players.ToDictionary(p => p.Id, p => p.FlagPrimaryHex);
 
@@ -160,7 +174,8 @@ public sealed class SnapshotService
                 && !u.IsInTransit
                 && u.LocationProvinceId is { } loc
                 && visibleProvinceIds.Contains(loc)
-                && (u.Type != UnitType.Submarine || myAswProvinces.Contains(loc)))
+                // Phase 4b2: GPS Constellation also negates submarine stealth — sats see everything.
+                && (u.Type != UnitType.Submarine || callerHasGps || myAswProvinces.Contains(loc)))
             .Select(u => new SnapshotEnemyUnit(
                 Id: u.Id,
                 OwnerPlayerId: u.OwnerPlayerId,

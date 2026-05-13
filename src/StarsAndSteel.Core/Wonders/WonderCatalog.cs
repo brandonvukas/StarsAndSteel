@@ -29,6 +29,18 @@ public static class WonderCatalog
             BuildingType.StrategicDefenseInitiative,
             "Strategic Defense Initiative",
             "50% chance to intercept each incoming missile (cruise or nuclear) targeting any of your provinces. Star Wars, but real."),
+        new WonderInfo(
+            BuildingType.GpsConstellation,
+            "GPS Constellation",
+            "Global recon network. Reveals every province on the map and every enemy unit (including submarines) — fog of war does not apply to you."),
+        new WonderInfo(
+            BuildingType.CarrierStrikeGroup,
+            "Carrier Strike Group",
+            "On completion, spawns a free veteran Aircraft Carrier and two Carrier Air Wings at the wonder's province. Coastal provinces only."),
+        new WonderInfo(
+            BuildingType.CyberCommandHq,
+            "Cyber Command HQ",
+            "Your CyberAttack orders cost 50% less money and electronics. The HQ itself satisfies the Cyber Operations Center requirement at its province — no separate building needed."),
     };
 
     /// <summary>All wonders, in catalogue order.</summary>
@@ -37,7 +49,10 @@ public static class WonderCatalog
     /// <summary>True if this building type is a wonder (one-per-game, special effects).</summary>
     public static bool IsWonder(BuildingType type) =>
         type == BuildingType.HooverDamReborn
-        || type == BuildingType.StrategicDefenseInitiative;
+        || type == BuildingType.StrategicDefenseInitiative
+        || type == BuildingType.GpsConstellation
+        || type == BuildingType.CarrierStrikeGroup
+        || type == BuildingType.CyberCommandHq;
 
     /// <summary>Lookup metadata for a wonder; null for non-wonders.</summary>
     public static WonderInfo? TryGet(BuildingType type) =>

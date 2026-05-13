@@ -268,6 +268,61 @@ public sealed class SnapshotServiceTests
         act.Should().Throw<InvalidOperationException>();
     }
 
+    // ---- Phase 4b2: GPS Constellation wonder ----
+
+    [Fact]
+    public void GpsConstellation_makes_non_adjacent_enemy_province_visible()
+    {
+        var f = NewFixture();
+        // Without GPS, ProvinceC (isolated, no adjacency) is invisible.
+        var baseline = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+        baseline.Provinces.Single(p => p.Id == f.ProvinceC.Id).Visible.Should().BeFalse();
+
+        // Add GPS Constellation building to Alice's owned ProvinceA.
+        f.ProvinceA.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.GpsConstellation, Level = 1,
+        });
+
+        var snap = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+
+        snap.Provinces.Single(p => p.Id == f.ProvinceC.Id).Visible.Should().BeTrue();
+        snap.Provinces.Single(p => p.Id == f.ProvinceB.Id).Visible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void GpsConstellation_reveals_enemy_submarine_without_my_asw_present()
+    {
+        var f = NewFixture();
+        // Bob's submarine in ProvinceB (visible province via adjacency).
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Bob.Id, OwnerPlayer = f.Bob,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.Submarine, Domain = UnitDomain.Naval,
+            Strength = 800, Morale = 100,
+        });
+
+        // Without GPS sub stays hidden (no ASW).
+        var baseline = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+        baseline.VisibleEnemyUnits.Should().NotContain(u => u.Type == nameof(UnitType.Submarine));
+
+        // Grant Alice GPS.
+        f.ProvinceA.Buildings.Add(new Building
+        {
+            Id = Guid.NewGuid(), ProvinceId = f.ProvinceA.Id, Province = f.ProvinceA,
+            Type = BuildingType.GpsConstellation, Level = 1,
+        });
+
+        var snap = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+
+        snap.VisibleEnemyUnits.Should().Contain(u =>
+            u.Type == nameof(UnitType.Submarine) && u.OwnerPlayerId == f.Bob.Id);
+    }
+
     // ---------- fixture ----------
 
     private sealed class Fixture

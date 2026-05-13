@@ -33,4 +33,10 @@ public enum BuildingType
     HooverDamReborn = 100,
     /// <summary>Owner's provinces have a 50% chance to intercept each incoming missile.</summary>
     StrategicDefenseInitiative = 101,
+    /// <summary>Permanent global recon: owner sees every province + every enemy unit, ignoring fog of war and submarine stealth.</summary>
+    GpsConstellation = 102,
+    /// <summary>On completion, spawns a free veteran Aircraft Carrier + 2 Carrier Air Wings at the wonder's (coastal) province.</summary>
+    CarrierStrikeGroup = 103,
+    /// <summary>Owner's CyberAttack orders cost 50% less money + electronics. The HQ itself counts as a CyberOperationsCenter for the launch-province requirement.</summary>
+    CyberCommandHq = 104,
 }
