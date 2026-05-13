@@ -212,4 +212,110 @@ public class CombatStepTests
         ev.AttackerStrengthLoss.Should().Be(ev2.AttackerStrengthLoss,
             "alice's general at bob's province must not buff alice's own attack");
     }
+
+    // ---- Phase 3g: doctrine techs (combined_arms, defense_in_depth) ----
+
+    [Fact]
+    public void Defense_in_depth_increases_attacker_losses()
+    {
+        // Same RNG seed both runs; only difference is defender has the doctrine tech.
+        const long seed = 42;
+
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 2000);
+        var defA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 2000);
+        var ctxA = Context(worldA, units: new[] { atkA, defA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 2000);
+        var defB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 2000);
+        var ctxB = Context(worldB, units: new[] { atkB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(bobB, "defense_in_depth") });
+        new CombatStep().Execute(ctxB);
+
+        var lossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+        var lossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+
+        lossB.Should().BeGreaterThan(lossA,
+            "defense_in_depth should magnify defender outgoing damage");
+    }
+
+    [Fact]
+    public void Combined_arms_tech_boosts_combined_arms_side_only()
+    {
+        // Construct a side that satisfies the combined-arms composition (ground + air + AA).
+        // Without the tech, that side gets the default 1.20 multiplier; with the tech, 1.25.
+        // We give bob (defender) the qualifying composition + the tech and confirm
+        // attacker losses rise vs a baseline run where bob has no tech.
+        const long seed = 7;
+
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 10_000);
+        var defGroundA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 10_000);
+        var defAirA   = AddUnit(worldA, bobA, pA, UnitType.MultiroleFighter, 5_000);
+        var defAaA    = AddUnit(worldA, bobA, pA, UnitType.AABattery, 3_000);
+        var ctxA = Context(worldA, units: new[] { atkA, defGroundA, defAirA, defAaA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 10_000);
+        var defGroundB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 10_000);
+        var defAirB   = AddUnit(worldB, bobB, pB, UnitType.MultiroleFighter, 5_000);
+        var defAaB    = AddUnit(worldB, bobB, pB, UnitType.AABattery, 3_000);
+        var ctxB = Context(worldB, units: new[] { atkB, defGroundB, defAirB, defAaB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(bobB, "combined_arms") });
+        new CombatStep().Execute(ctxB);
+
+        var lossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+        var lossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+
+        lossB.Should().BeGreaterThan(lossA,
+            "combined_arms raises bob's combined-arms multiplier 1.20 → 1.25");
+    }
+
+    [Fact]
+    public void Combined_arms_tech_does_nothing_without_qualifying_composition()
+    {
+        // Bob has the tech but no AA + no air — combined-arms condition false on his side,
+        // so no multiplier is applied either way. Attacker losses should match baseline.
+        const long seed = 3;
+
+        var worldA = NewWorld((int)seed);
+        var aliceA = AddPlayer(worldA, "Alice");
+        var bobA = AddPlayer(worldA, "Bob");
+        var pA = AddProvince(worldA, bobA, "Battle");
+        var atkA = AddUnit(worldA, aliceA, pA, UnitType.MainBattleTank, 2000);
+        var defA = AddUnit(worldA, bobA, pA, UnitType.MechInfantry, 2000);
+        var ctxA = Context(worldA, units: new[] { atkA, defA }, rngSeed: seed);
+        new CombatStep().Execute(ctxA);
+
+        var worldB = NewWorld((int)seed);
+        var aliceB = AddPlayer(worldB, "Alice");
+        var bobB = AddPlayer(worldB, "Bob");
+        var pB = AddProvince(worldB, bobB, "Battle");
+        var atkB = AddUnit(worldB, aliceB, pB, UnitType.MainBattleTank, 2000);
+        var defB = AddUnit(worldB, bobB, pB, UnitType.MechInfantry, 2000);
+        var ctxB = Context(worldB, units: new[] { atkB, defB }, rngSeed: seed,
+            unlockedResearch: new List<ResearchProgress> { UnlockedTech(bobB, "combined_arms") });
+        new CombatStep().Execute(ctxB);
+
+        var lossA = ctxA.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+        var lossB = ctxB.Events.OfType<CombatResolvedEvent>().Single().AttackerStrengthLoss;
+
+        lossB.Should().Be(lossA,
+            "without ground+air+AA on bob's side the combined-arms boost can't trigger");
+    }
 }

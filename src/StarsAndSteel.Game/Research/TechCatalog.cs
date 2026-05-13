@@ -80,15 +80,15 @@ public static class TechCatalog
 
         // Doctrine
         new("combined_arms", "Combined Arms", "Doctrine",
-            "Combined-arms bonus rises from 20% → 25% (CombatStats hook).",
+            "Combined-arms bonus rises from +20% → +25% in CombatStep (Phase 3g).",
             MoneyCost: 1200, ElectronicsCost: 100, TicksToResearch: 10,
             Prerequisites: Array.Empty<string>()),
         new("defense_in_depth", "Defense in Depth", "Doctrine",
-            "Garrisoned defenders gain +10% effective strength.",
+            "Defending side gains +10% effective strength + outgoing damage in CombatStep (Phase 3g).",
             MoneyCost: 1500, ElectronicsCost: 200, TicksToResearch: 12,
             Prerequisites: new[] { "combined_arms" }),
         new("maneuver_warfare", "Maneuver Warfare", "Doctrine",
-            "Movement orders consume 1 fewer tick at terrain cost ≤ 1.0.",
+            "Reserved: meant to shave 1 tick off cheap-terrain moves; deferred until multi-tick movement (movement is single-tick MVP).",
             MoneyCost: 2500, ElectronicsCost: 500, TicksToResearch: 18,
             Prerequisites: new[] { "combined_arms" }),
 

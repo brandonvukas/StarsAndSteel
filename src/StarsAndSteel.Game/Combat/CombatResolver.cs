@@ -40,20 +40,42 @@ public static class CombatResolver
     /// movement queues land one attacker per tick.
     /// </summary>
     public static BattleOutcome ResolveGround(Side attacker, Side defender, IRandomSource rng) =>
-        ResolveGround(attacker, defender, rng, defenderBonusMultiplier: 1.0);
+        ResolveGround(attacker, defender, rng,
+            defenderBonusMultiplier: 1.0,
+            attackerCombinedArmsMultiplier: HasCombinedArms(attacker.Stacks) ? 1.20 : 1.0,
+            defenderCombinedArmsMultiplier: HasCombinedArms(defender.Stacks) ? 1.20 : 1.0);
 
     /// <summary>
     /// Phase 3f overload: identical to <see cref="ResolveGround(Side, Side, IRandomSource)"/>
     /// but multiplies the defender's effective strength AND outgoing damage by
     /// <paramref name="defenderBonusMultiplier"/> (e.g. <c>1.15</c> when the defender
     /// has a general assigned at the province). The bonus stacks multiplicatively with
-    /// the combined-arms +20%. Pass <c>1.0</c> for "no bonus" (default behavior).
+    /// the combined-arms multiplier. Pass <c>1.0</c> for "no bonus" (default behavior).
     /// </summary>
     public static BattleOutcome ResolveGround(
         Side attacker,
         Side defender,
         IRandomSource rng,
-        double defenderBonusMultiplier)
+        double defenderBonusMultiplier) =>
+        ResolveGround(attacker, defender, rng,
+            defenderBonusMultiplier,
+            attackerCombinedArmsMultiplier: HasCombinedArms(attacker.Stacks) ? 1.20 : 1.0,
+            defenderCombinedArmsMultiplier: HasCombinedArms(defender.Stacks) ? 1.20 : 1.0);
+
+    /// <summary>
+    /// Phase 3g overload: also accepts per-side combined-arms multipliers. Callers are
+    /// responsible for deciding whether each side's combined-arms boost applies (composition
+    /// check + the <c>combined_arms</c> doctrine tech raising 1.20 → 1.25). Pass
+    /// <c>1.0</c> to disable the boost for that side. Unlike the lower overloads, this
+    /// one does NOT re-check composition internally — the caller's value is used as-is.
+    /// </summary>
+    public static BattleOutcome ResolveGround(
+        Side attacker,
+        Side defender,
+        IRandomSource rng,
+        double defenderBonusMultiplier,
+        double attackerCombinedArmsMultiplier,
+        double defenderCombinedArmsMultiplier)
     {
         ArgumentNullException.ThrowIfNull(attacker);
         ArgumentNullException.ThrowIfNull(defender);
@@ -61,14 +83,15 @@ public static class CombatResolver
         if (defenderBonusMultiplier <= 0)
             throw new ArgumentOutOfRangeException(nameof(defenderBonusMultiplier),
                 "Defender bonus multiplier must be positive.");
+        if (attackerCombinedArmsMultiplier <= 0)
+            throw new ArgumentOutOfRangeException(nameof(attackerCombinedArmsMultiplier),
+                "Attacker combined-arms multiplier must be positive.");
+        if (defenderCombinedArmsMultiplier <= 0)
+            throw new ArgumentOutOfRangeException(nameof(defenderCombinedArmsMultiplier),
+                "Defender combined-arms multiplier must be positive.");
 
-        var attackerEff = TotalEffectiveStrength(attacker.Stacks, rng);
-        var defenderEff = TotalEffectiveStrength(defender.Stacks, rng) * defenderBonusMultiplier;
-
-        var attackerHasCombinedArms = HasCombinedArms(attacker.Stacks);
-        var defenderHasCombinedArms = HasCombinedArms(defender.Stacks);
-        if (attackerHasCombinedArms) attackerEff *= 1.20;
-        if (defenderHasCombinedArms) defenderEff *= 1.20;
+        var attackerEff = TotalEffectiveStrength(attacker.Stacks, rng) * attackerCombinedArmsMultiplier;
+        var defenderEff = TotalEffectiveStrength(defender.Stacks, rng) * defenderCombinedArmsMultiplier * defenderBonusMultiplier;
 
         // Damage = sum over (attackerStack -> targetStack) of attackerStack.eff * matrixFraction.
         // We pre-distribute damage by computing each stack's "share" of own-side total, then
@@ -77,18 +100,18 @@ public static class CombatResolver
         var attackerDamageOnDefender = ComputePairwiseDamage(attacker.Stacks, defender.Stacks, rng);
         var defenderDamageOnAttacker = ComputePairwiseDamage(defender.Stacks, attacker.Stacks, rng);
 
-        // Apply the +20% combined-arms multiplier to outgoing damage too (effective strength
+        // Apply the combined-arms multiplier to outgoing damage too (effective strength
         // boost for damage purposes). Tracked separately so we don't double-apply it on
         // effective-strength comparisons used purely for outcome decisions.
-        if (attackerHasCombinedArms)
+        if (attackerCombinedArmsMultiplier != 1.0)
             for (var i = 0; i < attackerDamageOnDefender.Count; i++)
-                attackerDamageOnDefender[i] = (attackerDamageOnDefender[i].Item1, attackerDamageOnDefender[i].Item2 * 1.20);
-        if (defenderHasCombinedArms)
+                attackerDamageOnDefender[i] = (attackerDamageOnDefender[i].Item1, attackerDamageOnDefender[i].Item2 * attackerCombinedArmsMultiplier);
+        if (defenderCombinedArmsMultiplier != 1.0)
             for (var i = 0; i < defenderDamageOnAttacker.Count; i++)
-                defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * 1.20);
+                defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * defenderCombinedArmsMultiplier);
 
         // Phase 3f: defender bonus also boosts defender outgoing damage so a general
-        // makes the garrison both tougher (effective-strength) and meaner (damage).
+        // (or defense-in-depth doctrine) makes the garrison both tougher and meaner.
         if (defenderBonusMultiplier != 1.0)
             for (var i = 0; i < defenderDamageOnAttacker.Count; i++)
                 defenderDamageOnAttacker[i] = (defenderDamageOnAttacker[i].Item1, defenderDamageOnAttacker[i].Item2 * defenderBonusMultiplier);

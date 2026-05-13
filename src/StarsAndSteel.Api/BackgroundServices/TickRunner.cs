@@ -139,6 +139,14 @@ public sealed class TickRunner
             .Where(g => g.GameWorldId == worldId)
             .ToListAsync(cancellationToken);
 
+        // Phase 3g: load every per-player unlocked tech so doctrine effects in
+        // CombatStep / future steps can gate on (playerId, techId) without an
+        // extra round-trip. Read-only — IsUnlocked rows aren't mutated mid-tick.
+        var unlockedResearch = await _db.ResearchProgress
+            .AsNoTracking()
+            .Where(r => r.Player.GameWorldId == worldId && r.IsUnlocked)
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
@@ -151,7 +159,8 @@ public sealed class TickRunner
                 relations: relations,
                 activeResearch: activeResearch,
                 pendingCyberAttackOrders: pendingCyberAttackOrders,
-                generals: generals);
+                generals: generals,
+                unlockedResearch: unlockedResearch);
         }
         catch (Exception ex)
         {

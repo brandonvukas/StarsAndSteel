@@ -91,11 +91,33 @@ public sealed class CombatStep : ITickStep
                 ? 1.0 + StarsAndSteel.Game.Generals.GeneralsService.DefenderCombatBonus
                 : 1.0;
 
+            // Phase 3g doctrines:
+            //  - defense_in_depth (defender): +10% effective strength + outgoing damage,
+            //    stacks multiplicatively with the general bonus on the same multiplier.
+            //  - combined_arms (per side): if a side fields ground+air+AA at the contested
+            //    province (any unit, any domain — air/AA aren't passed to CombatResolver
+            //    but they do enable the bonus), apply +20% baseline / +25% with the tech.
+            //    We must detect composition here, not inside CombatResolver, because the
+            //    resolver only sees ground+naval stacks.
+            if (context.HasTech(defenderPlayerId, "defense_in_depth"))
+                defenderBonusMultiplier *= 1.10;
+
+            var attackerHasCombinedArms = SideHasCombinedArms(stacks: context.Units, provinceId, attackerPlayerId);
+            var defenderHasCombinedArms = SideHasCombinedArms(stacks: context.Units, provinceId, defenderPlayerId);
+            var attackerCombinedArms = attackerHasCombinedArms
+                ? (context.HasTech(attackerPlayerId, "combined_arms") ? 1.25 : 1.20)
+                : 1.0;
+            var defenderCombinedArms = defenderHasCombinedArms
+                ? (context.HasTech(defenderPlayerId, "combined_arms") ? 1.25 : 1.20)
+                : 1.0;
+
             var outcome = CombatResolver.ResolveGround(
                 attacker: new CombatResolver.Side(attackerPlayerId, attackerStacks),
                 defender: new CombatResolver.Side(defenderPlayerId, defenderStacks),
                 rng: context.Rng,
-                defenderBonusMultiplier: defenderBonusMultiplier);
+                defenderBonusMultiplier: defenderBonusMultiplier,
+                attackerCombinedArmsMultiplier: attackerCombinedArms,
+                defenderCombinedArmsMultiplier: defenderCombinedArms);
 
             AirStrikeStep.ApplyCasualties(context, outcome.Casualties, "Combat");
 
@@ -147,5 +169,28 @@ public sealed class CombatStep : ITickStep
                     ToPlayerId: attackerPlayerId));
             }
         }
+    }
+
+    /// <summary>
+    /// Combined-arms presence check at a contested province for one side. Looks at
+    /// every living unit owned by <paramref name="ownerPlayerId"/> at the province
+    /// (any domain — air and AA don't sit in the ground melee stack list but they
+    /// still satisfy the doctrine condition), returning true if all three of
+    /// ground / air / AA are represented.
+    /// </summary>
+    private static bool SideHasCombinedArms(IList<Unit> stacks, Guid provinceId, Guid ownerPlayerId)
+    {
+        bool ground = false, air = false, antiair = false;
+        for (var i = 0; i < stacks.Count; i++)
+        {
+            var u = stacks[i];
+            if (u.Strength <= 0) continue;
+            if (u.LocationProvinceId != provinceId) continue;
+            if (u.OwnerPlayerId != ownerPlayerId) continue;
+            if (CombatStats.IsGround(u.Type)) ground = true;
+            if (CombatStats.IsAir(u.Type)) air = true;
+            if (CombatStats.IsAntiAir(u.Type)) antiair = true;
+        }
+        return ground && air && antiair;
     }
 }

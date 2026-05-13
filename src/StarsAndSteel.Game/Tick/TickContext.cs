@@ -30,7 +30,8 @@ public sealed class TickContext
         RelationLookup? relations = null,
         IList<ResearchProgress>? activeResearch = null,
         IList<CyberAttackOrder>? pendingCyberAttackOrders = null,
-        IList<General>? generals = null)
+        IList<General>? generals = null,
+        IList<ResearchProgress>? unlockedResearch = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -51,6 +52,7 @@ public sealed class TickContext
         ActiveResearch = activeResearch ?? new List<ResearchProgress>();
         PendingCyberAttackOrders = pendingCyberAttackOrders ?? new List<CyberAttackOrder>();
         Generals = generals ?? new List<General>();
+        UnlockedResearch = unlockedResearch ?? new List<ResearchProgress>();
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -137,6 +139,31 @@ public sealed class TickContext
     /// when a general is parked at the contested province.
     /// </summary>
     public IList<General> Generals { get; }
+
+    /// <summary>
+    /// Phase 3g: per-player <see cref="ResearchProgress"/> rows that have already
+    /// been unlocked (<see cref="ResearchProgress.IsUnlocked"/> true). Loaded by
+    /// the runner so steps can gate doctrine effects on the owner having a tech.
+    /// Use <see cref="HasTech"/> to check.
+    /// </summary>
+    public IList<ResearchProgress> UnlockedResearch { get; }
+
+    /// <summary>
+    /// Returns true if <paramref name="playerId"/> has unlocked the tech with the
+    /// given <paramref name="techId"/>. O(n) over <see cref="UnlockedResearch"/>;
+    /// fine for the small per-world unlock set (≤ 15 techs × players).
+    /// </summary>
+    public bool HasTech(Guid playerId, string techId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(techId);
+        for (var i = 0; i < UnlockedResearch.Count; i++)
+        {
+            var r = UnlockedResearch[i];
+            if (r.PlayerId == playerId && r.IsUnlocked && string.Equals(r.TechId, techId, StringComparison.Ordinal))
+                return true;
+        }
+        return false;
+    }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

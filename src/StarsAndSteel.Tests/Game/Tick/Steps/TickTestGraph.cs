@@ -245,7 +245,8 @@ internal static class TickTestGraph
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
         long? rngSeed = null,
-        IList<General>? generals = null)
+        IList<General>? generals = null,
+        IList<ResearchProgress>? unlockedResearch = null)
     {
         return new TickContext(
             world,
@@ -257,6 +258,16 @@ internal static class TickTestGraph
             adjacencies: adjacencies ?? new List<ProvinceAdjacency>(),
             pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
             relations: relations ?? RelationLookup.Empty,
-            generals: generals);
+            generals: generals,
+            unlockedResearch: unlockedResearch);
     }
+
+    public static ResearchProgress UnlockedTech(Player player, string techId) => new()
+    {
+        Id = Guid.NewGuid(),
+        PlayerId = player.Id,
+        TechId = techId,
+        ProgressPoints = 1,
+        IsUnlocked = true,
+    };
 }

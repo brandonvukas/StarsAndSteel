@@ -149,6 +149,72 @@ public class CombatResolverTests
         negative.Should().Throw<ArgumentOutOfRangeException>();
     }
 
+    // ---- Phase 3g: per-side combined-arms multipliers (combined_arms doctrine) ----
+
+    [Fact]
+    public void Combined_arms_multiplier_increase_amplifies_that_sides_damage()
+    {
+        // Both sides have ground+air+AA so combined-arms triggers for both. Boosting
+        // ONLY the defender's multiplier should raise attacker losses; baseline keeps
+        // both at 1.20.
+        var (atk1, def1) = TwoCombinedArmsSides();
+        var (atk2, def2) = TwoCombinedArmsSides();
+
+        var baseline = CombatResolver.ResolveGround(atk1, def1, new DeterministicRandom(11),
+            defenderBonusMultiplier: 1.0,
+            attackerCombinedArmsMultiplier: 1.20,
+            defenderCombinedArmsMultiplier: 1.20);
+        var boosted = CombatResolver.ResolveGround(atk2, def2, new DeterministicRandom(11),
+            defenderBonusMultiplier: 1.0,
+            attackerCombinedArmsMultiplier: 1.20,
+            defenderCombinedArmsMultiplier: 1.25);
+
+        var atk1Ids = atk1.Stacks.Select(s => s.Id).ToHashSet();
+        var atk2Ids = atk2.Stacks.Select(s => s.Id).ToHashSet();
+        var baselineAttackerLoss = baseline.Casualties.Where(c => atk1Ids.Contains(c.UnitId)).Sum(c => c.StrengthLoss);
+        var boostedAttackerLoss  = boosted.Casualties.Where(c => atk2Ids.Contains(c.UnitId)).Sum(c => c.StrengthLoss);
+
+        boostedAttackerLoss.Should().BeGreaterThan(baselineAttackerLoss,
+            "the higher defender combined-arms multiplier should raise defender outgoing damage");
+    }
+
+    [Fact]
+    public void Combined_arms_multiplier_zero_or_negative_throws()
+    {
+        var (atk, def) = TwoSides();
+
+        Action zeroAttacker = () => CombatResolver.ResolveGround(atk, def,
+            new DeterministicRandom(1), defenderBonusMultiplier: 1.0,
+            attackerCombinedArmsMultiplier: 0, defenderCombinedArmsMultiplier: 1.20);
+        Action zeroDefender = () => CombatResolver.ResolveGround(atk, def,
+            new DeterministicRandom(1), defenderBonusMultiplier: 1.0,
+            attackerCombinedArmsMultiplier: 1.20, defenderCombinedArmsMultiplier: -0.1);
+
+        zeroAttacker.Should().Throw<ArgumentOutOfRangeException>();
+        zeroDefender.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    private static (CombatResolver.Side Attacker, CombatResolver.Side Defender) TwoCombinedArmsSides()
+    {
+        var aliceId = Guid.NewGuid();
+        var bobId = Guid.NewGuid();
+
+        var attackerStacks = new List<Unit>
+        {
+            MakeUnit(aliceId, UnitType.MainBattleTank,    1000),
+            MakeUnit(aliceId, UnitType.MultiroleFighter,  300),
+            MakeUnit(aliceId, UnitType.AABattery,         200),
+        };
+        var defenderStacks = new List<Unit>
+        {
+            MakeUnit(bobId, UnitType.MechInfantry,      1500),
+            MakeUnit(bobId, UnitType.MultiroleFighter,  300),
+            MakeUnit(bobId, UnitType.AABattery,         200),
+        };
+
+        return (new CombatResolver.Side(aliceId, attackerStacks), new CombatResolver.Side(bobId, defenderStacks));
+    }
+
     private static (CombatResolver.Side Attacker, CombatResolver.Side Defender) TwoSides()
     {
         var aliceId = Guid.NewGuid();
