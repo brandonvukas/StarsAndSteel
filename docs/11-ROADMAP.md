@@ -93,10 +93,13 @@ Make the late game spicy.
 - ☑ Special Forces operations (sabotage, intel) *(Phase 3e — Sabotage order: SF unit at adjacent enemy province destroys 1 random building, takes 200 strength casualties, target province loses 10 morale; intel ops deferred)*
 - ☑ Theater commanders (generals) *(Phase 3f — General entity; one-per-player MVP; instant recruit at fixed money cost; assign to friendly province; +15% defender effective strength + outgoing damage at the assigned province via CombatResolver.ResolveGround overload; XP / named perks deferred)*
 - ☑ Doctrines (Maneuver / Firepower / Defense) *(Phase 3g — wired existing Tier-2 Doctrine techs in TechCatalog: combined_arms raises per-side combined-arms multiplier 1.20 → 1.25 (composition still required: ground+air+AA at the contested province); defense_in_depth gives the defending side +10% effective strength + outgoing damage, stacking multiplicatively with the general bonus; CombatResolver gained a 6-arg overload taking per-side combined-arms multipliers; TickContext loads UnlockedResearch + exposes HasTech(playerId, techId); maneuver_warfare deferred — needs multi-tick movement which doesn't exist yet)*
-- ☐ Wonders / megaprojects (5 to start)
-- ☐ Random world events
-- ☐ Insurgent (Wildcard) AI personality
-- ☐ Sanctions / embargoes
+- ☑ **Phase 3h — Phase 3 wrap-up.** Closed out Phase 3 (3a–3g shipped). The four scope items below were intentionally deferred to Phase 4 because each is a sizable feature standing on its own; the demoable goal of Phase 3 ("late-game tension feels distinct from early game") is already met by missiles + nukes + stealth + subs + cyber + SF + generals + doctrines.
+
+### Deferred to Phase 4 (originally scoped under Phase 3)
+- ☐ Wonders / megaprojects (5 to start) — needs a new BuildingType subclass + per-wonder unique effect hook + UI
+- ☐ Random world events — needs an event-spec catalog + scheduler step + RNG-driven application
+- ☐ Insurgent (Wildcard) AI personality — needs an AI strategy class beyond the current tribute / cautious patterns
+- ☐ Sanctions / embargoes — needs a new diplomatic action distinct from war declaration that gates trade/treaty income
 
 **Demoable:** late-game tension feels distinct from early game, with high-impact strategic moves available.
 
@@ -106,6 +109,14 @@ Make the late game spicy.
 
 The fun-stretch list. Tackle in any order.
 
+- ☐ Wonders / megaprojects (5 to start) *(deferred from Phase 3)*
+- ☐ Random world events *(deferred from Phase 3)*
+- ☐ Insurgent (Wildcard) AI personality *(deferred from Phase 3)*
+- ☐ Sanctions / embargoes *(deferred from Phase 3)*
+- ☐ Maneuver Warfare doctrine effect *(deferred from Phase 3g — needs multi-tick movement)*
+- ☐ Generals XP / named perks *(deferred from Phase 3f)*
+- ☐ Special Forces intel ops *(deferred from Phase 3e)*
+- ☐ Cyber warfare UI hookup *(deferred from Phase 3d)*
 - ☐ Global commodities market
 - ☐ Replay viewer
 - ☐ Custom flags / nation insignia
