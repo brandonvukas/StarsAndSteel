@@ -18,12 +18,15 @@ public class TickProcessorTests
 
         result.Tick.Should().Be(1);
         world.CurrentTick.Should().Be(1);
-        // RNG state is always written back, even if no step consumed randomness
-        // this tick. With Phase 1E's only step (resource production) not using
-        // the RNG, the post-tick state equals the pre-tick state — that's still
-        // the persistence contract: world.RngState is always synced from the
-        // generator at end of tick.
-        world.RngState.Should().Be(new DeterministicRandom(42L).State);
+        // RNG state is always written back. Phase 4c: RandomEventStep rolls
+        // one NextDouble() per tick to decide whether an event fires; even
+        // when the trigger misses (no event), the RNG state advances. So
+        // the post-tick state equals the state after one Advance() — not
+        // the initial state. The persistence contract still holds:
+        // world.RngState is always synced from the generator at end of tick.
+        var expected = new DeterministicRandom(42L);
+        expected.NextDouble();
+        world.RngState.Should().Be(expected.State);
         world.NextTickDueUtc.Should().Be(new DateTime(2026, 1, 1, 0, 1, 0, DateTimeKind.Utc));
     }
 

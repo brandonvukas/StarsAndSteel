@@ -179,6 +179,89 @@ public static class NewsTemplates
             "{nation}'s research institutes celebrate the milestone.",
         });
 
+    // ---- Phase 4c: random world events --------------------------------
+
+    /// <summary>Phase 4c: natural disaster (earthquake/hurricane) destroys a building.</summary>
+    public static readonly NewsTemplate NaturalDisaster = new(
+        Severity: NewsSeverity.Breaking,
+        Category: NewsCategory.Disaster,
+        HeadlineVariants: new[]
+        {
+            "DISASTER: Earthquake levels {buildingType} in {province}",
+            "TYPHOON BATTERS {province} — {buildingType} reduced to rubble",
+            "{province} ROCKED by catastrophic flooding; {buildingType} lost",
+        },
+        BodyVariants: new[]
+        {
+            "Emergency crews from {nation} are still surveying the damage in {province}.",
+            "Officials warn reconstruction in {province} will take significant resources.",
+        });
+
+    /// <summary>Phase 4c: resource boom — bumper harvest / oil strike at a province.</summary>
+    public static readonly NewsTemplate ResourceBoom = new(
+        Severity: NewsSeverity.Notable,
+        Category: NewsCategory.Disaster,
+        HeadlineVariants: new[]
+        {
+            "BOOM: Surprise resource windfall floods {nation} coffers from {province}",
+            "GUSHER in {province} — {nation} producers report bumper output",
+            "{province} bonanza lifts {nation} stockpiles overnight",
+        },
+        BodyVariants: new[]
+        {
+            "Markets in {nation} rally on the unexpected surge from {province}.",
+            "Industry insiders attribute the windfall to favorable conditions in {province}.",
+        });
+
+    /// <summary>Phase 4c: scientific breakthrough — random research jump.</summary>
+    public static readonly NewsTemplate ScientificBreakthrough = new(
+        Severity: NewsSeverity.Notable,
+        Category: NewsCategory.Disaster,
+        HeadlineVariants: new[]
+        {
+            "BREAKTHROUGH: {nation} labs report unexpected research leap",
+            "Eureka moment in {nation}: progress on {tech} surges ahead of schedule",
+            "{nation} scientists announce surprise advances on {tech}",
+        },
+        BodyVariants: new[]
+        {
+            "Research timelines for {tech} have been revised dramatically.",
+            "{nation} ministry of science declines to elaborate on the find.",
+        });
+
+    /// <summary>Phase 4c: civil unrest — protests in a province.</summary>
+    public static readonly NewsTemplate CivilUnrest = new(
+        Severity: NewsSeverity.Notable,
+        Category: NewsCategory.Disaster,
+        HeadlineVariants: new[]
+        {
+            "UNREST: Mass protests erupt in {province} — morale plummets",
+            "{nation} authorities declare emergency in {province} amid rioting",
+            "Streets of {province} burn as {nation} citizens turn against the war",
+        },
+        BodyVariants: new[]
+        {
+            "Local sources estimate morale in {province} fell by {magnitude} points overnight.",
+            "{nation} officials promise calm but offer few concrete plans for {province}.",
+        });
+
+    /// <summary>Phase 4c: market crash — random player loses a chunk of money.</summary>
+    public static readonly NewsTemplate MarketCrash = new(
+        Severity: NewsSeverity.Breaking,
+        Category: NewsCategory.Disaster,
+        HeadlineVariants: new[]
+        {
+            "MARKET CRASH wipes out {magnitude} from {nation} treasury",
+            "BLACK MONDAY: {nation} markets collapse, losses top {magnitude}",
+            "{nation} central bank scrambles after sudden crash — {magnitude} gone",
+        },
+        BodyVariants: new[]
+        {
+            "Analysts call it the worst single-tick loss in {nation}'s recent history.",
+            "{nation} finance ministry has not yet commented on the crash.",
+        });
+
+
     /// <summary>
     /// Pick a variant deterministically from <paramref name="variants"/> via the per-world RNG.
     /// Empty list returns empty string so the caller never crashes on a misconfigured template.

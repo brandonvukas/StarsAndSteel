@@ -68,6 +68,9 @@ public sealed class NewsStep : ITickStep
                 case TechUnlockedEvent e:
                     EmitTechUnlocked(context, e);
                     break;
+                case RandomEventOccurredEvent e:
+                    EmitRandomEvent(context, e, playerById, provinceById);
+                    break;
                 // Other event types are not headline-worthy in MVP.
             }
         }
@@ -217,6 +220,74 @@ public sealed class NewsStep : ITickStep
             ["nation"] = e.PlayerNationName,
             ["tech"] = e.TechName,
         }, relatedPlayerId: e.PlayerId);
+    }
+
+    /// <summary>Phase 4c: dispatch one of the 5 random-event templates based on Kind.</summary>
+    private static void EmitRandomEvent(
+        TickContext ctx,
+        RandomEventOccurredEvent e,
+        IReadOnlyDictionary<Guid, Player> players,
+        IReadOnlyDictionary<Guid, Province> provinces)
+    {
+        var nation = e.AffectedPlayerId.HasValue && players.TryGetValue(e.AffectedPlayerId.Value, out var p)
+            ? p.NationName : "neutral authorities";
+        var province = e.ProvinceId.HasValue && provinces.TryGetValue(e.ProvinceId.Value, out var pr)
+            ? pr.Name : "an unnamed region";
+
+        switch (e.Kind)
+        {
+            case RandomEventKind.NaturalDisaster:
+            {
+                // Magnitude carries the destroyed BuildingType numeric value.
+                var bt = ((StarsAndSteel.Core.Enums.BuildingType)(int)e.Magnitude).ToString();
+                Emit(ctx, NewsTemplates.NaturalDisaster, new Dictionary<string, string>
+                {
+                    ["nation"] = nation,
+                    ["province"] = province,
+                    ["buildingType"] = bt,
+                }, relatedPlayerId: e.AffectedPlayerId);
+                break;
+            }
+            case RandomEventKind.ResourceBoom:
+                Emit(ctx, NewsTemplates.ResourceBoom, new Dictionary<string, string>
+                {
+                    ["nation"] = nation,
+                    ["province"] = province,
+                }, relatedPlayerId: e.AffectedPlayerId);
+                break;
+            case RandomEventKind.ScientificBreakthrough:
+            {
+                // Look up the active research row to name the tech. The
+                // tech name lookup is best-effort; if the row was finished
+                // this same tick (rare) we fall back to "a key technology".
+                var row = ctx.ActiveResearch.FirstOrDefault(r =>
+                    r.PlayerId == e.AffectedPlayerId && !r.IsUnlocked);
+                var techName = row is null
+                    ? "a key technology"
+                    : (StarsAndSteel.Game.Research.TechCatalog.Find(row.TechId)?.Name ?? row.TechId);
+                Emit(ctx, NewsTemplates.ScientificBreakthrough, new Dictionary<string, string>
+                {
+                    ["nation"] = nation,
+                    ["tech"] = techName,
+                }, relatedPlayerId: e.AffectedPlayerId);
+                break;
+            }
+            case RandomEventKind.CivilUnrest:
+                Emit(ctx, NewsTemplates.CivilUnrest, new Dictionary<string, string>
+                {
+                    ["nation"] = nation,
+                    ["province"] = province,
+                    ["magnitude"] = e.Magnitude.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                }, relatedPlayerId: e.AffectedPlayerId);
+                break;
+            case RandomEventKind.MarketCrash:
+                Emit(ctx, NewsTemplates.MarketCrash, new Dictionary<string, string>
+                {
+                    ["nation"] = nation,
+                    ["magnitude"] = "$" + e.Magnitude.ToString("N0", System.Globalization.CultureInfo.InvariantCulture),
+                }, relatedPlayerId: e.AffectedPlayerId);
+                break;
+        }
     }
 
     private static void Emit(

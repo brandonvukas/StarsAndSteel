@@ -187,6 +187,49 @@ a, a:visited { color: #ffd166; }
 .news-notable  .news-sev { color: #ffb84d; }
 .news-info     .news-sev { color: #88a4ff; opacity: 0.85; }
 
+/* ---- World Events panel (Phase 4c) --------------------------------- */
+.world-events-panel { padding: 4px 2px; }
+.world-events-panel .panel-subtitle {
+  margin: 0 0 12px; font-size: 12px; opacity: 0.65; font-style: italic;
+}
+.world-events-empty {
+  opacity: 0.5; font-style: italic; padding: 8px 4px;
+}
+.world-events-list {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.world-event {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: auto auto;
+  gap: 4px 10px;
+  padding: 8px 10px;
+  background: #14142a;
+  border-left: 3px solid #6c5ce7;
+  border-radius: 4px;
+}
+.world-event-tick {
+  grid-row: 1 / span 2;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #b794f4;
+  opacity: 0.85;
+}
+.world-event-headline {
+  color: #e6e6f0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.world-event-body {
+  color: #b0b0c0;
+  font-size: 12px;
+}
+.world-event-breaking { border-left-color: #ff6b6b; }
+.world-event-breaking .world-event-tick { color: #ff8a8a; }
+.world-event-notable { border-left-color: #ffb84d; }
+.world-event-notable .world-event-tick { color: #ffcc66; }
+
 /* ---- Side-panel tabs ----------------------------------------------- */
 .side-tabs {
   display: flex; gap: 2px;

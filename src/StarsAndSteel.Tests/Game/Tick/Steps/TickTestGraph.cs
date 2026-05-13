@@ -246,18 +246,21 @@ internal static class TickTestGraph
         RelationLookup? relations = null,
         long? rngSeed = null,
         IList<General>? generals = null,
-        IList<ResearchProgress>? unlockedResearch = null)
+        IList<ResearchProgress>? unlockedResearch = null,
+        IList<ResearchProgress>? activeResearch = null,
+        IRandomSource? rng = null)
     {
         return new TickContext(
             world,
             processingTick: world.CurrentTick + 1,
-            rng: new DeterministicRandom(rngSeed ?? world.RngState),
+            rng: rng ?? new DeterministicRandom(rngSeed ?? world.RngState),
             units: units ?? new List<Unit>(),
             pendingUnitOrders: unitOrders ?? new List<UnitOrder>(),
             pendingConstructionOrders: constructionOrders ?? new List<ConstructionOrder>(),
             adjacencies: adjacencies ?? new List<ProvinceAdjacency>(),
             pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
             relations: relations ?? RelationLookup.Empty,
+            activeResearch: activeResearch ?? new List<ResearchProgress>(),
             generals: generals,
             unlockedResearch: unlockedResearch);
     }

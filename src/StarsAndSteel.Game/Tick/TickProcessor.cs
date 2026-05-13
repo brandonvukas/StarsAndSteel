@@ -43,6 +43,7 @@ public sealed class TickProcessor
     {
         new AiTurnStep(),
         new ResourceProductionStep(),
+        new RandomEventStep(),
         new LogisticsUpkeepStep(),
         new AttritionStep(),
         new MovementStep(),

@@ -28,6 +28,7 @@ import { mountStatsPanel } from './statsPanel';
 import { mountSettingsPanel } from './settingsPanel';
 import { mountGeneralsPanel } from './generalsPanel';
 import { mountWondersPanel } from './wondersPanel';
+import { mountWorldEventsPanel } from './worldEventsPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -44,6 +45,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
           <button data-tab="research">Research</button>
           <button data-tab="generals">Generals</button>
           <button data-tab="wonders">Wonders</button>
+          <button data-tab="events">Events</button>
           <button data-tab="chat">Chat</button>
           <button data-tab="stats">Stats</button>
           <button data-tab="settings">Settings</button>
@@ -53,6 +55,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         <div id="side-tab-research" class="side-tab-pane" hidden></div>
         <div id="side-tab-generals" class="side-tab-pane" hidden></div>
         <div id="side-tab-wonders" class="side-tab-pane" hidden></div>
+        <div id="side-tab-events" class="side-tab-pane" hidden></div>
         <div id="side-tab-chat" class="side-tab-pane" hidden></div>
         <div id="side-tab-stats" class="side-tab-pane" hidden></div>
         <div id="side-tab-settings" class="side-tab-pane" hidden></div>
@@ -135,6 +138,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountResearchPanel(host.querySelector('#side-tab-research')!);
   mountGeneralsPanel(host.querySelector('#side-tab-generals')!, worldId);
   mountWondersPanel(host.querySelector('#side-tab-wonders')!, worldId);
+  mountWorldEventsPanel(host.querySelector('#side-tab-events')!);
   mountChatPanel(host.querySelector('#side-tab-chat')!);
   mountStatsPanel(host.querySelector('#side-tab-stats')!);
   mountSettingsPanel(host.querySelector('#side-tab-settings')!);
@@ -254,6 +258,7 @@ function wireSideTabs(host: HTMLElement) {
     research: host.querySelector<HTMLElement>('#side-tab-research')!,
     generals: host.querySelector<HTMLElement>('#side-tab-generals')!,
     wonders: host.querySelector<HTMLElement>('#side-tab-wonders')!,
+    events: host.querySelector<HTMLElement>('#side-tab-events')!,
     chat: host.querySelector<HTMLElement>('#side-tab-chat')!,
     stats: host.querySelector<HTMLElement>('#side-tab-stats')!,
     settings: host.querySelector<HTMLElement>('#side-tab-settings')!,
