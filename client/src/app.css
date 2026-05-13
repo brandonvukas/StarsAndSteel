@@ -129,6 +129,12 @@ a, a:visited { color: #ffd166; }
 }
 .province-panel .pp-header h2 { margin: 0; font-size: 18px; flex: 1; }
 .province-panel .pp-type { opacity: 0.6; font-size: 12px; }
+/* Phase 4a: small "★ Name" pill in the province header when the caller has a */
+/* general assigned to this province (carries the +15% defender bonus).      */
+.pp-general-badge {
+  background: #3a2f1a; color: #f5d27a; border: 1px solid #6b552a;
+  padding: 1px 6px; border-radius: 10px; font-size: 11px; font-weight: 600;
+}
 .owner-swatch {
   display: inline-block; width: 14px; height: 14px;
   border: 1px solid #3d3d5a; border-radius: 3px;

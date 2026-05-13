@@ -2,8 +2,8 @@
 // orders (move / build-unit / build-building). The panel is rebuilt whenever
 // the selected province or the world snapshot changes.
 
-import { $selectedProvince, $unitsAtSelected, $world, $research } from '../store/store';
-import { orderMove, orderBuildBuilding, orderBuildUnit, orderLaunchMissile, HttpError } from '../api/rest';
+import { $selectedProvince, $unitsAtSelected, $world, $research, $generals, findGeneralAtProvince } from '../store/store';
+import { orderMove, orderBuildBuilding, orderBuildUnit, orderLaunchMissile, orderSabotage, orderCyberAttack, HttpError } from '../api/rest';
 import type { SnapshotProvince, WorldSnapshot } from '../types/api';
 
 const BUILDABLE_BUILDINGS = [
@@ -11,6 +11,9 @@ const BUILDABLE_BUILDINGS = [
   'SteelMill', 'Refinery', 'FinancialDistrict',
   // Phase 3a: launch host for Cruise/Nuclear missiles.
   'MissileSilo',
+  // Phase 4a: required at launch province for CyberAttack orders (gated by
+  // cyber_warfare tech). Server enforces both.
+  'CyberOperationsCenter',
 ] as const;
 
 // Coastal-only buildings (filtered into the build menu when the selected
@@ -74,6 +77,9 @@ export function mountProvincePanel(container: HTMLElement) {
   // Phase 3b: re-render so a freshly unlocked tech immediately surfaces its
   // gated unit in the build dropdown.
   $research.subscribe(rerender);
+  // Phase 4a: re-render when the caller's general roster changes (recruit /
+  // assign) so the "general assigned" badge updates without a click.
+  $generals.subscribe(rerender);
   rerender();
 }
 
@@ -83,7 +89,15 @@ function renderHeader(p: SnapshotProvince): HTMLElement {
   const swatch = p.ownerColorHex
     ? `<span class="owner-swatch" style="background:${p.ownerColorHex}"></span>`
     : '';
-  h.innerHTML = `${swatch}<h2>${escape(p.name)}</h2><span class="pp-type">${p.type}</span>`;
+  // Phase 4a: surface the caller's general here (if any) as a small badge so
+  // the player can see at-a-glance which province carries the +15% defender
+  // bonus. Owner-of-record check happens inside findGeneralAtProvince via the
+  // generals atom (caller-scoped).
+  const general = findGeneralAtProvince(p.id);
+  const generalBadge = general
+    ? `<span class="pp-general-badge" title="${escape(general.name)} (L${general.xpLevel}) — +15% defender bonus">★ ${escape(general.name)}</span>`
+    : '';
+  h.innerHTML = `${swatch}<h2>${escape(p.name)}</h2><span class="pp-type">${p.type}</span>${generalBadge}`;
   return h;
 }
 
@@ -248,6 +262,97 @@ function renderOrderForms(world: WorldSnapshot, province: SnapshotProvince): HTM
       }
     });
     wrap.appendChild(lf);
+  }
+
+  // ---- Sabotage form (Phase 4a) ----
+  // Surfaced when the caller has at least one SpecialForces unit stationed
+  // here AND there is at least one adjacent province owned by another player.
+  // Server validates SF type, ownership, adjacency, and that the target has
+  // at least one building to destroy.
+  const mySfHere = myUnitsHere.filter(u => u.type === 'SpecialForces');
+  const adjacentEnemies = province.adjacentProvinceIds
+    .map(id => world.provinces.find(p => p.id === id))
+    .filter((p): p is SnapshotProvince =>
+      !!p && p.ownerPlayerId != null && p.ownerPlayerId !== world.me.playerId);
+  if (mySfHere.length > 0 && adjacentEnemies.length > 0) {
+    const sf = document.createElement('form');
+    sf.className = 'order-form';
+    sf.innerHTML = `
+      <h3>Sabotage</h3>
+      <label>SF unit
+        <select name="unit">
+          ${mySfHere.map(u =>
+            `<option value="${u.id}">${u.type} (str ${u.strength})</option>`).join('')}
+        </select>
+      </label>
+      <label>Target
+        <select name="target">
+          ${adjacentEnemies.map(t =>
+            `<option value="${t.id}">${escape(t.name)}</option>`).join('')}
+        </select>
+      </label>
+      <button type="submit">Order sabotage</button>
+      <span class="status"></span>`;
+    sf.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const fd = new FormData(sf);
+      const status = sf.querySelector('.status') as HTMLElement;
+      try {
+        await orderSabotage(world.worldId, {
+          unitId: fd.get('unit') as string,
+          targetProvinceId: fd.get('target') as string,
+        });
+        status.textContent = 'queued';
+        status.className = 'status ok';
+      } catch (e) {
+        status.textContent = formatError(e);
+        status.className = 'status err';
+      }
+    });
+    wrap.appendChild(sf);
+  }
+
+  // ---- Cyber attack form (Phase 4a) ----
+  // Surfaced when the caller owns this province AND it has at least one
+  // CyberOperationsCenter AND the cyber_warfare tech is unlocked. Range is
+  // global so the target dropdown lists every other province in the world.
+  const cyberUnlocked = ($research.get()?.myProgress ?? [])
+    .some(r => r.techId === 'cyber_warfare' && r.isUnlocked);
+  const hasCyberOps = isMine
+    && province.buildings.some(b => b.type === 'CyberOperationsCenter');
+  if (hasCyberOps && cyberUnlocked) {
+    const cf = document.createElement('form');
+    cf.className = 'order-form';
+    const targets = world.provinces
+      .filter(p => p.id !== province.id)
+      .sort((a, b) => a.name.localeCompare(b.name));
+    cf.innerHTML = `
+      <h3>Cyber attack</h3>
+      <label>Target
+        <select name="target">
+          ${targets.map(t =>
+            `<option value="${t.id}">${escape(t.name)}</option>`).join('')}
+        </select>
+      </label>
+      <button type="submit">Launch attack</button>
+      <span class="status"></span>`;
+    cf.addEventListener('submit', async ev => {
+      ev.preventDefault();
+      const fd = new FormData(cf);
+      const status = cf.querySelector('.status') as HTMLElement;
+      try {
+        await orderCyberAttack(world.worldId, {
+          launchProvinceId: province.id,
+          targetProvinceId: fd.get('target') as string,
+        });
+        status.textContent = 'launched';
+        status.className = 'status ok';
+      } catch (e) {
+        status.textContent = formatError(e);
+        status.className = 'status err';
+      }
+    });
+    wrap.appendChild(cf);
   }
 
   // ---- Build building form (owner only) ----

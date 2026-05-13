@@ -430,3 +430,54 @@ export interface OfferResolved {
   status: TreatyOfferStatus;
   resolvedAtTick: number;
 }
+
+// ----- Phase 4a: Generals + Sabotage + CyberAttack -----
+
+/** Caller-owned general row from GET /api/worlds/{id}/generals. */
+export interface GeneralDto {
+  id: string;
+  ownerPlayerId: string;
+  name: string;
+  /** Province this general buffs (defender bonus). null = unassigned (recruit default). */
+  assignedProvinceId: string | null;
+  xpLevel: number;
+}
+
+export interface RecruitGeneralRequest {
+  name: string;
+}
+
+export interface AssignGeneralRequest {
+  provinceId: string;
+}
+
+export interface GeneralRecruited {
+  generalId: string;
+  name: string;
+  /** Negative — money cost debited from caller. */
+  moneyDelta: number;
+}
+
+export interface GeneralAssigned {
+  generalId: string;
+  provinceId: string;
+}
+
+/** POST /api/worlds/{id}/orders/sabotage — SF unit sabotages an adjacent enemy province. */
+export interface SabotageOrderRequest {
+  unitId: string;
+  targetProvinceId: string;
+}
+
+/** POST /api/worlds/{id}/orders/cyber-attack — launch from province with CyberOperationsCenter; requires cyber_warfare tech. */
+export interface CyberAttackOrderRequest {
+  launchProvinceId: string;
+  targetProvinceId: string;
+}
+
+export interface CyberAttackOrderAccepted {
+  orderId: string;
+  launchProvinceId: string;
+  targetProvinceId: string;
+  issuedAtTick: number;
+}

@@ -18,6 +18,7 @@ import type {
   RelationChanged, OfferReceived, OfferResolved,
   ResearchState, TechUnlocked, ResearchStartedEvent,
   ChatMessageDto,
+  GeneralDto,
 } from '../types/api';
 
 export interface DraftOrder {
@@ -79,6 +80,7 @@ export function setAuth(auth: AuthResponse | null) {
     $diplomacy.set(null);
     $research.set(null);
     $chat.set([]);
+    $generals.set(null);
   }
 }
 
@@ -265,6 +267,23 @@ export function pushChat(message: ChatMessageDto) {
   const next = [...cur, message];
   if (next.length > CHAT_CAP) next.splice(0, next.length - CHAT_CAP);
   $chat.set(next);
+}
+
+// ---- Generals state (Phase 4a) -------------------------------------------
+// Caller's generals only (the server scopes the GET to the JWT subject).
+// MVP cap is one general per player. Recruit and assign are imperative POSTs;
+// after each, the panel re-fetches and replaces the atom.
+export const $generals = atom<GeneralDto[] | null>(null);
+
+export function setGenerals(generals: GeneralDto[] | null) {
+  $generals.set(generals);
+}
+
+/** Look up the caller's general assigned to a province (used by provincePanel for the badge). */
+export function findGeneralAtProvince(provinceId: string): GeneralDto | null {
+  const list = $generals.get();
+  if (!list) return null;
+  return list.find(g => g.assignedProvinceId === provinceId) ?? null;
 }
 
 // ---- session persistence -------------------------------------------------

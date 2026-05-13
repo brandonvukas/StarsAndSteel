@@ -115,6 +115,10 @@ public static class BuildCatalog
         // Missile Silo (Phase 3a). Land-based; gates CruiseMissile + NuclearMissile builds
         // and is the launch host for OrderType.MissileLaunch.
         new BuildingBuildSpec(BuildingType.MissileSilo,       Money: 4000, Oil: 100, Steel: 1500,Electronics: 500, Food: 0, Manpower: 100, TicksToBuild: 25),
+        // Cyber Operations Center (Phase 3d/4a). Required at the launch province for
+        // OrderType.CyberAttack; cyber_warfare tech additionally gates the order.
+        // Electronics-heavy, no oil — represents server farms and intel staff.
+        new BuildingBuildSpec(BuildingType.CyberOperationsCenter, Money: 3500, Oil: 0,   Steel: 400, Electronics: 1200, Food: 0, Manpower: 75, TicksToBuild: 20),
     }.ToDictionary(s => s.Type);
 
     /// <summary>True if this unit type is buildable in MVP (i.e. has a spec).</summary>

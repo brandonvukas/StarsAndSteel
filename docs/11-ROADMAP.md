@@ -109,6 +109,7 @@ Make the late game spicy.
 
 The fun-stretch list. Tackle in any order.
 
+- ☑ **Phase 4a — UI sub-pass for Phase 3 features.** Surfaced generals (recruit / assign panel + per-province ★ badge for the +15% defender bonus), Special Forces sabotage (form on owned province with SF + adjacent enemy), and Cyber attack (form on own province with CyberOperationsCenter once `cyber_warfare` is unlocked, global target range). Added CyberOperationsCenter to the build catalog so players can actually build the launch host. No new API endpoints.
 - ☐ Wonders / megaprojects (5 to start) *(deferred from Phase 3)*
 - ☐ Random world events *(deferred from Phase 3)*
 - ☐ Insurgent (Wildcard) AI personality *(deferred from Phase 3)*
@@ -116,7 +117,7 @@ The fun-stretch list. Tackle in any order.
 - ☐ Maneuver Warfare doctrine effect *(deferred from Phase 3g — needs multi-tick movement)*
 - ☐ Generals XP / named perks *(deferred from Phase 3f)*
 - ☐ Special Forces intel ops *(deferred from Phase 3e)*
-- ☐ Cyber warfare UI hookup *(deferred from Phase 3d)*
+- ☑ ~~Cyber warfare UI hookup~~ *(shipped in Phase 4a)*
 - ☐ Global commodities market
 - ☐ Replay viewer
 - ☐ Custom flags / nation insignia

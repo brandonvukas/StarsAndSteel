@@ -9,6 +9,9 @@ import type {
   ResearchState,
   ChatMessageDto, SendChatMessageRequest, SendChatMessageResponse,
   MeResponse, UpdateQuietHoursRequest,
+  GeneralDto, RecruitGeneralRequest, AssignGeneralRequest,
+  GeneralRecruited, GeneralAssigned,
+  SabotageOrderRequest, CyberAttackOrderRequest, CyberAttackOrderAccepted,
 } from '../types/api';
 
 class HttpError extends Error {
@@ -96,6 +99,20 @@ export const orderBuildUnit = (worldId: string, req: BuildUnitRequest) =>
 export const orderLaunchMissile = (worldId: string, req: MissileLaunchRequest) =>
   call<{ orderId: string }>('POST', `/api/worlds/${worldId}/orders/launch-missile`, req);
 
+// Phase 4a: SF sabotage. Server validates SpecialForces unit, ownership, and
+// adjacency to target. Resolves at next tick (one random building destroyed +
+// 200 strength casualties to the SF stack + -10 morale on target province).
+export const orderSabotage = (worldId: string, req: SabotageOrderRequest) =>
+  call<{ orderId: string; unitId: string; orderType: string; targetProvinceId: string; issuedAtTick: number }>(
+    'POST', `/api/worlds/${worldId}/orders/sabotage`, req);
+
+// Phase 4a: cyber attack. Server validates CyberOperationsCenter at launch
+// province, cyber_warfare tech unlocked, and target ≠ launch. Money + electronics
+// debited up front; 50/50 effect (DrainMoney / SlowResearch) rolled at tick.
+export const orderCyberAttack = (worldId: string, req: CyberAttackOrderRequest) =>
+  call<CyberAttackOrderAccepted>(
+    'POST', `/api/worlds/${worldId}/orders/cyber-attack`, req);
+
 // ---- Diplomacy -----------------------------------------------------------
 export const getDiplomacy = (worldId: string) =>
   call<DiplomacyState>('GET', `/api/worlds/${worldId}/diplomacy`);
@@ -122,6 +139,20 @@ export const getResearch = (worldId: string) =>
 export const startResearch = (worldId: string, techId: string) =>
   call<{ techId: string; ticksToResearch: number }>(
     'POST', `/api/worlds/${worldId}/research/start`, { techId });
+
+// ---- Generals (Phase 4a) -------------------------------------------------
+// Caller's generals only — server scopes by JWT subject.
+export const getGenerals = (worldId: string) =>
+  call<GeneralDto[]>('GET', `/api/worlds/${worldId}/generals`);
+
+// Recruit a single general (one-per-player MVP cap, $2,500). Newly-recruited
+// general is unassigned; assign separately to apply the +15% defender bonus.
+export const recruitGeneral = (worldId: string, req: RecruitGeneralRequest) =>
+  call<GeneralRecruited>('POST', `/api/worlds/${worldId}/generals`, req);
+
+// Reassign (no cooldown) — target province must be owned by caller.
+export const assignGeneral = (worldId: string, generalId: string, req: AssignGeneralRequest) =>
+  call<GeneralAssigned>('POST', `/api/worlds/${worldId}/generals/${generalId}/assign`, req);
 
 // ---- Chat ----------------------------------------------------------------
 export const getChatHistory = (worldId: string, take = 50) =>

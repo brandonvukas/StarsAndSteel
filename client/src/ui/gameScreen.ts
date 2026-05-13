@@ -5,12 +5,13 @@ import Phaser from 'phaser';
 import { BootScene } from '../scenes/BootScene';
 import { MapScene } from '../scenes/MapScene';
 import { GameHubClient } from '../api/hub';
-import { getSnapshot, getNews, getDiplomacy, getResearch, getChatHistory } from '../api/rest';
+import { getSnapshot, getNews, getDiplomacy, getResearch, getChatHistory, getGenerals } from '../api/rest';
 import {
   $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
   setDiplomacy, $diplomacy, applyRelationChanged, applyOfferReceived, applyOfferResolved,
   setResearch, $research, applyResearchStarted, applyTechUnlocked, tickResearchProgress,
   setChat, pushChat,
+  setGenerals,
 } from '../store/store';
 import {
   applyResourcesUpdated, applyUnitMoved, applyUnitDestroyed,
@@ -24,6 +25,7 @@ import { mountResearchPanel } from './researchPanel';
 import { mountChatPanel } from './chatPanel';
 import { mountStatsPanel } from './statsPanel';
 import { mountSettingsPanel } from './settingsPanel';
+import { mountGeneralsPanel } from './generalsPanel';
 
 export async function mountGameScreen(host: HTMLElement, worldId: string) {
   host.innerHTML = `
@@ -38,6 +40,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
           <button data-tab="province" class="active">Province</button>
           <button data-tab="diplomacy">Diplomacy</button>
           <button data-tab="research">Research</button>
+          <button data-tab="generals">Generals</button>
           <button data-tab="chat">Chat</button>
           <button data-tab="stats">Stats</button>
           <button data-tab="settings">Settings</button>
@@ -45,6 +48,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         <div id="side-tab-province" class="side-tab-pane"></div>
         <div id="side-tab-diplomacy" class="side-tab-pane" hidden></div>
         <div id="side-tab-research" class="side-tab-pane" hidden></div>
+        <div id="side-tab-generals" class="side-tab-pane" hidden></div>
         <div id="side-tab-chat" class="side-tab-pane" hidden></div>
         <div id="side-tab-stats" class="side-tab-pane" hidden></div>
         <div id="side-tab-settings" class="side-tab-pane" hidden></div>
@@ -86,6 +90,13 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
     // ignored
   }
 
+  // 1f. Initial generals state — caller's only (one per player MVP).
+  try {
+    setGenerals(await getGenerals(worldId));
+  } catch {
+    // ignored
+  }
+
   // 2. Boot Phaser into the dedicated host. Canvas is sized to match the
   //    map-data viewport (1600x1000 from scripts/build-map.mjs). Phaser scales
   //    the canvas to fit the parent via Scale.FIT so the full map is visible
@@ -109,6 +120,7 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
   mountProvincePanel(host.querySelector('#side-tab-province')!);
   mountDiplomacyPanel(host.querySelector('#side-tab-diplomacy')!);
   mountResearchPanel(host.querySelector('#side-tab-research')!);
+  mountGeneralsPanel(host.querySelector('#side-tab-generals')!, worldId);
   mountChatPanel(host.querySelector('#side-tab-chat')!);
   mountStatsPanel(host.querySelector('#side-tab-stats')!);
   mountSettingsPanel(host.querySelector('#side-tab-settings')!);
@@ -193,6 +205,11 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
         } catch {
           // ignored
         }
+        try {
+          setGenerals(await getGenerals(worldId));
+        } catch {
+          // ignored
+        }
       },
     },
   );
@@ -207,6 +224,7 @@ function wireSideTabs(host: HTMLElement) {
     province: host.querySelector<HTMLElement>('#side-tab-province')!,
     diplomacy: host.querySelector<HTMLElement>('#side-tab-diplomacy')!,
     research: host.querySelector<HTMLElement>('#side-tab-research')!,
+    generals: host.querySelector<HTMLElement>('#side-tab-generals')!,
     chat: host.querySelector<HTMLElement>('#side-tab-chat')!,
     stats: host.querySelector<HTMLElement>('#side-tab-stats')!,
     settings: host.querySelector<HTMLElement>('#side-tab-settings')!,
