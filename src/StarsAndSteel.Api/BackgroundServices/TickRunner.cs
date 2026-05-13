@@ -121,6 +121,14 @@ public sealed class TickRunner
             .Where(r => r.Player.GameWorldId == worldId && !r.IsUnlocked)
             .ToListAsync(cancellationToken);
 
+        // Phase 3d: pending cyber attack orders due this tick. CyberAttackStep mutates
+        // their Status + EffectKind in place; rows are EF-tracked.
+        var pendingCyberAttackOrders = await _db.CyberAttackOrders
+            .Where(o => o.GameWorldId == worldId
+                && o.IssuedAtTick <= processingTick
+                && o.Status == OrderStatus.Pending)
+            .ToListAsync(cancellationToken);
+
         TickResult result;
         try
         {
@@ -131,7 +139,8 @@ public sealed class TickRunner
                 adjacencies: adjacencies,
                 pendingTreatyOffers: pendingTreatyOffers,
                 relations: relations,
-                activeResearch: activeResearch);
+                activeResearch: activeResearch,
+                pendingCyberAttackOrders: pendingCyberAttackOrders);
         }
         catch (Exception ex)
         {

@@ -28,7 +28,8 @@ public sealed class TickContext
         IList<ProvinceAdjacency> adjacencies,
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
-        IList<ResearchProgress>? activeResearch = null)
+        IList<ResearchProgress>? activeResearch = null,
+        IList<CyberAttackOrder>? pendingCyberAttackOrders = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(rng);
@@ -47,6 +48,7 @@ public sealed class TickContext
         PendingTreatyOffers = pendingTreatyOffers ?? new List<TreatyOffer>();
         Relations = relations ?? RelationLookup.Empty;
         ActiveResearch = activeResearch ?? new List<ResearchProgress>();
+        PendingCyberAttackOrders = pendingCyberAttackOrders ?? new List<CyberAttackOrder>();
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
@@ -116,6 +118,14 @@ public sealed class TickContext
     /// flips <c>IsUnlocked</c> when the per-tech threshold is reached.
     /// </summary>
     public IList<ResearchProgress> ActiveResearch { get; }
+
+    /// <summary>
+    /// Phase 3d: pending player-level cyber attack orders due this tick.
+    /// <see cref="Steps.CyberAttackStep"/> rolls the effect via <see cref="Rng"/>,
+    /// applies it to the target province's owner, and flips Status to Complete.
+    /// Empty by default (older tests / overload that don't supply cyber orders).
+    /// </summary>
+    public IList<CyberAttackOrder> PendingCyberAttackOrders { get; }
 
     /// <summary>
     /// Units instantiated by this tick (e.g. ConstructionStep completions). The runner

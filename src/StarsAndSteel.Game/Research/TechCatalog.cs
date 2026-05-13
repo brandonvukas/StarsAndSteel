@@ -55,6 +55,14 @@ public static class TechCatalog
             "Unlocks Submarine recruitment at NavalYards. Stealth + anti-ship.",
             MoneyCost: 3500, ElectronicsCost: 1200, TicksToResearch: 22,
             Prerequisites: new[] { "advanced_armor" }),
+        // Phase 3d: unlocks the player-level CyberAttack order. Requires a
+        // CyberOperationsCenter at the launch province; drains money or slows
+        // research at the target. Sits in Doctrine because cyber sabotage is
+        // an organizational capability, not a hardware platform.
+        new("cyber_warfare", "Cyber Warfare", "Doctrine",
+            "Unlocks the CyberAttack order. Launch from a CyberOperationsCenter.",
+            MoneyCost: 2000, ElectronicsCost: 1000, TicksToResearch: 16,
+            Prerequisites: new[] { "combined_arms" }),
 
         // Industry
         new("modular_construction", "Modular Construction", "Industry",

@@ -16,6 +16,13 @@ public sealed record AirStrikeOrderRequest(Guid UnitId, Guid TargetProvinceId);
 /// </summary>
 public sealed record MissileLaunchOrderRequest(Guid UnitId, Guid TargetProvinceId);
 
+/// <summary>
+/// Phase 3d: launch a player-level cyber attack from a friendly province with a
+/// CyberOperationsCenter against any other province (global range). Requires
+/// the cyber_warfare tech and resolves at the next tick.
+/// </summary>
+public sealed record CyberAttackOrderRequest(Guid LaunchProvinceId, Guid TargetProvinceId);
+
 /// <summary>Build N units of <paramref name="UnitType"/> at <paramref name="ProvinceId"/>.</summary>
 public sealed record BuildUnitOrderRequest(Guid ProvinceId, string UnitType, int Quantity);
 
@@ -47,3 +54,14 @@ public sealed record ConstructionOrderAccepted(
     string? BuildingType,
     int IssuedAtTick,
     int TicksRemaining);
+
+/// <summary>
+/// Phase 3d: returned on accepted CyberAttack orders. The effect is rolled at
+/// resolution time, so this DTO doesn't carry an EffectKind — clients learn
+/// the outcome via the SignalR <c>CyberAttackResolved</c> event next tick.
+/// </summary>
+public sealed record CyberAttackOrderAccepted(
+    Guid OrderId,
+    Guid LaunchProvinceId,
+    Guid TargetProvinceId,
+    int IssuedAtTick);

@@ -40,6 +40,7 @@ public sealed class OrdersController : ControllerBase
     private readonly IValidator<MissileLaunchOrderRequest> _missileLaunchValidator;
     private readonly IValidator<BuildUnitOrderRequest> _buildUnitValidator;
     private readonly IValidator<BuildBuildingOrderRequest> _buildBuildingValidator;
+    private readonly IValidator<CyberAttackOrderRequest> _cyberAttackValidator;
     private readonly ILogger<OrdersController> _logger;
 
     public OrdersController(
@@ -53,6 +54,7 @@ public sealed class OrdersController : ControllerBase
         IValidator<MissileLaunchOrderRequest> missileLaunchValidator,
         IValidator<BuildUnitOrderRequest> buildUnitValidator,
         IValidator<BuildBuildingOrderRequest> buildBuildingValidator,
+        IValidator<CyberAttackOrderRequest> cyberAttackValidator,
         ILogger<OrdersController> logger)
     {
         _db = db;
@@ -65,6 +67,7 @@ public sealed class OrdersController : ControllerBase
         _missileLaunchValidator = missileLaunchValidator;
         _buildUnitValidator = buildUnitValidator;
         _buildBuildingValidator = buildBuildingValidator;
+        _cyberAttackValidator = cyberAttackValidator;
         _logger = logger;
     }
 
@@ -266,6 +269,64 @@ public sealed class OrdersController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Phase 3d: launch a cyber attack from a friendly province (with a
+    /// CyberOperationsCenter and the cyber_warfare tech unlocked) at any
+    /// other province in the world. The attack costs money + electronics
+    /// (debited on submission) and resolves at the next tick — the effect
+    /// (slow research vs. drain money) is rolled by the engine.
+    /// </summary>
+    [HttpPost("cyber-attack")]
+    public async Task<ActionResult<CyberAttackOrderAccepted>> CyberAttack(
+        Guid worldId,
+        [FromBody] CyberAttackOrderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (badRequest, _) = await ValidateAsync(_cyberAttackValidator, request, cancellationToken);
+        if (badRequest is not null) return badRequest;
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var gate = _locks.GetOrCreate(worldId);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var ctx = await LoadCallerContextAsync(worldId, user.Id, cancellationToken);
+            if (ctx.NotFound) return NotFound();
+            if (ctx.Forbidden) return Forbid();
+
+            var launch = await _db.Provinces.FirstOrDefaultAsync(
+                p => p.Id == request.LaunchProvinceId && p.GameWorldId == worldId, cancellationToken);
+            if (launch is null) return NotFound(new { error = "Launch province not found in this world." });
+
+            var target = await _db.Provinces.FirstOrDefaultAsync(
+                p => p.Id == request.TargetProvinceId && p.GameWorldId == worldId, cancellationToken);
+            if (target is null) return NotFound(new { error = "Target province not found in this world." });
+
+            var launchBuildings = await _db.Buildings
+                .Where(b => b.ProvinceId == launch.Id)
+                .ToArrayAsync(cancellationToken);
+
+            // Same pattern as BuildUnit: read unlocked tech ids fresh, after the lock,
+            // so a tech unlocked this tick is immediately usable.
+            var unlockedTechIds = await _db.ResearchProgress
+                .Where(r => r.PlayerId == ctx.Player!.Id && r.IsUnlocked)
+                .Select(r => r.TechId)
+                .ToArrayAsync(cancellationToken);
+
+            var result = _orderService.ValidateCyberAttack(
+                ctx.Player!, launch, target, launchBuildings,
+                unlockedTechIds, ctx.World!.CurrentTick, ctx.World.Status);
+
+            return await PersistCyberAttackOrderAsync(result, ctx.Player!, cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
     [HttpPost("build-unit")]
     public async Task<ActionResult<ConstructionOrderAccepted>> BuildUnit(
         Guid worldId,
@@ -452,6 +513,27 @@ public sealed class OrdersController : ControllerBase
             order.BuildingType?.ToString(),
             order.IssuedAtTick,
             order.TicksRemaining));
+    }
+
+    private async Task<ActionResult<CyberAttackOrderAccepted>> PersistCyberAttackOrderAsync(
+        OrderValidationResult result, Player caller, CancellationToken ct)
+    {
+        if (!result.IsAccepted)
+        {
+            return RejectionToActionResult<CyberAttackOrderAccepted>(result);
+        }
+
+        var order = result.CyberAttackOrder!;
+        OrderService.DebitForCyberAttack(caller); // mutates tracked Player row
+        _db.CyberAttackOrders.Add(order);
+        await _db.SaveChangesAsync(ct);
+
+        _logger.LogInformation(
+            "Cyber attack order accepted: {OrderId} attacker={PlayerId} launch={LaunchProvinceId} target={TargetProvinceId} issuedAt={IssuedAtTick}",
+            order.Id, order.AttackerPlayerId, order.LaunchProvinceId, order.TargetProvinceId, order.IssuedAtTick);
+
+        return Ok(new CyberAttackOrderAccepted(
+            order.Id, order.LaunchProvinceId, order.TargetProvinceId, order.IssuedAtTick));
     }
 
     private ActionResult<T> RejectionToActionResult<T>(OrderValidationResult result)

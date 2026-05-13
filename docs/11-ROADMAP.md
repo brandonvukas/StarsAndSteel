@@ -89,7 +89,7 @@ Make the late game spicy.
 - ☑ Submarines *(Phase 3c — tech-gated submarine_warfare; stealth filter via co-located ASW Frigate/Destroyer; non-ASW units cannot damage subs)*
 - ☑ Strategic missiles (cruise, ballistic) + missile silos *(Phase 3a — global range, no interception MVP)*
 - ☑ Tactical nukes (toggleable per game) *(Phase 3a — radiation persists, halves resource output linearly)*
-- ☐ Cyber warfare cells + Cyber Operations Centers
+- ☑ Cyber warfare cells + Cyber Operations Centers *(Phase 3d — order type only; tech-gated cyber_warfare; 50/50 effect roll DrainMoney/SlowResearch resolved server-side; UI hookup deferred)*
 - ☐ Special Forces operations (sabotage, intel)
 - ☐ Theater commanders (generals)
 - ☐ Doctrines (Maneuver / Firepower / Defense)

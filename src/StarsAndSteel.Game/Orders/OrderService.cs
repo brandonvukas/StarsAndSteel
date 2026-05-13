@@ -30,6 +30,9 @@ public enum OrderRejectionReason
     NukesDisabledForWorld,          // 409 — Phase 3a; world has NukesEnabled=false
     MissileSiloMissing,             // 400 — Phase 3a; launch province has no MissileSilo
     RequiredTechMissing,            // 409 — Phase 3b; build requires an unlocked tech
+    CyberOpsCenterMissing,          // 400 — Phase 3d; launch province has no CyberOperationsCenter
+    CyberCannotTargetSelf,          // 400 — Phase 3d; attacker may not cyber their own province
+    CyberTargetUnowned,             // 400 — Phase 3d; target province has no owner (nothing to drain)
 }
 
 /// <summary>
@@ -41,17 +44,21 @@ public enum OrderRejectionReason
 public sealed record OrderValidationResult(
     UnitOrder? UnitOrder,
     ConstructionOrder? ConstructionOrder,
+    CyberAttackOrder? CyberAttackOrder,
     OrderRejectionReason? Rejection,
     string? RejectionMessage)
 {
     public static OrderValidationResult Accept(UnitOrder order) =>
-        new(order, null, null, null);
+        new(order, null, null, null, null);
 
     public static OrderValidationResult Accept(ConstructionOrder order) =>
-        new(null, order, null, null);
+        new(null, order, null, null, null);
+
+    public static OrderValidationResult Accept(CyberAttackOrder order) =>
+        new(null, null, order, null, null);
 
     public static OrderValidationResult Reject(OrderRejectionReason reason, string message) =>
-        new(null, null, reason, message);
+        new(null, null, null, reason, message);
 
     public bool IsAccepted => Rejection is null;
 }
@@ -203,6 +210,87 @@ public sealed class OrderService
             IssuedAtTick = currentTick + 1,
             Status = OrderStatus.Pending,
         });
+    }
+
+    /// <summary>
+    /// Phase 3d: validate a player-level cyber attack. Requires:
+    /// <list type="bullet">
+    ///   <item>The launch province is owned by the caller.</item>
+    ///   <item>The launch province has at least one <see cref="BuildingType.CyberOperationsCenter"/>.</item>
+    ///   <item>The caller has unlocked the <c>cyber_warfare</c> tech.</item>
+    ///   <item>The target province has an owner (cannot drain an unowned province).</item>
+    ///   <item>The target's owner is not the caller (no self-cyber).</item>
+    /// </list>
+    /// Resource cost (money + electronics) is the controller's responsibility — pass
+    /// <paramref name="caller"/> with sufficient resources or pre-check before calling.
+    /// The actual effect (slow research vs. drain money) is rolled at resolution time
+    /// by <c>CyberAttackStep</c>; this method only constructs the pending order row.
+    /// </summary>
+    public OrderValidationResult ValidateCyberAttack(
+        Player caller,
+        Province launchProvince,
+        Province targetProvince,
+        IReadOnlyCollection<Building> launchProvinceBuildings,
+        IReadOnlyCollection<string> unlockedTechIds,
+        int currentTick,
+        GameWorldStatus worldStatus)
+    {
+        if (worldStatus == GameWorldStatus.Ended)
+            return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
+
+        if (launchProvince.OwnerPlayerId != caller.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.ProvinceNotOwnedByCaller,
+                "You do not own the launch province.");
+
+        if (!launchProvinceBuildings.Any(b => b.Type == BuildingType.CyberOperationsCenter))
+            return OrderValidationResult.Reject(OrderRejectionReason.CyberOpsCenterMissing,
+                "Launch province must have a Cyber Operations Center.");
+
+        if (!unlockedTechIds.Contains("cyber_warfare", StringComparer.Ordinal))
+            return OrderValidationResult.Reject(OrderRejectionReason.RequiredTechMissing,
+                "Cyber Warfare tech is required to launch cyber attacks.");
+
+        if (targetProvince.OwnerPlayerId is null)
+            return OrderValidationResult.Reject(OrderRejectionReason.CyberTargetUnowned,
+                "Target province has no owner.");
+
+        if (targetProvince.OwnerPlayerId == caller.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.CyberCannotTargetSelf,
+                "Cannot launch a cyber attack against your own province.");
+
+        if (caller.Money < CyberAttackMoneyCost || caller.Electronics < CyberAttackElectronicsCost)
+            return OrderValidationResult.Reject(OrderRejectionReason.InsufficientResources,
+                $"Cyber attack requires {CyberAttackMoneyCost} money and {CyberAttackElectronicsCost} electronics.");
+
+        return OrderValidationResult.Accept(new CyberAttackOrder
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = launchProvince.GameWorldId,
+            AttackerPlayerId = caller.Id,
+            LaunchProvinceId = launchProvince.Id,
+            TargetProvinceId = targetProvince.Id,
+            EffectKind = null,
+            IssuedAtTick = currentTick + 1,
+            Status = OrderStatus.Pending,
+        });
+    }
+
+    /// <summary>Money cost debited from the attacker on a successful CyberAttack submission (Phase 3d).</summary>
+    public const long CyberAttackMoneyCost = 500;
+
+    /// <summary>Electronics cost debited from the attacker on a successful CyberAttack submission (Phase 3d).</summary>
+    public const long CyberAttackElectronicsCost = 200;
+
+    /// <summary>
+    /// Phase 3d: subtract the cyber-attack submission cost from the attacker. Mirrors
+    /// <see cref="DebitForBuild"/> in shape — controller calls this on a tracked Player
+    /// row right before <c>SaveChangesAsync</c>.
+    /// </summary>
+    public static void DebitForCyberAttack(Player caller)
+    {
+        ArgumentNullException.ThrowIfNull(caller);
+        caller.Money -= CyberAttackMoneyCost;
+        caller.Electronics -= CyberAttackElectronicsCost;
     }
 
     /// <summary>

@@ -51,6 +51,7 @@ public sealed class TickProcessor
         new CombatStep(),
         new ConstructionStep(),
         new ResearchStep(),
+        new CyberAttackStep(),
         new MoraleRecoveryStep(),
         new OfferExpiryStep(),
         new VictoryCheckStep(),
@@ -98,7 +99,8 @@ public sealed class TickProcessor
         IList<ProvinceAdjacency> adjacencies,
         IList<TreatyOffer>? pendingTreatyOffers = null,
         RelationLookup? relations = null,
-        IList<ResearchProgress>? activeResearch = null)
+        IList<ResearchProgress>? activeResearch = null,
+        IList<CyberAttackOrder>? pendingCyberAttackOrders = null)
     {
         ArgumentNullException.ThrowIfNull(world);
         ArgumentNullException.ThrowIfNull(units);
@@ -117,7 +119,8 @@ public sealed class TickProcessor
             adjacencies: adjacencies,
             pendingTreatyOffers: pendingTreatyOffers ?? new List<TreatyOffer>(),
             relations: relations ?? RelationLookup.Empty,
-            activeResearch: activeResearch ?? new List<ResearchProgress>());
+            activeResearch: activeResearch ?? new List<ResearchProgress>(),
+            pendingCyberAttackOrders: pendingCyberAttackOrders ?? new List<CyberAttackOrder>());
 
         foreach (var step in _steps)
         {

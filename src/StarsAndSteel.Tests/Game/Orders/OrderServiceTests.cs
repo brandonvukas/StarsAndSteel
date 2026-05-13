@@ -641,6 +641,135 @@ public sealed class OrderServiceTests
         result.ConstructionOrder!.UnitType.Should().Be(UnitType.Submarine);
     }
 
+    // ---- CyberAttack (Phase 3d) ---------------------------------------
+
+    [Fact]
+    public void ValidateCyberAttack_accepts_when_all_prereqs_met()
+    {
+        var f = new Fixture();
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, ops,
+            unlockedTechIds: new[] { "cyber_warfare" },
+            CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+        result.CyberAttackOrder!.AttackerPlayerId.Should().Be(f.Alice.Id);
+        result.CyberAttackOrder.LaunchProvinceId.Should().Be(f.ProvinceA.Id);
+        result.CyberAttackOrder.TargetProvinceId.Should().Be(f.ProvinceB.Id);
+        result.CyberAttackOrder.IssuedAtTick.Should().Be(CurrentTick + 1);
+        result.CyberAttackOrder.EffectKind.Should().BeNull(); // rolled at resolve time
+        result.CyberAttackOrder.Status.Should().Be(OrderStatus.Pending);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_world_ended()
+    {
+        var f = new Fixture();
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, ops,
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Ended);
+
+        result.Rejection.Should().Be(OrderRejectionReason.GameEnded);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_launch_province_not_owned()
+    {
+        var f = new Fixture();
+        // Bob tries to launch from Alice's province.
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Bob, f.ProvinceA, f.ProvinceB, ops,
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.ProvinceNotOwnedByCaller);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_cyber_ops_center_missing()
+    {
+        var f = new Fixture();
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, Array.Empty<Building>(),
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.CyberOpsCenterMissing);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_cyber_warfare_tech_missing()
+    {
+        var f = new Fixture();
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, ops,
+            unlockedTechIds: Array.Empty<string>(),
+            CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.RequiredTechMissing);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_target_unowned()
+    {
+        var f = new Fixture();
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceC, ops,
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.CyberTargetUnowned);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_target_is_own_province()
+    {
+        var f = new Fixture();
+        // Make ProvinceC owned by Alice; she can't cyber herself.
+        f.ProvinceC.OwnerPlayerId = f.Alice.Id;
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceC, ops,
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.CyberCannotTargetSelf);
+    }
+
+    [Fact]
+    public void ValidateCyberAttack_rejects_when_resources_insufficient()
+    {
+        var f = new Fixture();
+        f.Alice.Money = 0; // < 500 cost
+        var ops = new[] { new Building { Type = BuildingType.CyberOperationsCenter, ProvinceId = f.ProvinceA.Id } };
+
+        var result = _service.ValidateCyberAttack(
+            f.Alice, f.ProvinceA, f.ProvinceB, ops,
+            new[] { "cyber_warfare" }, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.InsufficientResources);
+    }
+
+    [Fact]
+    public void DebitForCyberAttack_subtracts_money_and_electronics()
+    {
+        var f = new Fixture();
+        f.Alice.Money = 1000;
+        f.Alice.Electronics = 1000;
+
+        OrderService.DebitForCyberAttack(f.Alice);
+
+        f.Alice.Money.Should().Be(1000 - OrderService.CyberAttackMoneyCost);
+        f.Alice.Electronics.Should().Be(1000 - OrderService.CyberAttackElectronicsCost);
+    }
+
     // ---- Test fixture --------------------------------------------------
 
     private sealed class Fixture

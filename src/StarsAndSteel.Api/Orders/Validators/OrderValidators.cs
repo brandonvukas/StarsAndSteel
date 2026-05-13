@@ -40,6 +40,18 @@ public sealed class MissileLaunchOrderRequestValidator : AbstractValidator<Missi
     }
 }
 
+public sealed class CyberAttackOrderRequestValidator : AbstractValidator<CyberAttackOrderRequest>
+{
+    public CyberAttackOrderRequestValidator()
+    {
+        RuleFor(x => x.LaunchProvinceId).NotEmpty();
+        RuleFor(x => x.TargetProvinceId).NotEmpty();
+        RuleFor(x => x.TargetProvinceId)
+            .NotEqual(x => x.LaunchProvinceId)
+                .WithMessage("Cyber attack target must differ from the launch province.");
+    }
+}
+
 public sealed class BuildUnitOrderRequestValidator : AbstractValidator<BuildUnitOrderRequest>
 {
     public BuildUnitOrderRequestValidator()
