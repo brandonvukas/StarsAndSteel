@@ -52,6 +52,15 @@ public sealed class CyberAttackOrderRequestValidator : AbstractValidator<CyberAt
     }
 }
 
+public sealed class SabotageOrderRequestValidator : AbstractValidator<SabotageOrderRequest>
+{
+    public SabotageOrderRequestValidator()
+    {
+        RuleFor(x => x.UnitId).NotEmpty();
+        RuleFor(x => x.TargetProvinceId).NotEmpty();
+    }
+}
+
 public sealed class BuildUnitOrderRequestValidator : AbstractValidator<BuildUnitOrderRequest>
 {
     public BuildUnitOrderRequestValidator()

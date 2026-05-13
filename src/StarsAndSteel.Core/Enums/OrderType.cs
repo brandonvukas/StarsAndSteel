@@ -23,5 +23,14 @@ public enum OrderType
     /// "cyber_warfare". One of two random effects (slow research / drain money)
     /// is applied to the target province's owner.
     /// </summary>
-    CyberAttack = 9
+    CyberAttack = 9,
+    /// <summary>
+    /// Phase 3e: a SpecialForces ground unit, stationed at a friendly province
+    /// adjacent to an enemy-owned province, conducts a covert sabotage raid.
+    /// Resolved by SabotageStep at next tick: destroys one random enemy
+    /// building at the target, inflicts province morale damage, and the SF
+    /// stack takes light casualties on extraction. The SF unit does NOT
+    /// move; it stays in its launch province.
+    /// </summary>
+    Sabotage = 10
 }

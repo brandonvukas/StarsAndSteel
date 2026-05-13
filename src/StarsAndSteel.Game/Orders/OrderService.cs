@@ -33,6 +33,9 @@ public enum OrderRejectionReason
     CyberOpsCenterMissing,          // 400 — Phase 3d; launch province has no CyberOperationsCenter
     CyberCannotTargetSelf,          // 400 — Phase 3d; attacker may not cyber their own province
     CyberTargetUnowned,             // 400 — Phase 3d; target province has no owner (nothing to drain)
+    SabotageRequiresSpecialForces,  // 400 — Phase 3e; only SpecialForces units may sabotage
+    SabotageTargetHasNoBuildings,   // 400 — Phase 3e; nothing to destroy
+    SabotageTargetNotEnemy,         // 400 — Phase 3e; target province must be owned by an enemy
 }
 
 /// <summary>
@@ -150,6 +153,63 @@ public sealed class OrderService
             Id = Guid.NewGuid(),
             UnitId = unit.Id,
             OrderType = OrderType.Attack,
+            TargetProvinceId = targetProvince.Id,
+            IssuedAtTick = currentTick + 1,
+            Status = OrderStatus.Pending,
+        });
+    }
+
+    /// <summary>
+    /// Phase 3e: a Special Forces ground unit conducts a covert sabotage raid
+    /// against an adjacent enemy-owned province. Validation checks:
+    /// <list type="bullet">
+    ///   <item>Caller owns the unit; unit is <see cref="UnitType.SpecialForces"/> and not in transit.</item>
+    ///   <item>Target is adjacent to the SF's current province.</item>
+    ///   <item>Target has an owner that is not the caller (no friendly-fire sabotage).</item>
+    ///   <item>Target has at least one building to destroy.</item>
+    /// </list>
+    /// The actual building loss + casualty roll happens in <c>SabotageStep</c> at
+    /// resolution time so we don't need to re-load the target's buildings here for
+    /// the destruction logic — only to verify there's anything worth sabotaging.
+    /// </summary>
+    public OrderValidationResult ValidateSabotage(
+        Unit unit,
+        Player caller,
+        Province targetProvince,
+        IReadOnlySet<Guid> adjacentProvinceIds,
+        IReadOnlyCollection<Building> targetProvinceBuildings,
+        int currentTick,
+        GameWorldStatus worldStatus)
+    {
+        if (worldStatus == GameWorldStatus.Ended)
+            return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
+
+        if (unit.OwnerPlayerId != caller.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitNotOwnedByCaller, "You do not own this unit.");
+
+        if (unit.Type != UnitType.SpecialForces)
+            return OrderValidationResult.Reject(OrderRejectionReason.SabotageRequiresSpecialForces,
+                "Only Special Forces units can perform sabotage.");
+
+        if (unit.IsInTransit)
+            return OrderValidationResult.Reject(OrderRejectionReason.UnitInTransit, "Unit is already in transit.");
+
+        if (!adjacentProvinceIds.Contains(targetProvince.Id))
+            return OrderValidationResult.Reject(OrderRejectionReason.TargetProvinceNotAdjacent, "Target province is not adjacent.");
+
+        if (targetProvince.OwnerPlayerId is null || targetProvince.OwnerPlayerId == caller.Id)
+            return OrderValidationResult.Reject(OrderRejectionReason.SabotageTargetNotEnemy,
+                "Target province must be owned by an enemy.");
+
+        if (targetProvinceBuildings.Count == 0)
+            return OrderValidationResult.Reject(OrderRejectionReason.SabotageTargetHasNoBuildings,
+                "Target province has no buildings to sabotage.");
+
+        return OrderValidationResult.Accept(new UnitOrder
+        {
+            Id = Guid.NewGuid(),
+            UnitId = unit.Id,
+            OrderType = OrderType.Sabotage,
             TargetProvinceId = targetProvince.Id,
             IssuedAtTick = currentTick + 1,
             Status = OrderStatus.Pending,

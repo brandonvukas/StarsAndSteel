@@ -52,6 +52,7 @@ public sealed class TickContext
         UnitsToInsert = new List<Unit>();
         BuildingsToInsert = new List<Building>();
         UnitsToDelete = new List<Unit>();
+        BuildingsToDelete = new List<Building>();
         NewsItemsToInsert = new List<NewsItem>();
         Events = new List<TickEvent>();
     }
@@ -143,6 +144,12 @@ public sealed class TickContext
     /// them from EF post-process.
     /// </summary>
     public IList<Unit> UnitsToDelete { get; }
+
+    /// <summary>
+    /// Buildings destroyed by this tick (e.g. SF sabotage in Phase 3e). Runner removes
+    /// them from EF post-process.
+    /// </summary>
+    public IList<Building> BuildingsToDelete { get; }
 
     /// <summary>
     /// News headlines emitted this tick by <see cref="Steps.NewsStep"/>. Runner inserts

@@ -41,6 +41,7 @@ public sealed class OrdersController : ControllerBase
     private readonly IValidator<BuildUnitOrderRequest> _buildUnitValidator;
     private readonly IValidator<BuildBuildingOrderRequest> _buildBuildingValidator;
     private readonly IValidator<CyberAttackOrderRequest> _cyberAttackValidator;
+    private readonly IValidator<SabotageOrderRequest> _sabotageValidator;
     private readonly ILogger<OrdersController> _logger;
 
     public OrdersController(
@@ -55,6 +56,7 @@ public sealed class OrdersController : ControllerBase
         IValidator<BuildUnitOrderRequest> buildUnitValidator,
         IValidator<BuildBuildingOrderRequest> buildBuildingValidator,
         IValidator<CyberAttackOrderRequest> cyberAttackValidator,
+        IValidator<SabotageOrderRequest> sabotageValidator,
         ILogger<OrdersController> logger)
     {
         _db = db;
@@ -68,6 +70,7 @@ public sealed class OrdersController : ControllerBase
         _buildUnitValidator = buildUnitValidator;
         _buildBuildingValidator = buildBuildingValidator;
         _cyberAttackValidator = cyberAttackValidator;
+        _sabotageValidator = sabotageValidator;
         _logger = logger;
     }
 
@@ -320,6 +323,55 @@ public sealed class OrdersController : ControllerBase
                 unlockedTechIds, ctx.World!.CurrentTick, ctx.World.Status);
 
             return await PersistCyberAttackOrderAsync(result, ctx.Player!, cancellationToken);
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
+
+    [HttpPost("sabotage")]
+    public async Task<ActionResult<UnitOrderAccepted>> Sabotage(
+        Guid worldId,
+        [FromBody] SabotageOrderRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (badRequest, _) = await ValidateAsync(_sabotageValidator, request, cancellationToken);
+        if (badRequest is not null) return badRequest;
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var gate = _locks.GetOrCreate(worldId);
+        await gate.WaitAsync(cancellationToken);
+        try
+        {
+            var ctx = await LoadCallerContextAsync(worldId, user.Id, cancellationToken);
+            if (ctx.NotFound) return NotFound();
+            if (ctx.Forbidden) return Forbid();
+
+            var unit = await _db.Units.FirstOrDefaultAsync(
+                u => u.Id == request.UnitId && u.GameWorldId == worldId, cancellationToken);
+            if (unit is null) return NotFound(new { error = "Unit not found in this world." });
+
+            var target = await _db.Provinces.FirstOrDefaultAsync(
+                p => p.Id == request.TargetProvinceId && p.GameWorldId == worldId, cancellationToken);
+            if (target is null) return NotFound(new { error = "Target province not found in this world." });
+
+            var anchor = unit.LocationProvinceId;
+            if (anchor is null)
+                return BadRequest(new { error = "Unit has no current location (in transit)." });
+
+            var adjacent = await GetAdjacentProvinceIdsAsync(anchor.Value, cancellationToken);
+            var targetBuildings = await _db.Buildings
+                .Where(b => b.ProvinceId == target.Id)
+                .ToArrayAsync(cancellationToken);
+
+            var result = _orderService.ValidateSabotage(
+                unit, ctx.Player!, target, adjacent, targetBuildings,
+                ctx.World!.CurrentTick, ctx.World.Status);
+
+            return await PersistUnitOrderAsync(result, ctx.World, cancellationToken);
         }
         finally
         {

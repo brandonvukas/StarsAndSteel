@@ -770,6 +770,122 @@ public sealed class OrderServiceTests
         f.Alice.Electronics.Should().Be(1000 - OrderService.CyberAttackElectronicsCost);
     }
 
+    // ---- Sabotage (Phase 3e) ------------------------------------------
+
+    [Fact]
+    public void ValidateSabotage_accepts_SF_targeting_adjacent_enemy_with_buildings()
+    {
+        var f = new Fixture();
+        var sf = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.SpecialForces, Domain = UnitDomain.Ground,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+        var targetBuildings = new[] { new Building { Id = Guid.NewGuid(), Type = BuildingType.SteelMill, ProvinceId = f.ProvinceB.Id } };
+
+        var result = _service.ValidateSabotage(
+            sf, f.Alice, f.ProvinceB, new HashSet<Guid> { f.ProvinceB.Id },
+            targetBuildings, CurrentTick, GameWorldStatus.Active);
+
+        result.IsAccepted.Should().BeTrue();
+        result.UnitOrder!.OrderType.Should().Be(OrderType.Sabotage);
+        result.UnitOrder.UnitId.Should().Be(sf.Id);
+        result.UnitOrder.TargetProvinceId.Should().Be(f.ProvinceB.Id);
+        result.UnitOrder.IssuedAtTick.Should().Be(CurrentTick + 1);
+    }
+
+    [Fact]
+    public void ValidateSabotage_rejects_non_special_forces_unit()
+    {
+        var f = new Fixture();
+        var targetBuildings = new[] { new Building { Type = BuildingType.SteelMill, ProvinceId = f.ProvinceB.Id } };
+
+        var result = _service.ValidateSabotage(
+            f.Alice_MechInf, f.Alice, f.ProvinceB, new HashSet<Guid> { f.ProvinceB.Id },
+            targetBuildings, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.SabotageRequiresSpecialForces);
+    }
+
+    [Fact]
+    public void ValidateSabotage_rejects_non_adjacent_target()
+    {
+        var f = new Fixture();
+        var sf = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.SpecialForces, Domain = UnitDomain.Ground,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+        var targetBuildings = new[] { new Building { Type = BuildingType.SteelMill, ProvinceId = f.ProvinceC.Id } };
+
+        var result = _service.ValidateSabotage(
+            sf, f.Alice, f.ProvinceC, new HashSet<Guid> { f.ProvinceB.Id },
+            targetBuildings, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.TargetProvinceNotAdjacent);
+    }
+
+    [Fact]
+    public void ValidateSabotage_rejects_target_owned_by_caller()
+    {
+        var f = new Fixture();
+        var sf = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.SpecialForces, Domain = UnitDomain.Ground,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+        // Make ProvinceB owned by Alice — same player, should reject.
+        f.ProvinceB.OwnerPlayerId = f.Alice.Id;
+        var targetBuildings = new[] { new Building { Type = BuildingType.SteelMill, ProvinceId = f.ProvinceB.Id } };
+
+        var result = _service.ValidateSabotage(
+            sf, f.Alice, f.ProvinceB, new HashSet<Guid> { f.ProvinceB.Id },
+            targetBuildings, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.SabotageTargetNotEnemy);
+    }
+
+    [Fact]
+    public void ValidateSabotage_rejects_target_with_no_buildings()
+    {
+        var f = new Fixture();
+        var sf = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Alice.Id,
+            Type = UnitType.SpecialForces, Domain = UnitDomain.Ground,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceA.Id,
+        };
+
+        var result = _service.ValidateSabotage(
+            sf, f.Alice, f.ProvinceB, new HashSet<Guid> { f.ProvinceB.Id },
+            Array.Empty<Building>(), CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.SabotageTargetHasNoBuildings);
+    }
+
+    [Fact]
+    public void ValidateSabotage_rejects_unit_owned_by_other_player()
+    {
+        var f = new Fixture();
+        var bobSf = new Unit
+        {
+            Id = Guid.NewGuid(), GameWorldId = f.WorldId, OwnerPlayerId = f.Bob.Id,
+            Type = UnitType.SpecialForces, Domain = UnitDomain.Ground,
+            Strength = 1000, Morale = 100, LocationProvinceId = f.ProvinceB.Id,
+        };
+        var targetBuildings = new[] { new Building { Type = BuildingType.SteelMill, ProvinceId = f.ProvinceA.Id } };
+
+        // Alice tries to sabotage with Bob's SF unit.
+        var result = _service.ValidateSabotage(
+            bobSf, f.Alice, f.ProvinceA, new HashSet<Guid> { f.ProvinceA.Id },
+            targetBuildings, CurrentTick, GameWorldStatus.Active);
+
+        result.Rejection.Should().Be(OrderRejectionReason.UnitNotOwnedByCaller);
+    }
+
     // ---- Test fixture --------------------------------------------------
 
     private sealed class Fixture

@@ -90,7 +90,7 @@ Make the late game spicy.
 - ☑ Strategic missiles (cruise, ballistic) + missile silos *(Phase 3a — global range, no interception MVP)*
 - ☑ Tactical nukes (toggleable per game) *(Phase 3a — radiation persists, halves resource output linearly)*
 - ☑ Cyber warfare cells + Cyber Operations Centers *(Phase 3d — order type only; tech-gated cyber_warfare; 50/50 effect roll DrainMoney/SlowResearch resolved server-side; UI hookup deferred)*
-- ☐ Special Forces operations (sabotage, intel)
+- ☑ Special Forces operations (sabotage, intel) *(Phase 3e — Sabotage order: SF unit at adjacent enemy province destroys 1 random building, takes 200 strength casualties, target province loses 10 morale; intel ops deferred)*
 - ☐ Theater commanders (generals)
 - ☐ Doctrines (Maneuver / Firepower / Defense)
 - ☐ Wonders / megaprojects (5 to start)

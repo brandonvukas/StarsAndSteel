@@ -48,6 +48,7 @@ public sealed class TickProcessor
         new MovementStep(),
         new AirStrikeStep(),
         new MissileImpactStep(),
+        new SabotageStep(),
         new CombatStep(),
         new ConstructionStep(),
         new ResearchStep(),
@@ -141,6 +142,7 @@ public sealed class TickProcessor
             UnitsToInsert: context.UnitsToInsert.ToArray(),
             BuildingsToInsert: context.BuildingsToInsert.ToArray(),
             UnitsToDelete: context.UnitsToDelete.ToArray(),
-            NewsItemsToInsert: context.NewsItemsToInsert.ToArray());
+            NewsItemsToInsert: context.NewsItemsToInsert.ToArray(),
+            BuildingsToDelete: context.BuildingsToDelete.ToArray());
     }
 }

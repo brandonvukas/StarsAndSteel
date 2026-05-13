@@ -173,6 +173,9 @@ public sealed class TickRunner
         if (result.NewsItemsToInsert is { Count: > 0 } newsToInsert)
             _db.NewsItems.AddRange(newsToInsert);
 
+        if (result.BuildingsToDelete is { Count: > 0 } buildingsDead)
+            _db.Buildings.RemoveRange(buildingsDead);
+
         try
         {
             await _db.SaveChangesAsync(cancellationToken);

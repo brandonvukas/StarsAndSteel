@@ -23,6 +23,13 @@ public sealed record MissileLaunchOrderRequest(Guid UnitId, Guid TargetProvinceI
 /// </summary>
 public sealed record CyberAttackOrderRequest(Guid LaunchProvinceId, Guid TargetProvinceId);
 
+/// <summary>
+/// Phase 3e: order a Special Forces ground unit to sabotage an adjacent enemy
+/// province. Resolves at the next tick: destroys one random enemy building,
+/// inflicts province morale damage, and the SF stack takes light casualties.
+/// </summary>
+public sealed record SabotageOrderRequest(Guid UnitId, Guid TargetProvinceId);
+
 /// <summary>Build N units of <paramref name="UnitType"/> at <paramref name="ProvinceId"/>.</summary>
 public sealed record BuildUnitOrderRequest(Guid ProvinceId, string UnitType, int Quantity);
 
