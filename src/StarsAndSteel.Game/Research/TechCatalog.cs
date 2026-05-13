@@ -47,6 +47,14 @@ public static class TechCatalog
             "Unlocks Stealth Drone recon platform.",
             MoneyCost: 2500, ElectronicsCost: 1000, TicksToResearch: 18,
             Prerequisites: new[] { "smart_munitions" }),
+        // Phase 3c: unlocks the Submarine naval unit. Subs are stealth platforms
+        // (hidden in enemy snapshots unless an enemy Frigate/Destroyer is co-located)
+        // and devastating vs surface ships; surface ships need ASW (Frigate/Destroyer)
+        // even to engage them at all. Comparable cost/duration to stealth_systems.
+        new("submarine_warfare", "Submarine Warfare", "Military",
+            "Unlocks Submarine recruitment at NavalYards. Stealth + anti-ship.",
+            MoneyCost: 3500, ElectronicsCost: 1200, TicksToResearch: 22,
+            Prerequisites: new[] { "advanced_armor" }),
 
         // Industry
         new("modular_construction", "Modular Construction", "Industry",

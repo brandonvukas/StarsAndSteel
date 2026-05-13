@@ -608,6 +608,39 @@ public sealed class OrderServiceTests
         result.IsAccepted.Should().BeTrue();
     }
 
+    // ---- BuildUnit tech gating: Submarine (Phase 3c) -----------------
+
+    [Fact]
+    public void ValidateBuildUnit_rejects_submarine_when_tech_not_unlocked()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+        var nyard = new[] { new Building { Type = BuildingType.NavalYard, ProvinceId = f.ProvinceA.Id } };
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.Submarine, quantity: 100,
+            nyard, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: Array.Empty<string>());
+
+        result.Rejection.Should().Be(OrderRejectionReason.RequiredTechMissing);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_accepts_submarine_when_submarine_warfare_unlocked()
+    {
+        var f = new Fixture();
+        f.ProvinceA.IsCoastal = true;
+        var nyard = new[] { new Building { Type = BuildingType.NavalYard, ProvinceId = f.ProvinceA.Id } };
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.Submarine, quantity: 100,
+            nyard, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: new[] { "submarine_warfare" });
+
+        result.IsAccepted.Should().BeTrue();
+        result.ConstructionOrder!.UnitType.Should().Be(UnitType.Submarine);
+    }
+
     // ---- Test fixture --------------------------------------------------
 
     private sealed class Fixture

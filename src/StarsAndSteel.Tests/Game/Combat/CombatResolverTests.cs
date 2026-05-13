@@ -52,6 +52,47 @@ public class CombatResolverTests
             .Should().BeGreaterThan(CombatStats.DamageFraction(UnitType.MechInfantry, UnitType.MainBattleTank));
     }
 
+    // ---- Phase 3c: Submarine + ASW asymmetry ----
+
+    [Fact]
+    public void Submarine_devastates_carrier_per_matrix()
+    {
+        CombatStats.DamageFraction(UnitType.Submarine, UnitType.AircraftCarrier).Should().Be(0.20);
+    }
+
+    [Fact]
+    public void Non_asw_naval_cannot_damage_submarines()
+    {
+        // Carrier has no ASW capability of its own (only its wings + escorts do).
+        CombatStats.DamageFraction(UnitType.AircraftCarrier, UnitType.Submarine).Should().Be(0.0);
+        // Ground / AA / fighters have no business hurting subs either.
+        CombatStats.DamageFraction(UnitType.MainBattleTank,   UnitType.Submarine).Should().Be(0.0);
+        CombatStats.DamageFraction(UnitType.AABattery,        UnitType.Submarine).Should().Be(0.0);
+        CombatStats.DamageFraction(UnitType.MultiroleFighter, UnitType.Submarine).Should().Be(0.0);
+    }
+
+    [Fact]
+    public void Asw_destroyers_outdamage_asw_frigates_vs_submarines()
+    {
+        CombatStats.DamageFraction(UnitType.Destroyer, UnitType.Submarine)
+            .Should().BeGreaterThan(CombatStats.DamageFraction(UnitType.Frigate, UnitType.Submarine));
+    }
+
+    [Fact]
+    public void IsAsw_includes_only_frigate_and_destroyer()
+    {
+        CombatStats.IsAsw(UnitType.Frigate).Should().BeTrue();
+        CombatStats.IsAsw(UnitType.Destroyer).Should().BeTrue();
+        CombatStats.IsAsw(UnitType.AircraftCarrier).Should().BeFalse();
+        CombatStats.IsAsw(UnitType.Submarine).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsNaval_now_includes_submarine()
+    {
+        CombatStats.IsNaval(UnitType.Submarine).Should().BeTrue();
+    }
+
     private static (CombatResolver.Side Attacker, CombatResolver.Side Defender) TwoSides()
     {
         var aliceId = Guid.NewGuid();

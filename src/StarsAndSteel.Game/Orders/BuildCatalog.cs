@@ -81,6 +81,9 @@ public static class BuildCatalog
         // provinces in OrderService.ValidateBuildBuilding.
         new UnitBuildSpec(UnitType.Frigate,          UnitDomain.Naval,   Money: 800,  Oil: 150, Steel: 600, Electronics: 100,  Food: 0, Manpower: 50,  TicksToBuild: 12, RequiredBuilding: BuildingType.NavalYard),
         new UnitBuildSpec(UnitType.Destroyer,        UnitDomain.Naval,   Money: 1500, Oil: 300, Steel: 1000,Electronics: 250,  Food: 0, Manpower: 80,  TicksToBuild: 16, RequiredBuilding: BuildingType.NavalYard),
+        // Phase 3c: Submarine. Tech-gated behind "submarine_warfare". Heavy on
+        // electronics (sonar/comms suite); pricey because stealth is a force multiplier.
+        new UnitBuildSpec(UnitType.Submarine,        UnitDomain.Naval,   Money: 2200, Oil: 250, Steel: 1200,Electronics: 600,  Food: 0, Manpower: 60,  TicksToBuild: 20, RequiredBuilding: BuildingType.NavalYard, RequiredTechId: "submarine_warfare"),
 
         // Naval Aviation (Phase 2b). The carrier itself is a heavy expensive ship that
         // ferries CarrierAirWings. Wings have RequiresCarrier=true so the order service

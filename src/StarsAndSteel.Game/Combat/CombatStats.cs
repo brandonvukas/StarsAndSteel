@@ -57,6 +57,9 @@ public static class CombatStats
         UnitType.StealthDrone      => 0.5,
         UnitType.Frigate           => 1.4,
         UnitType.Destroyer         => 1.8,
+        // Phase 3c: stealth boat — moderate hull strength but the matrix does
+        // most of the lifting (devastating vs surface ships).
+        UnitType.Submarine         => 1.6,
         // Phase 2b: a carrier is a fat low-DPS hull. Survivability comes from its
         // escort ships and embarked wings, not from its own gun. Wings are "elite"
         // multirole air — slightly above MultiroleFighter to reflect their
@@ -186,6 +189,30 @@ public static class CombatStats
         Add(new[] { UnitType.Frigate },          new[] { UnitType.CarrierAirWing }, 1);
         Add(new[] { UnitType.Destroyer },        new[] { UnitType.CarrierAirWing }, 2);
 
+        // Phase 3c: Submarine combat asymmetry.
+        // Subs are devastating vs surface combatants (carriers especially — soft
+        // belly without escorts) and ignore non-ASW threats entirely. Surface
+        // ships ONLY damage subs if they have ASW capability (Frigate/Destroyer
+        // class). Bombers/carrier wings retain a token anti-sub strike via depth
+        // charges / ASW patrols (tier 1). Subs themselves are weak vs the very
+        // things designed to hunt them (Frigate/Destroyer counter at tier 2).
+        // Subs do NOT engage air targets (no AA suite while submerged).
+        Add(new[] { UnitType.Submarine }, new[] { UnitType.Frigate },         2);
+        Add(new[] { UnitType.Submarine }, new[] { UnitType.Destroyer },       2);
+        Add(new[] { UnitType.Submarine }, new[] { UnitType.AircraftCarrier }, 3);
+        Add(new[] { UnitType.Submarine }, new[] { UnitType.Submarine },       1);
+        // ASW: Frigate/Destroyer are the surface ASW platforms.
+        Add(new[] { UnitType.Frigate },   new[] { UnitType.Submarine }, 2);
+        Add(new[] { UnitType.Destroyer }, new[] { UnitType.Submarine }, 3);
+        // Air ASW: bombers + carrier wings can drop depth charges / sonobuoys.
+        Add(bomberClass,                            new[] { UnitType.Submarine }, 1);
+        Add(new[] { UnitType.CarrierAirWing },      new[] { UnitType.Submarine }, 2);
+        Add(new[] { UnitType.AttackHelicopter },    new[] { UnitType.Submarine }, 1);
+        // Note: AircraftCarrier, MultiroleFighter, CombatDrone, MobileArtillery,
+        // ground units, AABattery — all missing from the matrix as attackers vs
+        // Submarine. Per Build()'s "missing entry == 0 dmg" contract, they cannot
+        // damage subs. This is the core anti-ASW asymmetry.
+
         return m;
     }
 
@@ -203,9 +230,18 @@ public static class CombatStats
           or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber
           or UnitType.StealthDrone or UnitType.CarrierAirWing;
 
-    /// <summary>True if this unit type is a naval combatant (Phase 2I/2b).</summary>
+    /// <summary>True if this unit type is a naval combatant (Phase 2I/2b/3c).</summary>
     public static bool IsNaval(UnitType t) =>
-        t is UnitType.Frigate or UnitType.Destroyer or UnitType.AircraftCarrier;
+        t is UnitType.Frigate or UnitType.Destroyer or UnitType.AircraftCarrier
+          or UnitType.Submarine;
+
+    /// <summary>
+    /// Phase 3c: surface anti-submarine warfare platforms. A friendly ASW
+    /// platform co-located with an enemy submarine is what reveals it to fog,
+    /// and these are the only naval types that can damage subs in combat.
+    /// </summary>
+    public static bool IsAsw(UnitType t) =>
+        t is UnitType.Frigate or UnitType.Destroyer;
 
     /// <summary>Stealth-bomber bypass-AA roll target (60% bypass). Phase 1: no research bonus.</summary>
     public const double StealthBypassChance = 0.60;

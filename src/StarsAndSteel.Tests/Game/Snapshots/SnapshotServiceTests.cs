@@ -142,6 +142,89 @@ public sealed class SnapshotServiceTests
         snap.VisibleEnemyUnits.Should().NotContain(u => u.Type == nameof(UnitType.MultiroleFighter));
     }
 
+    // ---- Phase 3c: submarine stealth filter ----
+
+    [Fact]
+    public void Enemy_submarine_in_visible_province_is_hidden_without_my_asw_present()
+    {
+        var f = NewFixture();
+        // Bob's submarine in ProvinceB (visible to Alice via adjacency).
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Bob.Id, OwnerPlayer = f.Bob,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.Submarine, Domain = UnitDomain.Naval,
+            Strength = 800, Morale = 100,
+        });
+
+        var snap = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+
+        snap.VisibleEnemyUnits.Should().NotContain(u => u.Type == nameof(UnitType.Submarine));
+    }
+
+    [Fact]
+    public void Enemy_submarine_is_revealed_when_my_destroyer_is_co_located()
+    {
+        var f = NewFixture();
+        // Bob's sub in ProvinceB.
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Bob.Id, OwnerPlayer = f.Bob,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.Submarine, Domain = UnitDomain.Naval,
+            Strength = 800, Morale = 100,
+        });
+        // Alice's ASW destroyer in the same province.
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Alice.Id, OwnerPlayer = f.Alice,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.Destroyer, Domain = UnitDomain.Naval,
+            Strength = 600, Morale = 100,
+        });
+
+        var snap = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+
+        snap.VisibleEnemyUnits.Should().Contain(u =>
+            u.Type == nameof(UnitType.Submarine) && u.OwnerPlayerId == f.Bob.Id);
+    }
+
+    [Fact]
+    public void Enemy_submarine_is_NOT_revealed_by_my_carrier_alone_no_asw()
+    {
+        var f = NewFixture();
+        // Bob's sub in ProvinceB.
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Bob.Id, OwnerPlayer = f.Bob,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.Submarine, Domain = UnitDomain.Naval,
+            Strength = 800, Morale = 100,
+        });
+        // Alice has a carrier (no ASW) co-located. Should still be blind.
+        f.Units.Add(new Unit
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = f.World.Id, GameWorld = f.World,
+            OwnerPlayerId = f.Alice.Id, OwnerPlayer = f.Alice,
+            LocationProvinceId = f.ProvinceB.Id, LocationProvince = f.ProvinceB,
+            Type = UnitType.AircraftCarrier, Domain = UnitDomain.Naval,
+            Strength = 1000, Morale = 100,
+        });
+
+        var snap = new SnapshotService().Build(f.World, f.Adjacencies, f.Units, f.Alice.Id);
+
+        snap.VisibleEnemyUnits.Should().NotContain(u => u.Type == nameof(UnitType.Submarine));
+    }
+
     [Fact]
     public void Me_block_carries_resources_and_is_alive()
     {

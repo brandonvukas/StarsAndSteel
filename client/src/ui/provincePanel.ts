@@ -29,7 +29,8 @@ const BUILDABLE_UNITS = [
   // Naval (Phase 2I MVP-lite). Only buildable at coastal provinces with a NavalYard;
   // server enforces RequiredBuilding=NavalYard. We surface both regardless of coast
   // so the dropdown is stable; server will reject without a NavalYard.
-  'Frigate', 'Destroyer',
+  // Phase 3c: Submarine is tech-gated behind "submarine_warfare".
+  'Frigate', 'Destroyer', 'Submarine',
   // Naval Aviation (Phase 2b). AircraftCarrier needs NavalYard. CarrierAirWing
   // additionally needs a friendly carrier docked at the build province with a
   // free wing slot — server enforces this and returns NoCarrierWithSpareCapacity
@@ -46,6 +47,7 @@ const BUILDABLE_UNITS = [
 const UNIT_REQUIRED_TECH: Record<string, string | undefined> = {
   StealthBomber: 'stealth_systems',
   StealthDrone:  'stealth_drones',
+  Submarine:     'submarine_warfare',
 };
 
 export function mountProvincePanel(container: HTMLElement) {

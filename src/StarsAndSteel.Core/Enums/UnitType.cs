@@ -31,6 +31,10 @@ public enum UnitType
     // edges between coastal land provinces (no true ocean tiles in MVP).
     Frigate = 200,
     Destroyer = 201,
+    // Phase 3c: Submarine — stealth naval unit. Built at NavalYard like other ships
+    // but hidden from enemy snapshots unless an enemy Frigate/Destroyer is co-located
+    // (sonar detection). Strong vs surface ships, weak vs ASW.
+    Submarine = 203,
 
     // Naval Aviation (Phase 2b). AircraftCarrier is a heavy capital ship built at a
     // NavalYard; it CARRIES air units. CarrierAirWing is a special air unit that

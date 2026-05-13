@@ -86,7 +86,7 @@ Turn the demo into a real strategic game with social mechanics.
 Make the late game spicy.
 
 - ☑ Stealth Bomber + research-gated stealth drones *(Phase 3b — gated via TechCatalog stealth_systems / stealth_drones)*
-- ☐ Submarines
+- ☑ Submarines *(Phase 3c — tech-gated submarine_warfare; stealth filter via co-located ASW Frigate/Destroyer; non-ASW units cannot damage subs)*
 - ☑ Strategic missiles (cruise, ballistic) + missile silos *(Phase 3a — global range, no interception MVP)*
 - ☑ Tactical nukes (toggleable per game) *(Phase 3a — radiation persists, halves resource output linearly)*
 - ☐ Cyber warfare cells + Cyber Operations Centers

@@ -1,5 +1,7 @@
 using StarsAndSteel.Core.Entities;
+using StarsAndSteel.Core.Enums;
 using StarsAndSteel.Core.Snapshots;
+using StarsAndSteel.Game.Combat;
 
 namespace StarsAndSteel.Game.Snapshots;
 
@@ -139,11 +141,26 @@ public sealed class SnapshotService
         // --- Visible enemy units -----------------------------------------
         // Only stationed units in visible provinces are surfaced. In-transit
         // enemy units are invisible to MVP fog (they're "between" provinces).
+        //
+        // Phase 3c: enemy Submarines have a per-unit stealth filter on top of
+        // the province-visibility check. A sub is only revealed if the calling
+        // player has an ASW platform (Frigate/Destroyer) stationed in the same
+        // province. Without a sonar-equipped escort, a co-located enemy sub
+        // stays invisible even if the province itself is visible.
+        var myAswProvinces = units
+            .Where(u => u.OwnerPlayerId == callingPlayerId
+                && !u.IsInTransit
+                && u.LocationProvinceId is not null
+                && CombatStats.IsAsw(u.Type))
+            .Select(u => u.LocationProvinceId!.Value)
+            .ToHashSet();
+
         var visibleEnemyUnits = units
             .Where(u => u.OwnerPlayerId != callingPlayerId
                 && !u.IsInTransit
                 && u.LocationProvinceId is { } loc
-                && visibleProvinceIds.Contains(loc))
+                && visibleProvinceIds.Contains(loc)
+                && (u.Type != UnitType.Submarine || myAswProvinces.Contains(loc)))
             .Select(u => new SnapshotEnemyUnit(
                 Id: u.Id,
                 OwnerPlayerId: u.OwnerPlayerId,
