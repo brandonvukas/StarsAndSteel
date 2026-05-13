@@ -12,8 +12,8 @@ namespace StarsAndSteel.Game.Tick.Steps;
 /// MVP supports a single personality (Hawk). Future personalities slot in here via a
 /// switch on <see cref="Core.Entities.Player.AiPersonality"/>.
 /// <para/>
-/// Phase 2J adds Industrialist, Isolationist, and Schemer planners. Insurgent stays
-/// deferred (Phase 3 — needs random multiplier rerolls per game).
+/// Phase 2J adds Industrialist, Isolationist, and Schemer planners. Phase 4d adds
+/// Insurgent (chaotic random-action picker, deterministic via the per-world RNG).
 /// <para/>
 /// Determinism: the planner takes <see cref="TickContext.Rng"/>, so any AI tie-breaking
 /// pulls from the same per-world LCG that drives combat and other steps. Replays reproduce.
@@ -41,7 +41,7 @@ public sealed class AiTurnStep : ITickStep
                 AiPersonality.Industrialist => IndustrialistPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
                 AiPersonality.Isolationist  => IsolationistPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
                 AiPersonality.Schemer       => SchemerPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
-                // Insurgent (random multipliers per game) lands in Phase 3.
+                AiPersonality.Insurgent     => InsurgentPlanner.Plan(ai, context.World, context.Units, context.Adjacencies, context.ProcessingTick, context.Rng),
                 _ => null,
             };
 

@@ -160,7 +160,7 @@ public sealed class WorldFactory
             (AiPersonality.Industrialist, "Trade Concord",  "#0c4a7a", "#d4af37"),
             (AiPersonality.Hawk,          "Crimson Pact",   "#8b1a1a", "#2a2a2a"),
             (AiPersonality.Isolationist,  "Northern Watch", "#1c4a3a", "#cccccc"),
-            (AiPersonality.Hawk,          "Steel Vanguard", "#5a1414", "#3a3a3a"),
+            (AiPersonality.Insurgent,     "Free Cadres",    "#a04a14", "#1a1a1a"),
             (AiPersonality.Schemer,       "Shadow Bureau",  "#2a1a4a", "#7a5a9a"),
         };
 
