@@ -117,7 +117,9 @@ public static class CombatResolver
         // 2) AA fires (unless stealth bomber rolls bypass).
         if (attackerStrength > 0)
         {
-            var stealthBypass = attacker.Type == UnitType.StealthBomber && rng.NextDouble() < CombatStats.StealthBypassChance;
+            // Phase 3b: stealth drones share the bomber's bypass roll — small RCS, hard to track.
+            var stealthBypass = (attacker.Type == UnitType.StealthBomber || attacker.Type == UnitType.StealthDrone)
+                && rng.NextDouble() < CombatStats.StealthBypassChance;
             if (!stealthBypass)
             {
                 foreach (var aa in targetStacks.Where(u => u.Type == UnitType.AABattery && u.Strength > 0))

@@ -21,6 +21,10 @@ public enum UnitType
     MultiroleFighter = 103,
     StrategicBomber = 104,
     StealthBomber = 105,
+    // Phase 3b: stealth recon — small, fast, hard to spot. Tech-gated behind
+    // "stealth_drones". Treated as Air domain like other drones; combat steps
+    // give it a detection-evasion bonus (see CombatStats).
+    StealthDrone = 107,
 
     // Naval (Phase 2I MVP-lite). Frigate = cheap escort, Destroyer = heavier multi-role.
     // Both require a NavalYard at a coastal province; movement traverses sea-crossing

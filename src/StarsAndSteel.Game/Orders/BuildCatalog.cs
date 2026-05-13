@@ -24,6 +24,12 @@ public static class BuildCatalog
     /// <see cref="RequiredBuilding"/> is still enforced (NavalYard for wings) so we
     /// don't have to special-case unrelated land provinces.
     /// </param>
+    /// <param name="RequiredTechId">
+    /// Phase 3b: optional tech catalogue key (see <see cref="StarsAndSteel.Game.Research.TechCatalog"/>).
+    /// When set, the caller must have an unlocked <see cref="StarsAndSteel.Core.Entities.ResearchProgress"/>
+    /// row for this tech or the order is rejected with <c>RequiredTechMissing</c>.
+    /// Null means "always available" (every MVP unit before Phase 3b).
+    /// </param>
     public sealed record UnitBuildSpec(
         UnitType Type,
         UnitDomain Domain,
@@ -35,7 +41,8 @@ public static class BuildCatalog
         long Manpower,
         int TicksToBuild,
         BuildingType RequiredBuilding,
-        bool RequiresCarrier = false);
+        bool RequiresCarrier = false,
+        string? RequiredTechId = null);
 
     /// <summary>Cost + build-time for one building (level 1; higher levels deferred to Phase 2).</summary>
     public sealed record BuildingBuildSpec(
@@ -65,7 +72,10 @@ public static class BuildCatalog
         new UnitBuildSpec(UnitType.AttackHelicopter, UnitDomain.Air,     Money: 700,  Oil: 200, Steel: 200, Electronics: 200,  Food: 0, Manpower: 0,   TicksToBuild: 10, RequiredBuilding: BuildingType.AirBase),
         new UnitBuildSpec(UnitType.MultiroleFighter, UnitDomain.Air,     Money: 1200, Oil: 300, Steel: 500, Electronics: 400,  Food: 0, Manpower: 0,   TicksToBuild: 14, RequiredBuilding: BuildingType.AirBase),
         new UnitBuildSpec(UnitType.StrategicBomber,  UnitDomain.Air,     Money: 2000, Oil: 500, Steel: 800, Electronics: 400,  Food: 0, Manpower: 0,   TicksToBuild: 18, RequiredBuilding: BuildingType.AirBase),
-        new UnitBuildSpec(UnitType.StealthBomber,    UnitDomain.Air,     Money: 3500, Oil: 500, Steel: 800, Electronics: 1200, Food: 0, Manpower: 0,   TicksToBuild: 24, RequiredBuilding: BuildingType.AirBase),
+        // Phase 3b: research-gated. Stealth Bomber needs "stealth_systems" unlocked;
+        // Stealth Drone needs "stealth_drones" (added in TechCatalog Phase 3b).
+        new UnitBuildSpec(UnitType.StealthBomber,    UnitDomain.Air,     Money: 3500, Oil: 500, Steel: 800, Electronics: 1200, Food: 0, Manpower: 0,   TicksToBuild: 24, RequiredBuilding: BuildingType.AirBase, RequiredTechId: "stealth_systems"),
+        new UnitBuildSpec(UnitType.StealthDrone,     UnitDomain.Air,     Money: 1200, Oil: 100, Steel: 0,   Electronics: 600,  Food: 0, Manpower: 0,   TicksToBuild: 10, RequiredBuilding: BuildingType.AirBase, RequiredTechId: "stealth_drones"),
 
         // Naval (Phase 2I). Both gated to NavalYard, which is itself gated to coastal
         // provinces in OrderService.ValidateBuildBuilding.

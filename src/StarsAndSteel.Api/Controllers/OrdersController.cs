@@ -311,10 +311,19 @@ public sealed class OrdersController : ControllerBase
                          && o.Status != OrderStatus.Cancelled)
                 .ToArrayAsync(cancellationToken);
 
+            // Phase 3b: stealth/research-gated units need to know which techs the caller
+            // has unlocked. Pulled fresh per request rather than cached on Player so a
+            // newly unlocked tech is immediately usable.
+            var unlockedTechIds = await _db.ResearchProgress
+                .Where(r => r.PlayerId == ctx.Player!.Id && r.IsUnlocked)
+                .Select(r => r.TechId)
+                .ToArrayAsync(cancellationToken);
+
             var result = _orderService.ValidateBuildUnit(
                 ctx.Player!, province, unitType, request.Quantity,
                 buildings, provinceUnits, pendingWingOrders,
-                ctx.World!.CurrentTick, ctx.World.Status);
+                ctx.World!.CurrentTick, ctx.World.Status,
+                unlockedTechIds);
 
             return await PersistConstructionOrderAsync(result, ctx.Player!, cancellationToken);
         }
@@ -457,6 +466,7 @@ public sealed class OrdersController : ControllerBase
             OrderRejectionReason.UnknownUnit              => NotFound(new { error = msg }),
             OrderRejectionReason.UnknownProvince          => NotFound(new { error = msg }),
             OrderRejectionReason.NukesDisabledForWorld    => Conflict(new { error = msg }),
+            OrderRejectionReason.RequiredTechMissing      => Conflict(new { error = msg }),
             _ => BadRequest(new { error = msg }),
         };
     }

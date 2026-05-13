@@ -29,6 +29,7 @@ public enum OrderRejectionReason
     NoCarrierWithSpareCapacity,     // 400 — Phase 2b
     NukesDisabledForWorld,          // 409 — Phase 3a; world has NukesEnabled=false
     MissileSiloMissing,             // 400 — Phase 3a; launch province has no MissileSilo
+    RequiredTechMissing,            // 409 — Phase 3b; build requires an unlocked tech
 }
 
 /// <summary>
@@ -289,7 +290,8 @@ public sealed class OrderService
         IReadOnlyCollection<Unit> provinceUnits,
         IReadOnlyCollection<ConstructionOrder> pendingCarrierWingOrders,
         int currentTick,
-        GameWorldStatus worldStatus)
+        GameWorldStatus worldStatus,
+        IReadOnlyCollection<string>? unlockedTechIds = null)
     {
         if (worldStatus == GameWorldStatus.Ended)
             return OrderValidationResult.Reject(OrderRejectionReason.GameEnded, "World has ended.");
@@ -309,6 +311,21 @@ public sealed class OrderService
         if (!provinceBuildings.Any(b => b.Type == spec.RequiredBuilding))
             return OrderValidationResult.Reject(OrderRejectionReason.RequiredBuildingMissing,
                 $"Province requires a {spec.RequiredBuilding} to build {unitType}.");
+
+        // Phase 3b: tech-gated units (Stealth Bomber, Stealth Drone, ...) require an
+        // unlocked ResearchProgress row for spec.RequiredTechId. Null collection means
+        // legacy callers/tests that pre-date this gate; we treat null as "no techs",
+        // which means tech-gated units will be rejected unless the caller passes the
+        // list. All Phase 3b+ callers must populate it.
+        if (spec.RequiredTechId is not null)
+        {
+            var techs = unlockedTechIds ?? Array.Empty<string>();
+            if (!techs.Contains(spec.RequiredTechId))
+            {
+                return OrderValidationResult.Reject(OrderRejectionReason.RequiredTechMissing,
+                    $"{unitType} requires the '{spec.RequiredTechId}' tech to be researched.");
+            }
+        }
 
         // Phase 2b: CarrierAirWing requires a friendly carrier present with spare slot
         // capacity. We count both already-embarked wings AND in-flight wing build

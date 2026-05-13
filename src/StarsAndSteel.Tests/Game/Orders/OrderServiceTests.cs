@@ -532,6 +532,82 @@ public sealed class OrderServiceTests
         result.Rejection.Should().Be(OrderRejectionReason.UnitNotOwnedByCaller);
     }
 
+    // ---- BuildUnit tech gating (Phase 3b) -----------------------------
+
+    [Fact]
+    public void ValidateBuildUnit_rejects_stealth_bomber_when_tech_not_unlocked()
+    {
+        var f = new Fixture();
+        var airBase = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.StealthBomber, quantity: 1000,
+            airBase, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: Array.Empty<string>());
+
+        result.Rejection.Should().Be(OrderRejectionReason.RequiredTechMissing);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_accepts_stealth_bomber_when_tech_unlocked()
+    {
+        var f = new Fixture();
+        var airBase = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.StealthBomber, quantity: 1000,
+            airBase, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: new[] { "stealth_systems" });
+
+        result.IsAccepted.Should().BeTrue();
+        result.ConstructionOrder!.UnitType.Should().Be(UnitType.StealthBomber);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_accepts_stealth_drone_when_drone_tech_unlocked()
+    {
+        var f = new Fixture();
+        var airBase = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.StealthDrone, quantity: 1000,
+            airBase, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: new[] { "stealth_drones" });
+
+        result.IsAccepted.Should().BeTrue();
+        result.ConstructionOrder!.UnitType.Should().Be(UnitType.StealthDrone);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_unrelated_tech_does_not_unlock_stealth_bomber()
+    {
+        var f = new Fixture();
+        var airBase = new[] { new Building { Type = BuildingType.AirBase, ProvinceId = f.ProvinceA.Id } };
+        // Caller has unlocked OTHER techs but not stealth_systems.
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.StealthBomber, quantity: 1000,
+            airBase, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: new[] { "advanced_armor", "smart_munitions", "stealth_drones" });
+
+        result.Rejection.Should().Be(OrderRejectionReason.RequiredTechMissing);
+    }
+
+    [Fact]
+    public void ValidateBuildUnit_non_gated_unit_ignores_tech_list()
+    {
+        var f = new Fixture();
+        var rc = new[] { new Building { Type = BuildingType.RecruitmentCenter, ProvinceId = f.ProvinceA.Id } };
+        // Mech infantry has no RequiredTechId — should accept with empty tech list.
+        var result = _service.ValidateBuildUnit(
+            f.Alice, f.ProvinceA, UnitType.MechInfantry, quantity: 1000,
+            rc, Array.Empty<Unit>(), Array.Empty<ConstructionOrder>(),
+            CurrentTick, GameWorldStatus.Active,
+            unlockedTechIds: Array.Empty<string>());
+
+        result.IsAccepted.Should().BeTrue();
+    }
+
     // ---- Test fixture --------------------------------------------------
 
     private sealed class Fixture

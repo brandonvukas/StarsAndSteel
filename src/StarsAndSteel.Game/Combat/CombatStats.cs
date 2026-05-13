@@ -52,6 +52,9 @@ public static class CombatStats
         UnitType.MultiroleFighter  => 1.6,
         UnitType.StrategicBomber   => 1.8,
         UnitType.StealthBomber     => 2.2,
+        // Phase 3b: small fast recon platform; weak in combat but valuable for the
+        // (deferred) sight model — kept above ReconDrone but well below MultiroleFighter.
+        UnitType.StealthDrone      => 0.5,
         UnitType.Frigate           => 1.4,
         UnitType.Destroyer         => 1.8,
         // Phase 2b: a carrier is a fat low-DPS hull. Survivability comes from its
@@ -198,7 +201,7 @@ public static class CombatStats
     public static bool IsAir(UnitType t) =>
         t is UnitType.ReconDrone or UnitType.CombatDrone or UnitType.AttackHelicopter
           or UnitType.MultiroleFighter or UnitType.StrategicBomber or UnitType.StealthBomber
-          or UnitType.CarrierAirWing;
+          or UnitType.StealthDrone or UnitType.CarrierAirWing;
 
     /// <summary>True if this unit type is a naval combatant (Phase 2I/2b).</summary>
     public static bool IsNaval(UnitType t) =>

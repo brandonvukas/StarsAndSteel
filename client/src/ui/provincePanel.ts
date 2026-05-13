@@ -2,7 +2,7 @@
 // orders (move / build-unit / build-building). The panel is rebuilt whenever
 // the selected province or the world snapshot changes.
 
-import { $selectedProvince, $unitsAtSelected, $world } from '../store/store';
+import { $selectedProvince, $unitsAtSelected, $world, $research } from '../store/store';
 import { orderMove, orderBuildBuilding, orderBuildUnit, orderLaunchMissile, HttpError } from '../api/rest';
 import type { SnapshotProvince, WorldSnapshot } from '../types/api';
 
@@ -21,9 +21,11 @@ const BUILDABLE_UNITS = [
   // Ground (per docs/04 §"Unit catalogue")
   'MechInfantry', 'NationalGuard', 'SpecialForces',
   'MainBattleTank', 'MobileArtillery', 'AABattery',
-  // Air. StealthBomber is intentionally excluded — Phase 3 gates it behind research.
+  // Air. StealthBomber/StealthDrone are tech-gated (filtered at render time
+  // against $research.myProgress); we list them here so the dropdown order is
+  // stable and they appear with a (research) badge once unlocked.
   'ReconDrone', 'CombatDrone', 'AttackHelicopter',
-  'MultiroleFighter', 'StrategicBomber',
+  'MultiroleFighter', 'StrategicBomber', 'StealthBomber', 'StealthDrone',
   // Naval (Phase 2I MVP-lite). Only buildable at coastal provinces with a NavalYard;
   // server enforces RequiredBuilding=NavalYard. We surface both regardless of coast
   // so the dropdown is stable; server will reject without a NavalYard.
@@ -37,6 +39,14 @@ const BUILDABLE_UNITS = [
   // server-side when GameWorld.NukesEnabled = false.
   'CruiseMissile', 'NuclearMissile',
 ] as const;
+
+// Phase 3b: client-side mirror of BuildCatalog.RequiredTechId. Server is the
+// source of truth — this map only drives UI filtering / labeling. Adding a new
+// tech-gated unit requires updating both sides.
+const UNIT_REQUIRED_TECH: Record<string, string | undefined> = {
+  StealthBomber: 'stealth_systems',
+  StealthDrone:  'stealth_drones',
+};
 
 export function mountProvincePanel(container: HTMLElement) {
   container.innerHTML = '';
@@ -59,6 +69,9 @@ export function mountProvincePanel(container: HTMLElement) {
   // Re-render when units arrive/move so the move-from-here selector stays current.
   $unitsAtSelected.subscribe(rerender);
   $world.subscribe(rerender);
+  // Phase 3b: re-render so a freshly unlocked tech immediately surfaces its
+  // gated unit in the build dropdown.
+  $research.subscribe(rerender);
   rerender();
 }
 
@@ -272,11 +285,24 @@ function renderOrderForms(world: WorldSnapshot, province: SnapshotProvince): HTM
     // ---- Build unit form (owner only) ----
     const uf = document.createElement('form');
     uf.className = 'order-form';
+    // Phase 3b: hide tech-gated units the caller hasn't unlocked yet so the
+    // dropdown stays useful early-game. Once unlocked they appear at their
+    // canonical position. If $research isn't loaded yet (very first render) we
+    // err on the side of showing nothing tech-gated — server enforcement is
+    // the source of truth either way.
+    const unlocked = new Set(
+      ($research.get()?.myProgress ?? [])
+        .filter(r => r.isUnlocked)
+        .map(r => r.techId));
+    const availableUnits = BUILDABLE_UNITS.filter(u => {
+      const req = UNIT_REQUIRED_TECH[u];
+      return req == null || unlocked.has(req);
+    });
     uf.innerHTML = `
       <h3>Build unit</h3>
       <label>Type
         <select name="ut">
-          ${BUILDABLE_UNITS.map(u => `<option value="${u}">${u}</option>`).join('')}
+          ${availableUnits.map(u => `<option value="${u}">${u}</option>`).join('')}
         </select>
       </label>
       <label>Quantity <input name="qty" type="number" min="1" max="10000" value="1000" /></label>

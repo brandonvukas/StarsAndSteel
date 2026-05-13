@@ -40,6 +40,13 @@ public static class TechCatalog
             "Unlocks Stealth Bomber recruitment (existing UnitType).",
             MoneyCost: 4000, ElectronicsCost: 1500, TicksToResearch: 24,
             Prerequisites: new[] { "smart_munitions" }),
+        // Phase 3b: lighter sister tech to stealth_systems — unlocks the StealthDrone
+        // unit. Cheaper / faster than full stealth bombers because the drone is a
+        // recon-class platform, not a strategic strike asset.
+        new("stealth_drones", "Stealth Drones", "Military",
+            "Unlocks Stealth Drone recon platform.",
+            MoneyCost: 2500, ElectronicsCost: 1000, TicksToResearch: 18,
+            Prerequisites: new[] { "smart_munitions" }),
 
         // Industry
         new("modular_construction", "Modular Construction", "Industry",
