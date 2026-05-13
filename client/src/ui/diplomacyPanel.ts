@@ -5,10 +5,11 @@
 // (Revoke). Reactive over $diplomacy and $world.
 
 import {
-  $diplomacy, $world, findRelation,
+  $diplomacy, $world, findRelation, findSanctions,
 } from '../store/store';
 import {
   declareWar, proposeTreaty, acceptOffer, rejectOffer, revokeOffer,
+  sanctionPlayer, liftSanction,
   HttpError,
 } from '../api/rest';
 import type {
@@ -141,20 +142,26 @@ function renderRosterRow(worldId: string, state: DiplomacyState, player: Diploma
   const row = document.createElement('div');
   row.className = 'dp-player';
   const status = findRelation(state, player.playerId);
+  const sanctions = findSanctions(state, player.playerId);
   const aliveBadge = player.isAlive ? '' : ' <span class="dp-dead">eliminated</span>';
   const aiBadge = player.isAi ? ' <span class="dp-ai">AI</span>' : '';
+  const youSanctionBadge = sanctions.iSanction
+    ? ' <span class="dp-sanction-out" title="You are sanctioning this player">Sanctioning</span>' : '';
+  const theySanctionBadge = sanctions.theySanction
+    ? ' <span class="dp-sanction-in" title="This player is sanctioning you">Sanctioned by</span>' : '';
   row.innerHTML = `
     <div class="dp-player-head">
       <span class="owner-swatch" style="background:${player.flagPrimaryHex}"></span>
       <strong>${escape(player.nationName)}</strong>${aiBadge}${aliveBadge}
       <span class="dp-status-badge dp-${status.toLowerCase()}">${statusLabel(status)}</span>
+      ${youSanctionBadge}${theySanctionBadge}
     </div>
     <div class="dp-actions"></div>
     <span class="dp-status"></span>`;
   const actions = row.querySelector<HTMLDivElement>('.dp-actions')!;
   const statusEl = row.querySelector<HTMLSpanElement>('.dp-status')!;
   if (player.isAlive) {
-    appendActionButtons(actions, statusEl, worldId, status, player.playerId);
+    appendActionButtons(actions, statusEl, worldId, status, sanctions.iSanction, player.playerId);
   }
   return row;
 }
@@ -164,6 +171,7 @@ function appendActionButtons(
   status: HTMLSpanElement,
   worldId: string,
   current: DiplomaticStatus,
+  iSanction: boolean,
   targetPlayerId: string,
 ) {
   // What's available depends on the current relation. War is always loud:
@@ -191,6 +199,18 @@ function appendActionButtons(
   if (current === 'NonAggression') {
     addButton(host, 'Propose Alliance', async () => {
       await wrapAction(status, () => proposeTreaty(worldId, targetPlayerId, 'Alliance'));
+    });
+  }
+  // Phase 4e: sanction toggle. Always available against any other living player —
+  // free, instant, asymmetric. Stacking (multiple players sanctioning the same target)
+  // multiplies the target's money penalty.
+  if (iSanction) {
+    addButton(host, 'Lift Sanction', async () => {
+      await wrapAction(status, () => liftSanction(worldId, targetPlayerId));
+    });
+  } else {
+    addButton(host, 'Sanction', async () => {
+      await wrapAction(status, () => sanctionPlayer(worldId, targetPlayerId));
     });
   }
 }

@@ -31,3 +31,11 @@ public sealed class OfferActionRequestValidator : AbstractValidator<OfferActionR
         RuleFor(x => x.OfferId).NotEmpty();
     }
 }
+
+public sealed class SanctionRequestValidator : AbstractValidator<SanctionRequest>
+{
+    public SanctionRequestValidator()
+    {
+        RuleFor(x => x.TargetPlayerId).NotEmpty();
+    }
+}

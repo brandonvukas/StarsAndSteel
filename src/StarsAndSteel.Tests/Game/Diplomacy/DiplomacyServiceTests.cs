@@ -283,6 +283,94 @@ public sealed class DiplomacyServiceTests
         result.Rejection.Should().Be(DiplomacyRejectionReason.NotOfferSender);
     }
 
+    // ---- Sanction / LiftSanction --------------------------------------
+
+    [Fact]
+    public void Sanction_emits_directional_change_and_news()
+    {
+        var f = new Fixture();
+        var result = _service.Sanction(f.World, f.Alice, f.Bob, currentlySanctioning: false);
+
+        result.IsAccepted.Should().BeTrue();
+        var m = result.Mutation!;
+        m.RelationChanges.Should().BeEmpty();
+        m.OfferChanges.Should().BeEmpty();
+        m.SanctionChanges.Should().ContainSingle();
+        var sc = m.SanctionChanges[0];
+        sc.FromPlayerId.Should().Be(f.Alice.Id);
+        sc.ToPlayerId.Should().Be(f.Bob.Id);
+        sc.IsSanctioning.Should().BeTrue();
+        sc.AtTick.Should().Be(CurrentTick);
+        m.News.Should().ContainSingle().Which.Category.Should().Be(NewsCategory.Diplomacy);
+    }
+
+    [Fact]
+    public void Sanction_rejects_self()
+    {
+        var f = new Fixture();
+        var result = _service.Sanction(f.World, f.Alice, f.Alice, currentlySanctioning: false);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.SelfTargeted);
+    }
+
+    [Fact]
+    public void Sanction_rejects_dead_target()
+    {
+        var f = new Fixture();
+        f.Bob.IsAlive = false;
+        var result = _service.Sanction(f.World, f.Alice, f.Bob, currentlySanctioning: false);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.PlayerEliminated);
+    }
+
+    [Fact]
+    public void Sanction_rejects_when_already_sanctioning()
+    {
+        var f = new Fixture();
+        var result = _service.Sanction(f.World, f.Alice, f.Bob, currentlySanctioning: true);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.AlreadySanctioning);
+    }
+
+    [Fact]
+    public void Sanction_rejects_when_world_ended()
+    {
+        var f = new Fixture();
+        f.World.Status = GameWorldStatus.Ended;
+        var result = _service.Sanction(f.World, f.Alice, f.Bob, currentlySanctioning: false);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.GameEnded);
+    }
+
+    [Fact]
+    public void LiftSanction_emits_directional_clear_and_news()
+    {
+        var f = new Fixture();
+        var result = _service.LiftSanction(f.World, f.Alice, f.Bob, currentlySanctioning: true);
+
+        result.IsAccepted.Should().BeTrue();
+        var m = result.Mutation!;
+        m.SanctionChanges.Should().ContainSingle();
+        var sc = m.SanctionChanges[0];
+        sc.FromPlayerId.Should().Be(f.Alice.Id);
+        sc.ToPlayerId.Should().Be(f.Bob.Id);
+        sc.IsSanctioning.Should().BeFalse();
+        sc.AtTick.Should().Be(CurrentTick);
+        m.News.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void LiftSanction_rejects_when_not_sanctioning()
+    {
+        var f = new Fixture();
+        var result = _service.LiftSanction(f.World, f.Alice, f.Bob, currentlySanctioning: false);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.NotCurrentlySanctioning);
+    }
+
+    [Fact]
+    public void LiftSanction_rejects_self()
+    {
+        var f = new Fixture();
+        var result = _service.LiftSanction(f.World, f.Alice, f.Alice, currentlySanctioning: true);
+        result.Rejection.Should().Be(DiplomacyRejectionReason.SelfTargeted);
+    }
+
     // ---- Helpers -------------------------------------------------------
 
     private static TreatyOffer NewOffer(

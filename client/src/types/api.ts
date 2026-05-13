@@ -359,6 +359,7 @@ export const HubEvents = {
   RelationChanged: 'RelationChanged',
   OfferReceived: 'OfferReceived',
   OfferResolved: 'OfferResolved',
+  SanctionChanged: 'SanctionChanged',
   TechUnlocked: 'TechUnlocked',
   ResearchStarted: 'ResearchStarted',
   ChatMessageReceived: 'ChatMessageReceived',
@@ -384,6 +385,10 @@ export interface DiplomacyRelation {
   partyBPlayerId: string;
   status: DiplomaticStatus;
   lastChangedAtTick: number;
+  /** Phase 4e: A→B sanction toggle. True if PartyA is currently sanctioning PartyB. */
+  isSanctioningAtoB: boolean;
+  /** Phase 4e: B→A sanction toggle. True if PartyB is currently sanctioning PartyA. */
+  isSanctioningBtoA: boolean;
 }
 
 export interface DiplomacyOffer {
@@ -429,6 +434,28 @@ export interface OfferResolved {
   kind: TreatyOfferKind;
   status: TreatyOfferStatus;
   resolvedAtTick: number;
+}
+
+/** Phase 4e: directional sanction toggle hub event. */
+export interface SanctionChanged {
+  fromPlayerId: string;
+  toPlayerId: string;
+  isSanctioning: boolean;
+  atTick: number;
+}
+
+/** Phase 4e: REST request body for /sanction and /lift-sanction. */
+export interface SanctionRequest {
+  targetPlayerId: string;
+}
+
+/** Phase 4e: REST response for sanction toggling endpoints. */
+export interface SanctionActionAccepted {
+  partyAPlayerId: string;
+  partyBPlayerId: string;
+  isSanctioningAtoB: boolean;
+  isSanctioningBtoA: boolean;
+  atTick: number;
 }
 
 // ----- Phase 4a: Generals + Sabotage + CyberAttack -----

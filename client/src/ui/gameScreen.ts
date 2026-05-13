@@ -9,6 +9,7 @@ import { getSnapshot, getNews, getDiplomacy, getResearch, getChatHistory, getGen
 import {
   $auth, setWorld, patchWorld, bumpTick, pushNews, setNews,
   setDiplomacy, $diplomacy, applyRelationChanged, applyOfferReceived, applyOfferResolved,
+  applySanctionChanged,
   setResearch, $research, applyResearchStarted, applyTechUnlocked, tickResearchProgress,
   setChat, pushChat,
   setGenerals,
@@ -186,6 +187,10 @@ export async function mountGameScreen(host: HTMLElement, worldId: string) {
       onOfferResolved:     e => {
         const cur = $diplomacy.get();
         if (cur) setDiplomacy(applyOfferResolved(cur, e));
+      },
+      onSanctionChanged:   e => {
+        const cur = $diplomacy.get();
+        if (cur) setDiplomacy(applySanctionChanged(cur, e));
       },
       onResearchStarted:   e => {
         const cur = $research.get();

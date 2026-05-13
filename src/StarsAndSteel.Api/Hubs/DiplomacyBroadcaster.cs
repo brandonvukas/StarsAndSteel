@@ -95,6 +95,24 @@ public sealed class DiplomacyBroadcaster
             }
         }
 
+        foreach (var sc in mutation.SanctionChanges)
+        {
+            try
+            {
+                await group.SendAsync(
+                    DiplomacyEventNames.SanctionChanged,
+                    new DiplomacyEventDtos.SanctionChanged(
+                        sc.FromPlayerId, sc.ToPlayerId, sc.IsSanctioning, sc.AtTick),
+                    ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Failed to broadcast SanctionChanged for world={WorldId} from={From} to={To}",
+                    worldId, sc.FromPlayerId, sc.ToPlayerId);
+            }
+        }
+
         foreach (var n in persistedNews)
         {
             try

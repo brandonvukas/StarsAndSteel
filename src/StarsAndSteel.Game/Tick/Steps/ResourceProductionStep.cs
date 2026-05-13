@@ -41,6 +41,17 @@ public sealed class ResourceProductionStep : ITickStep
     /// </summary>
     public const double HooverDamBonus = 1.50;
 
+    /// <summary>
+    /// Phase 4e: per-sanction multiplicative reduction to MONEY production. Each active
+    /// inbound sanction (some other player has imposed a sanction on this player) drops
+    /// the money pool by 25%. Computed as <c>max(SanctionMoneyFloor, 1 - 0.25 * count)</c>
+    /// so 1 sanction = ×0.75, 2 = ×0.50, 3 = ×0.25, 4+ = ×0.25 (floor). Only money is hit;
+    /// other resources are unaffected (lean Phase 4e scope per design discussion).
+    /// </summary>
+    public const double SanctionMoneyPenalty = 0.25;
+    /// <summary>Hard floor on the sanction money multiplier so a target keeps at least 25% income.</summary>
+    public const double SanctionMoneyFloor = 0.25;
+
     public void Execute(TickContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
@@ -110,6 +121,15 @@ public sealed class ResourceProductionStep : ITickStep
             if ((money | oil | steel | electronics | food | manpower) == 0)
             {
                 continue;
+            }
+
+            // Phase 4e: apply inbound-sanction penalty to MONEY only. One sanction = ×0.75,
+            // two = ×0.50, capped at ×0.25 (4+). Other resources untouched per lean scope.
+            var sanctionCount = context.Relations.CountInboundSanctions(player.Id);
+            if (sanctionCount > 0)
+            {
+                var factor = Math.Max(SanctionMoneyFloor, 1.0 - SanctionMoneyPenalty * sanctionCount);
+                money = (long)Math.Round(money * factor);
             }
 
             player.Money += money;

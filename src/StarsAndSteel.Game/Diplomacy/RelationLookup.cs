@@ -23,6 +23,7 @@ namespace StarsAndSteel.Game.Diplomacy;
 public sealed class RelationLookup
 {
     private readonly Dictionary<(Guid, Guid), DiplomaticStatus> _byPair;
+    private readonly Dictionary<Guid, int> _inboundSanctionCount;
 
     public static RelationLookup Empty { get; } = new(Array.Empty<DiplomaticRelation>());
 
@@ -30,12 +31,22 @@ public sealed class RelationLookup
     {
         ArgumentNullException.ThrowIfNull(relations);
         _byPair = new Dictionary<(Guid, Guid), DiplomaticStatus>();
+        _inboundSanctionCount = new Dictionary<Guid, int>();
         foreach (var r in relations)
         {
             var key = OrderedPair(r.FromPlayerId, r.ToPlayerId);
             // Last writer wins on duplicates — the symmetric pair should agree, but if two
             // rows disagree the table is internally inconsistent and we just pick one.
             _byPair[key] = r.Status;
+
+            // Phase 4e: directional sanction tally. Each row that flags IsSanctioning bumps
+            // a counter against the From→To target. ResourceProductionStep multiplies the
+            // target's money pool by (1 - 0.25 * count) with a floor at 0.25.
+            if (r.IsSanctioning)
+            {
+                _inboundSanctionCount[r.ToPlayerId] =
+                    _inboundSanctionCount.GetValueOrDefault(r.ToPlayerId) + 1;
+            }
         }
     }
 
@@ -66,6 +77,14 @@ public sealed class RelationLookup
     /// <summary>True iff the pair is explicitly <see cref="DiplomaticStatus.Allied"/>.</summary>
     public bool AreAllied(Guid playerA, Guid playerB) =>
         GetExplicitStatus(playerA, playerB) == DiplomaticStatus.Allied;
+
+    /// <summary>
+    /// Phase 4e: number of OTHER players currently sanctioning <paramref name="targetPlayerId"/>
+    /// (count of <see cref="DiplomaticRelation"/> rows where <c>ToPlayerId == targetPlayerId</c>
+    /// and <c>IsSanctioning == true</c>). Returns 0 when no sanctions are active.
+    /// </summary>
+    public int CountInboundSanctions(Guid targetPlayerId) =>
+        _inboundSanctionCount.GetValueOrDefault(targetPlayerId);
 
     private static (Guid, Guid) OrderedPair(Guid x, Guid y) =>
         x.CompareTo(y) <= 0 ? (x, y) : (y, x);

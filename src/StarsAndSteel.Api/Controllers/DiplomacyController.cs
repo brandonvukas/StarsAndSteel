@@ -39,6 +39,7 @@ public sealed class DiplomacyController : ControllerBase
     private readonly IValidator<DeclareWarRequest> _declareWarValidator;
     private readonly IValidator<ProposeTreatyRequest> _proposeValidator;
     private readonly IValidator<OfferActionRequest> _offerActionValidator;
+    private readonly IValidator<SanctionRequest> _sanctionValidator;
     private readonly ILogger<DiplomacyController> _logger;
 
     public DiplomacyController(
@@ -50,6 +51,7 @@ public sealed class DiplomacyController : ControllerBase
         IValidator<DeclareWarRequest> declareWarValidator,
         IValidator<ProposeTreatyRequest> proposeValidator,
         IValidator<OfferActionRequest> offerActionValidator,
+        IValidator<SanctionRequest> sanctionValidator,
         ILogger<DiplomacyController> logger)
     {
         _db = db;
@@ -60,6 +62,7 @@ public sealed class DiplomacyController : ControllerBase
         _declareWarValidator = declareWarValidator;
         _proposeValidator = proposeValidator;
         _offerActionValidator = offerActionValidator;
+        _sanctionValidator = sanctionValidator;
         _logger = logger;
     }
 
@@ -92,20 +95,32 @@ public sealed class DiplomacyController : ControllerBase
         var directional = await _db.DiplomaticRelations
             .AsNoTracking()
             .Where(r => r.GameWorldId == worldId)
-            .Select(r => new { r.FromPlayerId, r.ToPlayerId, r.Status, r.LastChangedAtTick })
+            .Select(r => new { r.FromPlayerId, r.ToPlayerId, r.Status, r.LastChangedAtTick, r.IsSanctioning })
             .ToListAsync(ct);
 
-        var relationPairs = new Dictionary<(Guid, Guid), DiplomacyRelationDto>();
+        // Status flips are always written as symmetric pairs so either direction's row
+        // carries the same Status; sanctions are directional and tracked per-row. We
+        // walk both rows and merge: status = newest-wins; AtoB / BtoA flags pulled from
+        // their respective directional rows.
+        var pairAccum = new Dictionary<(Guid, Guid), (DiplomaticStatus Status, int Tick, bool AtoB, bool BtoA)>();
         foreach (var r in directional)
         {
             var (a, b) = OrderedPair(r.FromPlayerId, r.ToPlayerId);
-            // If both directional rows exist (normal case), they should agree; the later
-            // wins on disagreement. A symmetric write always sets both atomically.
-            if (!relationPairs.TryGetValue((a, b), out var existing) || r.LastChangedAtTick >= existing.LastChangedAtTick)
-            {
-                relationPairs[(a, b)] = new DiplomacyRelationDto(a, b, r.Status, r.LastChangedAtTick);
-            }
+            var atoB = r.FromPlayerId == a; // this row represents the A→B direction iff from==a
+            pairAccum.TryGetValue((a, b), out var cur);
+            var newTick = Math.Max(cur.Tick, r.LastChangedAtTick);
+            var newStatus = r.LastChangedAtTick >= cur.Tick ? r.Status : cur.Status;
+            pairAccum[(a, b)] = (
+                newStatus,
+                newTick,
+                atoB ? r.IsSanctioning : cur.AtoB,
+                atoB ? cur.BtoA : r.IsSanctioning);
         }
+
+        var relationPairs = pairAccum
+            .Select(kv => new DiplomacyRelationDto(
+                kv.Key.Item1, kv.Key.Item2, kv.Value.Status, kv.Value.Tick, kv.Value.AtoB, kv.Value.BtoA))
+            .ToList();
 
         var offers = await _db.TreatyOffers
             .AsNoTracking()
@@ -121,7 +136,7 @@ public sealed class DiplomacyController : ControllerBase
         var outbox = offers.Where(o => o.SenderPlayerId == caller.Id).ToList();
 
         return Ok(new DiplomacyStateDto(
-            caller.Id, players, relationPairs.Values.ToList(), inbox, outbox));
+            caller.Id, players, relationPairs, inbox, outbox));
     }
 
     [HttpPost("declare-war")]
@@ -228,6 +243,83 @@ public sealed class DiplomacyController : ControllerBase
     public Task<ActionResult<DiplomacyActionAccepted>> Revoke(
         Guid worldId, [FromBody] OfferActionRequest request, CancellationToken ct)
         => ResolveOfferAsync(worldId, request, ct, kind: OfferResolutionKind.Revoke);
+
+    /// <summary>
+    /// Phase 4e: impose an economic sanction. Free, instant, asymmetric. Stacks
+    /// multiplicatively with other inbound sanctions on the target — see
+    /// <c>ResourceProductionStep</c>.
+    /// </summary>
+    [HttpPost("sanction")]
+    public Task<ActionResult<SanctionActionAccepted>> Sanction(
+        Guid worldId, [FromBody] SanctionRequest request, CancellationToken ct)
+        => ToggleSanctionAsync(worldId, request, ct, impose: true);
+
+    /// <summary>Phase 4e: lift a previously imposed sanction. Free, instant.</summary>
+    [HttpPost("lift-sanction")]
+    public Task<ActionResult<SanctionActionAccepted>> LiftSanction(
+        Guid worldId, [FromBody] SanctionRequest request, CancellationToken ct)
+        => ToggleSanctionAsync(worldId, request, ct, impose: false);
+
+    private async Task<ActionResult<SanctionActionAccepted>> ToggleSanctionAsync(
+        Guid worldId, SanctionRequest request, CancellationToken ct, bool impose)
+    {
+        if (await ValidateAsync(_sanctionValidator, request, ct) is { } badRequest)
+        {
+            return badRequest;
+        }
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user is null) return Unauthorized();
+
+        var gate = _locks.GetOrCreate(worldId);
+        await gate.WaitAsync(ct);
+        try
+        {
+            var ctx = await LoadCallerContextAsync(worldId, user.Id, ct);
+            if (ctx.NotFound) return NotFound();
+            if (ctx.Forbidden) return Forbid();
+
+            var target = await _db.Players.FirstOrDefaultAsync(
+                p => p.Id == request.TargetPlayerId && p.GameWorldId == worldId, ct);
+            if (target is null) return NotFound(new { error = "Target player not found in this world." });
+
+            // Look up current caller→target sanction state (directional).
+            var existing = await _db.DiplomaticRelations
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    r => r.GameWorldId == worldId
+                         && r.FromPlayerId == ctx.Player!.Id
+                         && r.ToPlayerId == target.Id, ct);
+            var currentlySanctioning = existing?.IsSanctioning ?? false;
+
+            var result = impose
+                ? _service.Sanction(ctx.World!, ctx.Player!, target, currentlySanctioning)
+                : _service.LiftSanction(ctx.World!, ctx.Player!, target, currentlySanctioning);
+
+            if (!result.IsAccepted) return RejectionToActionResult<SanctionActionAccepted>(result);
+
+            await PersistAndBroadcastAsync(ctx.World!, result.Mutation!, ct);
+
+            // Re-read both directional rows to populate canonical pair flags.
+            var afterRows = await _db.DiplomaticRelations
+                .AsNoTracking()
+                .Where(r => r.GameWorldId == worldId
+                            && ((r.FromPlayerId == ctx.Player!.Id && r.ToPlayerId == target.Id)
+                                || (r.FromPlayerId == target.Id && r.ToPlayerId == ctx.Player.Id)))
+                .Select(r => new { r.FromPlayerId, r.ToPlayerId, r.IsSanctioning })
+                .ToListAsync(ct);
+
+            var (a, b) = OrderedPair(ctx.Player!.Id, target.Id);
+            var aToB = afterRows.FirstOrDefault(r => r.FromPlayerId == a && r.ToPlayerId == b)?.IsSanctioning ?? false;
+            var bToA = afterRows.FirstOrDefault(r => r.FromPlayerId == b && r.ToPlayerId == a)?.IsSanctioning ?? false;
+
+            return Ok(new SanctionActionAccepted(a, b, aToB, bToA, ctx.World!.CurrentTick));
+        }
+        finally
+        {
+            gate.Release();
+        }
+    }
 
     // ---- Helpers ----------------------------------------------------------
 
@@ -353,6 +445,34 @@ public sealed class DiplomacyController : ControllerBase
             // Mark* mutations were applied to the tracked entity in the service; nothing to do.
         }
 
+        // Phase 4e: directional sanction toggles. Upsert the From→To row, creating it
+        // at default Peace if missing. Sanctions are independent of status — we never
+        // touch the Status field here.
+        foreach (var sc in mutation.SanctionChanges)
+        {
+            var existing = await _db.DiplomaticRelations.FirstOrDefaultAsync(
+                r => r.GameWorldId == sc.GameWorldId
+                     && r.FromPlayerId == sc.FromPlayerId
+                     && r.ToPlayerId == sc.ToPlayerId, ct);
+            if (existing is null)
+            {
+                _db.DiplomaticRelations.Add(new DiplomaticRelation
+                {
+                    Id = Guid.NewGuid(),
+                    GameWorldId = sc.GameWorldId,
+                    FromPlayerId = sc.FromPlayerId,
+                    ToPlayerId = sc.ToPlayerId,
+                    Status = DiplomaticStatus.Peace,
+                    LastChangedAtTick = sc.AtTick,
+                    IsSanctioning = sc.IsSanctioning,
+                });
+            }
+            else
+            {
+                existing.IsSanctioning = sc.IsSanctioning;
+            }
+        }
+
         // News.
         if (mutation.News.Count > 0)
         {
@@ -362,8 +482,8 @@ public sealed class DiplomacyController : ControllerBase
         await _db.SaveChangesAsync(ct);
 
         _logger.LogInformation(
-            "Diplomacy mutation persisted: world={WorldId} relations={RelCount} offerChanges={OfferCount} news={NewsCount}",
-            world.Id, mutation.RelationChanges.Count, mutation.OfferChanges.Count, mutation.News.Count);
+            "Diplomacy mutation persisted: world={WorldId} relations={RelCount} offerChanges={OfferCount} sanctions={SanctionCount} news={NewsCount}",
+            world.Id, mutation.RelationChanges.Count, mutation.OfferChanges.Count, mutation.SanctionChanges.Count, mutation.News.Count);
 
         await _broadcaster.BroadcastAsync(world.Id, mutation, mutation.News, ct);
     }
@@ -398,6 +518,8 @@ public sealed class DiplomacyController : ControllerBase
             DiplomacyRejectionReason.OfferNotForCaller      => Forbid(),
             DiplomacyRejectionReason.NotOfferReceiver       => Forbid(),
             DiplomacyRejectionReason.NotOfferSender         => Forbid(),
+            DiplomacyRejectionReason.AlreadySanctioning     => Conflict(new { error = msg }),
+            DiplomacyRejectionReason.NotCurrentlySanctioning => Conflict(new { error = msg }),
             _ => BadRequest(new { error = msg }),
         };
     }

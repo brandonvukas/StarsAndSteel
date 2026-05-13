@@ -44,6 +44,18 @@ public static class DiplomacyEventDtos
         TreatyOfferKind Kind,
         TreatyOfferStatus Status,
         int ResolvedAtTick);
+
+    /// <summary>
+    /// Phase 4e: directional sanction toggle. <see cref="FromPlayerId"/> is the sanctioner;
+    /// <see cref="ToPlayerId"/> is the target. <see cref="IsSanctioning"/> indicates whether
+    /// the sanction is now active (true = imposed) or lifted (false). Receivers should
+    /// update both inbound and outbound sanction badges in their UI.
+    /// </summary>
+    public sealed record SanctionChanged(
+        Guid FromPlayerId,
+        Guid ToPlayerId,
+        bool IsSanctioning,
+        int AtTick);
 }
 
 public static class DiplomacyEventNames
@@ -51,4 +63,5 @@ public static class DiplomacyEventNames
     public const string RelationChanged = "RelationChanged";
     public const string OfferReceived = "OfferReceived";
     public const string OfferResolved = "OfferResolved";
+    public const string SanctionChanged = "SanctionChanged";
 }

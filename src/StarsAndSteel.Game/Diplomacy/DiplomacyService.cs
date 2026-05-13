@@ -22,6 +22,8 @@ public enum DiplomacyRejectionReason
     OfferNotForCaller,               // 403 — caller is neither the sender nor receiver
     NotOfferReceiver,                // 403 — only the receiver can accept/reject
     NotOfferSender,                  // 403 — only the sender can revoke
+    AlreadySanctioning,              // 409 — caller already sanctions target
+    NotCurrentlySanctioning,         // 409 — lift-sanction with no active sanction
 }
 
 /// <summary>
@@ -55,7 +57,15 @@ public sealed record DiplomacyResult(
 public sealed record DiplomacyMutation(
     IReadOnlyList<RelationChange> RelationChanges,
     IReadOnlyList<OfferChange> OfferChanges,
-    IReadOnlyList<NewsItem> News);
+    IReadOnlyList<NewsItem> News,
+    IReadOnlyList<SanctionChange> SanctionChanges)
+{
+    public DiplomacyMutation(
+        IReadOnlyList<RelationChange> relationChanges,
+        IReadOnlyList<OfferChange> offerChanges,
+        IReadOnlyList<NewsItem> news)
+        : this(relationChanges, offerChanges, news, Array.Empty<SanctionChange>()) { }
+}
 
 /// <summary>
 /// Symmetric directed pair to upsert into <see cref="DiplomaticRelation"/>. The service
@@ -74,6 +84,21 @@ public enum OfferChangeKind { Create, MarkAccepted, MarkRejected, MarkRevoked, M
 public sealed record OfferChange(
     OfferChangeKind Kind,
     TreatyOffer Offer);
+
+/// <summary>
+/// Phase 4e: directional sanction toggle. <see cref="FromPlayerId"/> is the sanctioner;
+/// <see cref="ToPlayerId"/> is the target whose money production is reduced. The controller
+/// upserts the <see cref="DiplomaticRelation"/> row in the From→To direction (creating it
+/// at <see cref="DiplomaticStatus.Peace"/> if absent), setting <c>IsSanctioning</c> to
+/// <see cref="IsSanctioning"/>. The reverse direction (To→From) is left untouched —
+/// sanctions are asymmetric and a target may or may not retaliate.
+/// </summary>
+public sealed record SanctionChange(
+    Guid GameWorldId,
+    Guid FromPlayerId,
+    Guid ToPlayerId,
+    bool IsSanctioning,
+    int AtTick);
 
 /// <summary>
 /// Pure diplomacy state machine. No DbContext, no SignalR — the controller loads
@@ -315,6 +340,93 @@ public sealed class DiplomacyService
             Array.Empty<RelationChange>(),
             new[] { new OfferChange(OfferChangeKind.MarkRevoked, offer) },
             news));
+    }
+
+    /// <summary>
+    /// Phase 4e: impose an economic sanction on <paramref name="target"/>. Free, instant,
+    /// asymmetric (the target may or may not retaliate). The directional From→To
+    /// <see cref="DiplomaticRelation"/> row is upserted with <c>IsSanctioning=true</c> at
+    /// the current tick. While active, the target's per-tick money production is reduced
+    /// by 25% per active inbound sanction (multiplicative, see
+    /// <c>ResourceProductionStep.SanctionMoneyPenalty</c>; floor 25%).
+    /// <para/>
+    /// Self-sanction and sanctioning a dead player are rejected. Re-sanctioning when
+    /// already active returns <see cref="DiplomacyRejectionReason.AlreadySanctioning"/>.
+    /// </summary>
+    public DiplomacyResult Sanction(
+        GameWorld world,
+        Player caller,
+        Player target,
+        bool currentlySanctioning)
+    {
+        if (world.Status == GameWorldStatus.Ended)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.GameEnded, "World has ended.");
+        if (caller.Id == target.Id)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.SelfTargeted, "Cannot sanction yourself.");
+        if (!target.IsAlive)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.PlayerEliminated, "Target has been eliminated.");
+        if (currentlySanctioning)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.AlreadySanctioning,
+                "You are already sanctioning this player.");
+
+        var tick = world.CurrentTick;
+        var sanctionChanges = new[]
+        {
+            new SanctionChange(world.Id, caller.Id, target.Id, IsSanctioning: true, tick),
+        };
+
+        var news = new List<NewsItem>
+        {
+            BuildNews(world.Id, tick,
+                $"{caller.NationName} imposes sanctions on {target.NationName}",
+                $"{caller.NationName} has cut economic ties with {target.NationName}, hammering the target's money supply until the sanctions are lifted.",
+                NewsSeverity.Notable, caller.Id),
+        };
+
+        return DiplomacyResult.Accept(new DiplomacyMutation(
+            Array.Empty<RelationChange>(),
+            Array.Empty<OfferChange>(),
+            news,
+            sanctionChanges));
+    }
+
+    /// <summary>
+    /// Phase 4e: lift a previously-imposed sanction. Free, instant. Rejects if the caller
+    /// is not currently sanctioning the target.
+    /// </summary>
+    public DiplomacyResult LiftSanction(
+        GameWorld world,
+        Player caller,
+        Player target,
+        bool currentlySanctioning)
+    {
+        if (world.Status == GameWorldStatus.Ended)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.GameEnded, "World has ended.");
+        if (caller.Id == target.Id)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.SelfTargeted, "Cannot lift sanction on yourself.");
+        if (!currentlySanctioning)
+            return DiplomacyResult.Reject(DiplomacyRejectionReason.NotCurrentlySanctioning,
+                "You are not currently sanctioning this player.");
+
+        var tick = world.CurrentTick;
+        var sanctionChanges = new[]
+        {
+            new SanctionChange(world.Id, caller.Id, target.Id, IsSanctioning: false, tick),
+        };
+
+        var news = new List<NewsItem>
+        {
+            BuildNews(world.Id, tick,
+                $"{caller.NationName} lifts sanctions on {target.NationName}",
+                $"{caller.NationName} has restored economic ties with {target.NationName}.",
+                NewsSeverity.Info, caller.Id),
+        };
+
+        return DiplomacyResult.Accept(new DiplomacyMutation(
+            Array.Empty<RelationChange>(),
+            Array.Empty<OfferChange>(),
+            news,
+            sanctionChanges));
     }
 
     private static string KindLabel(TreatyOfferKind kind) => kind switch

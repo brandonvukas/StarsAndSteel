@@ -15,7 +15,7 @@ import { atom, computed } from 'nanostores';
 import type {
   AuthResponse, WorldSnapshot, SnapshotProvince, NewsItem,
   DiplomacyState, DiplomaticStatus, DiplomacyOffer,
-  RelationChanged, OfferReceived, OfferResolved,
+  RelationChanged, OfferReceived, OfferResolved, SanctionChanged,
   ResearchState, TechUnlocked, ResearchStartedEvent,
   ChatMessageDto,
   GeneralDto,
@@ -151,7 +151,30 @@ export function findRelation(state: DiplomacyState, otherPlayerId: string): Dipl
   return row?.status ?? 'Peace';
 }
 
+/**
+ * Phase 4e: directional sanction flags between caller and another player. Returns
+ * <code>iSanction</code> = caller is currently sanctioning the target;
+ * <code>theySanction</code> = target is currently sanctioning the caller. Both default
+ * to false when the relation row is absent (default Peace, no sanctions).
+ */
+export function findSanctions(
+  state: DiplomacyState, otherPlayerId: string,
+): { iSanction: boolean; theySanction: boolean } {
+  const a = state.callerPlayerId, b = otherPlayerId;
+  const callerIsA = a < b;
+  const [lo, hi] = callerIsA ? [a, b] : [b, a];
+  const row = state.relations.find(r => r.partyAPlayerId === lo && r.partyBPlayerId === hi);
+  if (!row) return { iSanction: false, theySanction: false };
+  return callerIsA
+    ? { iSanction: row.isSanctioningAtoB, theySanction: row.isSanctioningBtoA }
+    : { iSanction: row.isSanctioningBtoA, theySanction: row.isSanctioningAtoB };
+}
+
 export function applyRelationChanged(state: DiplomacyState, e: RelationChanged): DiplomacyState {
+  // Preserve any existing sanction flags — RelationChanged only carries Status. The
+  // canonical pair row is uniquely identified by (PartyA, PartyB).
+  const existing = state.relations.find(r =>
+    r.partyAPlayerId === e.partyAPlayerId && r.partyBPlayerId === e.partyBPlayerId);
   const others = state.relations.filter(r =>
     !(r.partyAPlayerId === e.partyAPlayerId && r.partyBPlayerId === e.partyBPlayerId));
   return {
@@ -161,6 +184,36 @@ export function applyRelationChanged(state: DiplomacyState, e: RelationChanged):
       partyBPlayerId: e.partyBPlayerId,
       status: e.newStatus,
       lastChangedAtTick: e.atTick,
+      isSanctioningAtoB: existing?.isSanctioningAtoB ?? false,
+      isSanctioningBtoA: existing?.isSanctioningBtoA ?? false,
+    }],
+  };
+}
+
+/**
+ * Phase 4e: apply a SanctionChanged hub event to the local diplomacy state. The
+ * event is directional (From→To); we map it onto the canonical pair row and toggle
+ * the appropriate AtoB / BtoA flag, preserving Status and any opposite-direction flag.
+ * Creates a default Peace row if no entry exists yet.
+ */
+export function applySanctionChanged(state: DiplomacyState, e: SanctionChanged): DiplomacyState {
+  const fromIsA = e.fromPlayerId < e.toPlayerId;
+  const [lo, hi] = fromIsA ? [e.fromPlayerId, e.toPlayerId] : [e.toPlayerId, e.fromPlayerId];
+  const existing = state.relations.find(r =>
+    r.partyAPlayerId === lo && r.partyBPlayerId === hi);
+  const others = state.relations.filter(r =>
+    !(r.partyAPlayerId === lo && r.partyBPlayerId === hi));
+  const aToB = fromIsA ? e.isSanctioning : (existing?.isSanctioningAtoB ?? false);
+  const bToA = fromIsA ? (existing?.isSanctioningBtoA ?? false) : e.isSanctioning;
+  return {
+    ...state,
+    relations: [...others, {
+      partyAPlayerId: lo,
+      partyBPlayerId: hi,
+      status: existing?.status ?? 'Peace',
+      lastChangedAtTick: existing?.lastChangedAtTick ?? e.atTick,
+      isSanctioningAtoB: aToB,
+      isSanctioningBtoA: bToA,
     }],
   };
 }

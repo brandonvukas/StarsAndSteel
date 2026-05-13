@@ -11,6 +11,25 @@ public sealed record ProposeTreatyRequest(Guid ReceiverPlayerId, string Kind);
 /// <summary>Accept or reject a pending offer addressed to the caller.</summary>
 public sealed record OfferActionRequest(Guid OfferId);
 
+/// <summary>
+/// Phase 4e: impose or lift an economic sanction against another player. The same DTO
+/// is used by both <c>POST /sanction</c> and <c>POST /lift-sanction</c>; the controller
+/// disambiguates by route.
+/// </summary>
+public sealed record SanctionRequest(Guid TargetPlayerId);
+
+/// <summary>
+/// Returned on accepted sanction-toggling actions. The pair is reported in canonical
+/// (PartyA &lt; PartyB) order alongside the directional flags so clients can update both
+/// inbound and outbound badges in a single hop.
+/// </summary>
+public sealed record SanctionActionAccepted(
+    Guid PartyAPlayerId,
+    Guid PartyBPlayerId,
+    bool IsSanctioningAtoB,
+    bool IsSanctioningBtoA,
+    int AtTick);
+
 /// <summary>Returned on accepted relation-changing actions (declare-war, accept).</summary>
 public sealed record DiplomacyActionAccepted(
     Guid PartyAPlayerId,
@@ -59,7 +78,9 @@ public sealed record DiplomacyRelationDto(
     Guid PartyAPlayerId,
     Guid PartyBPlayerId,
     DiplomaticStatus Status,
-    int LastChangedAtTick);
+    int LastChangedAtTick,
+    bool IsSanctioningAtoB,
+    bool IsSanctioningBtoA);
 
 public sealed record DiplomacyOfferDto(
     Guid OfferId,

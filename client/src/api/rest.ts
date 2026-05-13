@@ -6,6 +6,7 @@ import type {
   AuthResponse, WorldSummary, WorldSnapshot, NewsItem,
   MoveOrderRequest, BuildBuildingRequest, BuildUnitRequest, MissileLaunchRequest,
   DiplomacyState, TreatyOfferKind,
+  SanctionActionAccepted,
   ResearchState,
   ChatMessageDto, SendChatMessageRequest, SendChatMessageResponse,
   MeResponse, UpdateQuietHoursRequest,
@@ -132,6 +133,17 @@ export const rejectOffer = (worldId: string, offerId: string) =>
 
 export const revokeOffer = (worldId: string, offerId: string) =>
   call<unknown>('POST', `/api/worlds/${worldId}/diplomacy/revoke`, { offerId });
+
+// Phase 4e: directional sanctions. Free, instant, asymmetric. Stacking inbound
+// sanctions multiplicatively reduce the target's per-tick money production by
+// 25% per sanctioner, floored at 25%.
+export const sanctionPlayer = (worldId: string, targetPlayerId: string) =>
+  call<SanctionActionAccepted>(
+    'POST', `/api/worlds/${worldId}/diplomacy/sanction`, { targetPlayerId });
+
+export const liftSanction = (worldId: string, targetPlayerId: string) =>
+  call<SanctionActionAccepted>(
+    'POST', `/api/worlds/${worldId}/diplomacy/lift-sanction`, { targetPlayerId });
 
 // ---- Research ------------------------------------------------------------
 export const getResearch = (worldId: string) =>

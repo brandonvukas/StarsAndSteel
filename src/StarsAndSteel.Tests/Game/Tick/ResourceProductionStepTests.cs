@@ -1,6 +1,7 @@
 using FluentAssertions;
 using StarsAndSteel.Core.Entities;
 using StarsAndSteel.Core.Enums;
+using StarsAndSteel.Game.Diplomacy;
 using StarsAndSteel.Game.Tick;
 using StarsAndSteel.Game.Tick.Events;
 using StarsAndSteel.Game.Tick.Steps;
@@ -426,5 +427,78 @@ public class ResourceProductionStepTests
         new ResourceProductionStep().Execute(ctx);
 
         alice.Money.Should().Be(330);
+    }
+
+    // ---------- Phase 4e: sanction money penalty ----------
+
+    [Theory]
+    [InlineData(0, 100)]   // no sanctions -> full
+    [InlineData(1, 75)]    // 1 sanctioner -> 0.75x
+    [InlineData(2, 50)]    // 2 -> 0.50x
+    [InlineData(3, 25)]    // 3 -> 0.25x (floor)
+    [InlineData(4, 25)]    // 4+ pinned at 0.25
+    [InlineData(10, 25)]   // 10 still floor
+    public void Sanction_money_penalty_scales_then_floors(int sanctionCount, long expectedMoney)
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        AddProvince(world, alice, money: 100, oil: 0, steel: 0, electronics: 0, food: 0, manpower: 0);
+
+        var sanctioners = Enumerable.Range(0, sanctionCount)
+            .Select(_ => new DiplomaticRelation
+            {
+                Id = Guid.NewGuid(),
+                GameWorldId = world.Id,
+                FromPlayerId = Guid.NewGuid(),
+                ToPlayerId = alice.Id,
+                Status = DiplomaticStatus.Peace,
+                IsSanctioning = true,
+                LastChangedAtTick = 0,
+            })
+            .ToList();
+
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency>(),
+            relations: new RelationLookup(sanctioners));
+
+        new ResourceProductionStep().Execute(ctx);
+
+        alice.Money.Should().Be(expectedMoney);
+    }
+
+    [Fact]
+    public void Sanction_only_affects_money_not_other_resources()
+    {
+        var (world, alice) = WorldWithOnePlayer();
+        AddProvince(world, alice, money: 100, oil: 50, steel: 25, electronics: 10, food: 5, manpower: 2);
+
+        var sanction = new DiplomaticRelation
+        {
+            Id = Guid.NewGuid(),
+            GameWorldId = world.Id,
+            FromPlayerId = Guid.NewGuid(),
+            ToPlayerId = alice.Id,
+            Status = DiplomaticStatus.Peace,
+            IsSanctioning = true,
+            LastChangedAtTick = 0,
+        };
+
+        var ctx = new TickContext(world, world.CurrentTick + 1, new DeterministicRandom(world.RngState),
+            units: new List<Unit>(),
+            pendingUnitOrders: new List<UnitOrder>(),
+            pendingConstructionOrders: new List<ConstructionOrder>(),
+            adjacencies: new List<ProvinceAdjacency>(),
+            relations: new RelationLookup(new[] { sanction }));
+
+        new ResourceProductionStep().Execute(ctx);
+
+        alice.Money.Should().Be(75);   // 100 * 0.75
+        alice.Oil.Should().Be(50);
+        alice.Steel.Should().Be(25);
+        alice.Electronics.Should().Be(10);
+        alice.Food.Should().Be(5);
+        alice.Manpower.Should().Be(2);
     }
 }

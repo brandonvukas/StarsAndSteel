@@ -8,7 +8,7 @@ import type {
   TickAdvanced, ResourcesUpdated, UnitMoved, UnitDestroyed,
   ProvinceCaptured, BuildingCompleted, UnitBuilt,
   CombatResolved, AirStrikeResolved, NewsPublished,
-  RelationChanged, OfferReceived, OfferResolved,
+  RelationChanged, OfferReceived, OfferResolved, SanctionChanged,
   TechUnlocked, ResearchStartedEvent,
   ChatMessageDto,
 } from '../types/api';
@@ -27,6 +27,7 @@ export interface HubHandlers {
   onRelationChanged?: (e: RelationChanged) => void;
   onOfferReceived?: (e: OfferReceived) => void;
   onOfferResolved?: (e: OfferResolved) => void;
+  onSanctionChanged?: (e: SanctionChanged) => void;
   onTechUnlocked?: (e: TechUnlocked) => void;
   onResearchStarted?: (e: ResearchStartedEvent) => void;
   onChatMessageReceived?: (e: ChatMessageDto) => void;
@@ -95,6 +96,7 @@ export class GameHubClient {
     if (h.onRelationChanged)    c.on(HubEvents.RelationChanged, h.onRelationChanged);
     if (h.onOfferReceived)      c.on(HubEvents.OfferReceived, h.onOfferReceived);
     if (h.onOfferResolved)      c.on(HubEvents.OfferResolved, h.onOfferResolved);
+    if (h.onSanctionChanged)    c.on(HubEvents.SanctionChanged, h.onSanctionChanged);
     if (h.onTechUnlocked)       c.on(HubEvents.TechUnlocked, h.onTechUnlocked);
     if (h.onResearchStarted)    c.on(HubEvents.ResearchStarted, h.onResearchStarted);
     if (h.onChatMessageReceived) c.on(HubEvents.ChatMessageReceived, h.onChatMessageReceived);
